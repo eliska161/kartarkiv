@@ -1,0 +1,208 @@
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
+import { useMap } from '../contexts/MapContext';
+import MapComponent from '../components/MapComponent';
+import MapList from '../components/MapList';
+import Header from '../components/Header';
+import { MapPin, List, Grid, Search, Filter } from 'lucide-react';
+
+const MapPage: React.FC = () => {
+  const { user } = useAuth();
+  const { maps, loading, fetchMaps } = useMap();
+  const [viewMode, setViewMode] = useState<'map' | 'list'>('map');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedMap, setSelectedMap] = useState<number | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState({
+    scale: '',
+    contourInterval: ''
+  });
+
+  useEffect(() => {
+    fetchMaps();
+  }, [fetchMaps]); // Now fetchMaps is stable with useCallback
+
+  const filteredMaps = maps.filter(map => {
+    const matchesSearch = map.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         map.description?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesScale = !filters.scale || map.scale === filters.scale;
+    const matchesContour = !filters.contourInterval || 
+                          map.contour_interval?.toString() === filters.contourInterval;
+
+    return matchesSearch && matchesScale && matchesContour;
+  });
+
+  const uniqueScales = Array.from(new Set(maps.map(map => map.scale).filter(Boolean)));
+  const uniqueContours = Array.from(new Set(maps.map(map => map.contour_interval).filter(Boolean)));
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Header />
+      
+      <div className="flex">
+        {/* Sidebar */}
+        <div className="w-80 bg-white shadow-lg h-screen overflow-y-auto">
+          <div className="p-4 border-b border-gray-200">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900">Kartarkiv</h2>
+              <div className="flex space-x-1">
+                <button
+                  onClick={() => setViewMode('map')}
+                  className={`p-2 rounded-lg ${
+                    viewMode === 'map' 
+                      ? 'bg-eok-100 text-eok-600' 
+                      : 'text-gray-400 hover:text-gray-600'
+                  }`}
+                >
+                  <MapPin className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`p-2 rounded-lg ${
+                    viewMode === 'list' 
+                      ? 'bg-eok-100 text-eok-600' 
+                      : 'text-gray-400 hover:text-gray-600'
+                  }`}
+                >
+                  <List className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Search */}
+            <div className="relative mb-4">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Søk i kart..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-eok-500 focus:border-transparent"
+              />
+            </div>
+
+            {/* Filters */}
+            <div className="mb-4">
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className="flex items-center text-sm text-gray-600 hover:text-gray-800"
+              >
+                <Filter className="h-4 w-4 mr-1" />
+                Filtrer
+              </button>
+              
+              {showFilters && (
+                <div className="mt-2 space-y-2">
+                  <select
+                    value={filters.scale}
+                    onChange={(e) => setFilters(prev => ({ ...prev, scale: e.target.value }))}
+                    className="w-full px-3 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-eok-500"
+                  >
+                    <option value="">Alle målestokker</option>
+                    {uniqueScales.map(scale => (
+                      <option key={scale} value={scale}>{scale}</option>
+                    ))}
+                  </select>
+                  
+                  <select
+                    value={filters.contourInterval}
+                    onChange={(e) => setFilters(prev => ({ ...prev, contourInterval: e.target.value }))}
+                    className="w-full px-3 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-eok-500"
+                  >
+                    <option value="">Alle ekvidistanse</option>
+                    {uniqueContours.map(contour => (
+                      <option key={contour} value={contour}>{contour}m</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+
+            {/* Map count */}
+            <div className="text-sm text-gray-500 mb-4">
+              {filteredMaps.length} kart funnet
+            </div>
+          </div>
+
+          {/* Map list */}
+          <div className="p-4">
+            {loading ? (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-eok-600"></div>
+              </div>
+            ) : (
+              <MapList 
+                maps={filteredMaps}
+                selectedMap={selectedMap}
+                onSelectMap={setSelectedMap}
+                viewMode={viewMode}
+              />
+            )}
+          </div>
+        </div>
+
+        {/* Main content */}
+        <div className="flex-1">
+          {viewMode === 'map' ? (
+            <MapComponent 
+              maps={filteredMaps}
+              selectedMap={selectedMap}
+              onSelectMap={setSelectedMap}
+            />
+          ) : (
+            <div className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredMaps.map(map => (
+                  <div
+                    key={map.id}
+                    className="card cursor-pointer hover:shadow-md transition-shadow"
+                    onClick={() => setSelectedMap(map.id)}
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <h3 className="font-semibold text-gray-900">{map.name}</h3>
+                      <span className="text-xs bg-eok-100 text-eok-600 px-2 py-1 rounded">
+                        {map.file_count} filer
+                      </span>
+                    </div>
+                    
+                    {map.description && (
+                      <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                        {map.description}
+                      </p>
+                    )}
+                    
+                    <div className="space-y-1 text-xs text-gray-500">
+                      {map.scale && (
+                        <div>Målestokk: {map.scale}</div>
+                      )}
+                      {map.contour_interval && (
+                        <div>Ekvidistanse: {map.contour_interval}m</div>
+                      )}
+                      <div>Opprettet: {new Date(map.created_at).toLocaleDateString('no-NO')}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              {filteredMaps.length === 0 && (
+                <div className="text-center py-12">
+                  <MapPin className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">Ingen kart funnet</h3>
+                  <p className="text-gray-500">
+                    {searchTerm || Object.values(filters).some(f => f) 
+                      ? 'Prøv å endre søkekriteriene dine'
+                      : 'Det er ingen kart i arkivet ennå'
+                    }
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default MapPage;
