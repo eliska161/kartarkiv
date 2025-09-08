@@ -70,57 +70,61 @@ const Header: React.FC = () => {
 
             {/* Navigation */}
             <nav className="flex items-center space-x-4">
-              <button
-                onClick={() => navigate('/')}
-                className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
-              >
-                Kart
-              </button>
-              
-              {user?.publicMetadata?.isAdmin && (
+              <>
                 <button
-                  onClick={() => navigate('/admin')}
-                  className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium flex items-center"
+                  onClick={() => navigate('/')}
+                  className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
                 >
-                  <Settings className="h-4 w-4 mr-1" />
-                  Admin
+                  Kart
                 </button>
-              )}
+                
+                {user?.publicMetadata?.isAdmin && (
+                  <button
+                    onClick={() => navigate('/admin')}
+                    className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium flex items-center"
+                  >
+                    <Settings className="h-4 w-4 mr-1" />
+                    Admin
+                  </button>
+                )}
+              </>
             </nav>
 
             {/* User menu */}
             <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <div className="bg-eok-100 p-1 rounded-full">
-                  <User className="h-4 w-4 text-eok-600" />
-                </div>
-                <div className="text-sm">
-                  <div className="font-medium text-gray-900">
-                    {user?.firstName} {user?.lastName}
+              <>
+                <div className="flex items-center space-x-2">
+                  <div className="bg-eok-100 p-1 rounded-full">
+                    <User className="h-4 w-4 text-eok-600" />
                   </div>
-                  <div className="text-gray-500">
-                    {user?.publicMetadata?.isAdmin ? 'Administrator' : 'Bruker'}
+                  <div className="text-sm">
+                    <div className="font-medium text-gray-900">
+                      {user?.firstName} {user?.lastName}
+                    </div>
+                    <div className="text-gray-500">
+                      {user?.publicMetadata?.isAdmin ? 'Administrator' : 'Bruker'}
+                    </div>
                   </div>
                 </div>
-              </div>
-              
-              {user?.publicMetadata?.isAdmin && (
+                
+                {user?.publicMetadata?.isAdmin && (
+                  <button
+                    onClick={() => setShowUserManagement(true)}
+                    className="text-gray-400 hover:text-gray-600 p-2 rounded-lg hover:bg-gray-100"
+                    title="Brukeradministrasjon"
+                  >
+                    <Users className="h-4 w-4" />
+                  </button>
+                )}
+                
                 <button
-                  onClick={() => setShowUserManagement(true)}
+                  onClick={handleLogout}
                   className="text-gray-400 hover:text-gray-600 p-2 rounded-lg hover:bg-gray-100"
-                  title="Brukeradministrasjon"
+                  title="Logg ut"
                 >
-                  <Users className="h-4 w-4" />
+                  <LogOut className="h-4 w-4" />
                 </button>
-              )}
-              
-              <button
-                onClick={handleLogout}
-                className="text-gray-400 hover:text-gray-600 p-2 rounded-lg hover:bg-gray-100"
-                title="Logg ut"
-              >
-                <LogOut className="h-4 w-4" />
-              </button>
+              </>
             </div>
           </div>
         </div>
@@ -130,18 +134,20 @@ const Header: React.FC = () => {
       {showUserManagement && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg w-full max-w-6xl h-5/6 overflow-hidden">
-            <div className="flex items-center justify-between p-4 border-b">
-              <h2 className="text-lg font-semibold">Brukeradministrasjon</h2>
-              <button
-                onClick={() => setShowUserManagement(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <div className="h-full overflow-y-auto">
-              <UserManagement />
-            </div>
+            <>
+              <div className="flex items-center justify-between p-4 border-b">
+                <h2 className="text-lg font-semibold">Brukeradministrasjon</h2>
+                <button
+                  onClick={() => setShowUserManagement(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <div className="h-full overflow-y-auto">
+                <UserManagement />
+              </div>
+            </>
           </div>
         </div>
       )}
