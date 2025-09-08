@@ -2,10 +2,10 @@
   "name": "kartarkiv-server",
   "version": "1.0.0",
   "description": "Backend server for kartarkiv",
-  "main": "index-debug.js",
+  "main": "index.js",
   "scripts": {
-    "start": "node index-debug.js",
-    "dev": "nodemon index-debug.js"
+    "start": "node index.js",
+    "dev": "nodemon index.js"
   },
   "dependencies": {
     "@mapbox/togeojson": "^0.16.2",
