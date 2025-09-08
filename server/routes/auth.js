@@ -1,162 +1,173 @@
 const express = require('express');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const { body, validationResult } = require('express-validator');
-const pool = require('../database/connection');
-const { authenticateToken } = require('../middleware/auth');
-
+const { createClient } = require('@supabase/supabase-js');
 const router = express.Router();
 
-// Register new user (Admin only)
-router.post('/register', authenticateToken, [
-  body('username').isLength({ min: 3 }).trim().escape(),
-  body('email').isEmail().normalizeEmail(),
-  body('password').isLength({ min: 6 }),
-  body('firstName').trim().escape(),
-  body('lastName').trim().escape()
-], async (req, res) => {
-  // Check if user is admin
-  if (!req.user.is_admin) {
-    return res.status(403).json({ message: 'Only administrators can create new users' });
-  }
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_ANON_KEY
+);
+
+// Sign up
+router.post('/signup', async (req, res) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ 
-        message: 'Validation failed', 
-        errors: errors.array() 
-      });
-    }
+    const { email, password, fullName } = req.body;
 
-    const { username, email, password, firstName, lastName } = req.body;
-
-    // Check if user already exists
-    const existingUser = await pool.query(
-      'SELECT id FROM users WHERE username = $1 OR email = $2',
-      [username, email]
-    );
-
-    if (existingUser.rows.length > 0) {
-      return res.status(400).json({ message: 'Username or email already exists' });
-    }
-
-    // Hash password
-    const saltRounds = 12;
-    const passwordHash = await bcrypt.hash(password, saltRounds);
-
-    // Create user
-    const result = await pool.query(
-      'INSERT INTO users (username, email, password_hash, first_name, last_name) VALUES ($1, $2, $3, $4, $5) RETURNING id, username, email, first_name, last_name, is_admin',
-      [username, email, passwordHash, firstName, lastName]
-    );
-
-    const user = result.rows[0];
-
-    // Generate JWT token
-    const token = jwt.sign(
-      { userId: user.id, username: user.username },
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
-    );
-
-    res.status(201).json({
-      message: 'User created successfully',
-      token,
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        firstName: user.first_name,
-        lastName: user.last_name,
-        isAdmin: user.is_admin
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          full_name: fullName
+        }
       }
     });
+
+    if (error) {
+      return res.status(400).json({ error: error.message });
+    }
+
+    res.json({ 
+      message: 'User created successfully. Please check your email to confirm your account.',
+      user: data.user 
+    });
   } catch (error) {
-    console.error('Registration error:', error);
-    res.status(500).json({ message: 'Server error during registration' });
+    console.error('Signup error:', error);
+    res.status(500).json({ error: 'Signup failed' });
   }
 });
 
-// Login user
-router.post('/login', [
-  body('username').trim().escape(),
-  body('password').notEmpty()
-], async (req, res) => {
+// Sign in
+router.post('/signin', async (req, res) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ 
-        message: 'Validation failed', 
-        errors: errors.array() 
-      });
+    const { email, password } = req.body;
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
+
+    if (error) {
+      return res.status(400).json({ error: error.message });
     }
 
-    const { username, password } = req.body;
+    // Get user data from our users table
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', data.user.id)
+      .single();
 
-    // Find user
-    const result = await pool.query(
-      'SELECT id, username, email, password_hash, first_name, last_name, is_admin, is_active FROM users WHERE username = $1 OR email = $1',
-      [username]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+    if (userError) {
+      return res.status(500).json({ error: 'Failed to get user data' });
     }
-
-    const user = result.rows[0];
-
-    if (!user.is_active) {
-      return res.status(401).json({ message: 'Account is inactive' });
-    }
-
-    // Verify password
-    const isValidPassword = await bcrypt.compare(password, user.password_hash);
-    if (!isValidPassword) {
-      return res.status(401).json({ message: 'Invalid credentials' });
-    }
-
-    // Generate JWT token
-    const token = jwt.sign(
-      { userId: user.id, username: user.username },
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
-    );
 
     res.json({
-      message: 'Login successful',
-      token,
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        firstName: user.first_name,
-        lastName: user.last_name,
-        isAdmin: user.is_admin
-      }
+      user: userData,
+      session: data.session
     });
   } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ message: 'Server error during login' });
+    console.error('Signin error:', error);
+    res.status(500).json({ error: 'Signin failed' });
   }
 });
 
-// Get current user info
-router.get('/me', authenticateToken, (req, res) => {
-  res.json({
-    user: {
-      id: req.user.id,
-      username: req.user.username,
-      email: req.user.email,
-      firstName: req.user.first_name,
-      lastName: req.user.last_name,
-      isAdmin: req.user.is_admin
+// Sign out
+router.post('/signout', async (req, res) => {
+  try {
+    const { error } = await supabase.auth.signOut();
+    
+    if (error) {
+      return res.status(400).json({ error: error.message });
     }
-  });
+
+    res.json({ message: 'Signed out successfully' });
+  } catch (error) {
+    console.error('Signout error:', error);
+    res.status(500).json({ error: 'Signout failed' });
+  }
 });
 
-// Logout (client-side token removal)
-router.post('/logout', authenticateToken, (req, res) => {
-  res.json({ message: 'Logout successful' });
+// Get current user
+router.get('/me', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'No token provided' });
+    }
+
+    const token = authHeader.substring(7);
+    
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    
+    if (error || !user) {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+
+    // Get user data from our users table
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+
+    if (userError || !userData) {
+      return res.status(401).json({ error: 'User not found' });
+    }
+
+    res.json({ user: userData });
+  } catch (error) {
+    console.error('Get user error:', error);
+    res.status(500).json({ error: 'Failed to get user' });
+  }
+});
+
+// Update user role (admin only)
+router.put('/users/:id/role', async (req, res) => {
+  try {
+    const { role } = req.body;
+    const { id } = req.params;
+
+    // Verify admin access
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'No token provided' });
+    }
+
+    const token = authHeader.substring(7);
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    
+    if (error || !user) {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+
+    const { data: adminUser, error: adminError } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (adminError || !adminUser || adminUser.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    // Update user role
+    const { data, error: updateError } = await supabase
+      .from('users')
+      .update({ role })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (updateError) {
+      return res.status(400).json({ error: updateError.message });
+    }
+
+    res.json({ user: data });
+  } catch (error) {
+    console.error('Update role error:', error);
+    res.status(500).json({ error: 'Failed to update role' });
+  }
 });
 
 module.exports = router;

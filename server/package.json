@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@mapbox/togeojson": "^0.16.2",
+    "@supabase/supabase-js": "^2.38.0",
     "@xmldom/xmldom": "^0.8.11",
     "adm-zip": "^0.5.16",
     "aws-sdk": "^2.1692.0",

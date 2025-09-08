@@ -1,47 +1,54 @@
-const jwt = require('jsonwebtoken');
-const pool = require('../database/connection');
+const { createClient } = require('@supabase/supabase-js');
 
-const authenticateToken = async (req, res, next) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_ANON_KEY
+);
 
-  if (!token) {
-    return res.status(401).json({ message: 'Access token required' });
-  }
-
+const authenticateUser = async (req, res, next) => {
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const authHeader = req.headers.authorization;
     
-    // Verify user still exists and is active
-    const result = await pool.query(
-      'SELECT id, username, email, is_admin, is_active FROM users WHERE id = $1',
-      [decoded.userId]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(401).json({ message: 'User not found' });
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'No token provided' });
     }
 
-    if (!result.rows[0].is_active) {
-      return res.status(401).json({ message: 'User account is inactive' });
+    const token = authHeader.substring(7);
+    
+    // Verify token with Supabase
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    
+    if (error || !user) {
+      return res.status(401).json({ error: 'Invalid token' });
     }
 
-    req.user = result.rows[0];
+    // Get user data from our users table
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+
+    if (userError || !userData) {
+      return res.status(401).json({ error: 'User not found' });
+    }
+
+    req.user = userData;
     next();
   } catch (error) {
-    console.error('Token verification error:', error);
-    return res.status(403).json({ message: 'Invalid or expired token' });
+    console.error('Auth middleware error:', error);
+    res.status(500).json({ error: 'Authentication failed' });
   }
 };
 
 const requireAdmin = (req, res, next) => {
-  if (!req.user || !req.user.is_admin) {
-    return res.status(403).json({ message: 'Admin access required' });
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
   }
   next();
 };
 
 module.exports = {
-  authenticateToken,
+  authenticateUser,
   requireAdmin
 };
