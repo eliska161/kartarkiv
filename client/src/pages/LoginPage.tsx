@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, User, Lock } from 'lucide-react';
+import { User, Lock } from 'lucide-react';
 import EOKLogo from '../components/EOKLogo';
 
 const LoginPage: React.FC = () => {

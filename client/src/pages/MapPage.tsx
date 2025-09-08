@@ -4,10 +4,10 @@ import { useMap } from '../contexts/MapContext';
 import MapComponent from '../components/MapComponent';
 import MapList from '../components/MapList';
 import Header from '../components/Header';
-import { MapPin, List, Grid, Search, Filter } from 'lucide-react';
+import { MapPin, List, Search, Filter } from 'lucide-react';
 
 const MapPage: React.FC = () => {
-  const { user } = useAuth();
+  const { } = useAuth();
   const { maps, loading, fetchMaps } = useMap();
   const [viewMode, setViewMode] = useState<'map' | 'list'>('map');
   const [searchTerm, setSearchTerm] = useState('');

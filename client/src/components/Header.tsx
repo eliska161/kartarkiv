@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Settings, LogOut, User, Users, X } from 'lucide-react';
+import { Settings, LogOut, User, Users, X } from 'lucide-react';
 import UserManagement from './UserManagement';
 import EOKLogo from './EOKLogo';
 

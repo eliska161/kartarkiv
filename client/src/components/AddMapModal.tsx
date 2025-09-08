@@ -88,34 +88,7 @@ const AddMapModal: React.FC<AddMapModalProps> = ({ isOpen, onClose, mapToEdit, o
     { value: '50', label: '50 m' }
   ];
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setMapData(prev => ({
-      ...prev,
-      [name]: name === 'contourInterval' ? parseFloat(value) || 0 : value
-    }));
-  };
-
-  const handleScalePresetChange = (value: string) => {
-    setScalePreset(value);
-    if (value !== 'custom') {
-      setMapData(prev => ({ ...prev, scale: value }));
-      setCustomScale('');
-    }
-  };
-
-  const handleCustomScaleChange = (value: string) => {
-    setCustomScale(value);
-    setMapData(prev => ({ ...prev, scale: value }));
-  };
-
-  const handleContourPresetChange = (value: string) => {
-    setContourPreset(value);
-    if (value !== 'custom') {
-      setMapData(prev => ({ ...prev, contourInterval: parseFloat(value) }));
-      setCustomContour('');
-    }
-  };
+  // Removed unused functions to fix ESLint warnings
 
   const handleCustomContourChange = (value: string) => {
     setCustomContour(value);

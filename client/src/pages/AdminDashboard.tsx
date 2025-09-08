@@ -5,10 +5,10 @@ import Header from '../components/Header';
 import AddMapModal from '../components/AddMapModal';
 import UserManagement from '../components/UserManagement';
 import LogoManager from '../components/LogoManager';
-import { Plus, MapPin, Users, BarChart3, Settings, Edit, Trash2, Image } from 'lucide-react';
+import { Plus, MapPin, Users, BarChart3, Settings, Edit, Trash2 } from 'lucide-react';
 
 const AdminDashboard: React.FC = () => {
-  const { user } = useAuth();
+  const { } = useAuth();
   const { maps, loading, fetchMaps, deleteMap, fetchMap } = useMap();
   const [activeTab, setActiveTab] = useState<'maps' | 'users' | 'stats' | 'settings'>('maps');
   const [showAddMapModal, setShowAddMapModal] = useState(false);
