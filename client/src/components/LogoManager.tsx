@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { Upload, Image, Trash2, Save, X } from 'lucide-react';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-import { Upload, Image, Trash2, Save, X } from 'lucide-react';
 
 const LogoManager: React.FC = () => {
   const [currentLogo, setCurrentLogo] = useState<string | null>(null);

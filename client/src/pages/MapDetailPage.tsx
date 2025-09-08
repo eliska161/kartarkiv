@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useMap } from '../contexts/MapContext';
 import axios from 'axios';
+import { ArrowLeft, Download, MapPin, Scale, Ruler, Calendar, User, FileText, Image, File } from 'lucide-react';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-import { ArrowLeft, Download, MapPin, Scale, Ruler, Calendar, User, FileText, Image, File } from 'lucide-react';
 
 const MapDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();

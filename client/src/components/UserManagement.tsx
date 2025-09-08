@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import axios from 'axios';
+import { User, UserPlus, Edit, Trash2, Shield, ShieldOff, X } from 'lucide-react';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-import { User, UserPlus, Edit, Trash2, Shield, ShieldOff, X } from 'lucide-react';
 
 interface UserData {
   id: number;
