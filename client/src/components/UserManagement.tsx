@@ -3,8 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import axios from 'axios';
 import { User, UserPlus, Edit, Trash2, Shield, ShieldOff, X } from 'lucide-react';
 
-// Use relative URLs since Netlify redirects /api/* to Railway
-const API_BASE_URL = process.env.NODE_ENV === 'production' ? '' : (process.env.REACT_APP_API_URL || 'http://localhost:5000');
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 interface UserData {
   id: number;

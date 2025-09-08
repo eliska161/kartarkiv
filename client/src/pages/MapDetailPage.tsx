@@ -4,8 +4,7 @@ import { useMap } from '../contexts/MapContext';
 import axios from 'axios';
 import { ArrowLeft, Download, MapPin, Scale, Ruler, Calendar, User, FileText, Image, File } from 'lucide-react';
 
-// Use relative URLs since Netlify redirects /api/* to Railway
-const API_BASE_URL = process.env.NODE_ENV === 'production' ? '' : (process.env.REACT_APP_API_URL || 'http://localhost:5000');
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 const MapDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
