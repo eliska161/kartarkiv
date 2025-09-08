@@ -29,14 +29,42 @@ app.use((req, res, next) => {
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Routes
+console.log('🔧 Registering routes...');
 app.use('/api/auth', authRoutes);
+console.log('✅ Auth routes registered at /api/auth');
 app.use('/api/maps', mapRoutes);
+console.log('✅ Maps routes registered at /api/maps');
 app.use('/api/users', userRoutes);
+console.log('✅ Users routes registered at /api/users');
 app.use('/api/settings', settingsRoutes);
+console.log('✅ Settings routes registered at /api/settings');
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'Kartarkiv server is running' });
+});
+
+// Debug: List all available routes
+app.get('/api/routes', (req, res) => {
+  const routes = [];
+  app._router.stack.forEach(middleware => {
+    if (middleware.route) {
+      routes.push({
+        method: Object.keys(middleware.route.methods)[0].toUpperCase(),
+        path: middleware.route.path
+      });
+    } else if (middleware.name === 'router') {
+      middleware.handle.stack.forEach(handler => {
+        if (handler.route) {
+          routes.push({
+            method: Object.keys(handler.route.methods)[0].toUpperCase(),
+            path: '/api' + middleware.regexp.source.replace(/\\|\^|\$|\?/g, '').replace('(?:', '').replace(')', '') + handler.route.path
+          });
+        }
+      });
+    }
+  });
+  res.json({ routes });
 });
 
 // Error handling middleware
