@@ -4,7 +4,7 @@ const helmet = require('helmet');
 const path = require('path');
 require('dotenv').config();
 
-const authRoutes = require('./routes/auth'); // Use Supabase auth
+const authRoutes = require('./routes/auth-simple'); // Use simple auth for testing
 const mapRoutes = require('./routes/maps');
 const userRoutes = require('./routes/users');
 const settingsRoutes = require('./routes/settings');
