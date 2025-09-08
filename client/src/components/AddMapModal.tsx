@@ -4,6 +4,8 @@ import { MapContainer, TileLayer, Polygon, Polyline, CircleMarker, useMap as use
 import { useMap } from '../contexts/MapContext';
 import axios from 'axios';
 
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
 interface AddMapModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -150,7 +152,7 @@ const AddMapModal: React.FC<AddMapModalProps> = ({ isOpen, onClose, mapToEdit, o
     try {
       if (mapToEdit) {
         // Update existing map
-        await axios.put(`/api/maps/${mapToEdit.id}`, mapData);
+        await axios.put(`${API_BASE_URL}/api/maps/${mapToEdit.id}`, mapData);
         
         // Upload new files if any
         if (selectedFiles.length > 0) {
@@ -161,7 +163,7 @@ const AddMapModal: React.FC<AddMapModalProps> = ({ isOpen, onClose, mapToEdit, o
           formData.append('version', fileVersion);
           formData.append('isPrimary', isPrimaryFile.toString());
 
-          await axios.post(`/api/maps/${mapToEdit.id}/files`, formData, {
+          await axios.post(`${API_BASE_URL}/api/maps/${mapToEdit.id}/files`, formData, {
             headers: { 'Content-Type': 'multipart/form-data' },
           });
         }
@@ -178,7 +180,7 @@ const AddMapModal: React.FC<AddMapModalProps> = ({ isOpen, onClose, mapToEdit, o
           formData.append('version', fileVersion);
           formData.append('isPrimary', isPrimaryFile.toString());
 
-          await axios.post(`/api/maps/${newMap.id}/files`, formData, {
+          await axios.post(`${API_BASE_URL}/api/maps/${newMap.id}/files`, formData, {
             headers: { 'Content-Type': 'multipart/form-data' },
           });
         }

@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useMap } from '../contexts/MapContext';
 import axios from 'axios';
+
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 import { ArrowLeft, Download, MapPin, Scale, Ruler, Calendar, User, FileText, Image, File } from 'lucide-react';
 
 const MapDetailPage: React.FC = () => {
@@ -50,7 +52,7 @@ const MapDetailPage: React.FC = () => {
       const fileName = file.file_path;
       
       // Use axios to download the file from the maps subdirectory
-      const response = await axios.get(`/uploads/maps/${fileName}`, {
+      const response = await axios.get(`${API_BASE_URL}/uploads/maps/${fileName}`, {
         responseType: 'blob',
       });
       

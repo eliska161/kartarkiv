@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import axios from 'axios';
+
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 import { User, UserPlus, Edit, Trash2, Shield, ShieldOff, X } from 'lucide-react';
 
 interface UserData {
@@ -34,7 +36,7 @@ const UserManagement: React.FC = () => {
 
   const fetchUsers = async () => {
     try {
-      const response = await axios.get('/api/users');
+      const response = await axios.get(`${API_BASE_URL}/api/users`);
       setUsers(response.data.users);
     } catch (error) {
       console.error('Error fetching users:', error);
@@ -48,10 +50,10 @@ const UserManagement: React.FC = () => {
     try {
       if (editingUser) {
         // Update existing user
-        await axios.put(`/api/users/${editingUser.id}`, formData);
+        await axios.put(`${API_BASE_URL}/api/users/${editingUser.id}`, formData);
       } else {
         // Create new user
-        await axios.post('/api/users', formData);
+        await axios.post(`${API_BASE_URL}/api/users`, formData);
       }
       
       await fetchUsers();
@@ -92,7 +94,7 @@ const UserManagement: React.FC = () => {
 
     if (window.confirm('Er du sikker på at du vil slette denne brukeren?')) {
       try {
-        await axios.delete(`/api/users/${userId}`);
+        await axios.delete(`${API_BASE_URL}/api/users/${userId}`);
         await fetchUsers();
       } catch (error: any) {
         console.error('Error deleting user:', error);
@@ -108,7 +110,7 @@ const UserManagement: React.FC = () => {
     }
 
     try {
-      await axios.put(`/api/users/${userId}`, { is_admin: !currentStatus });
+      await axios.put(`${API_BASE_URL}/api/users/${userId}`, { is_admin: !currentStatus });
       await fetchUsers();
     } catch (error: any) {
       console.error('Error updating user:', error);

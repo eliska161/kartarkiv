@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import axios from 'axios';
 
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
 interface MapFile {
   id: number;
   map_id: number;
@@ -84,7 +86,7 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.get('/api/maps');
+      const response = await axios.get(`${API_BASE_URL}/api/maps`);
       setMaps(response.data.maps);
     } catch (error: any) {
       setError(error.response?.data?.message || 'Kunne ikke hente kart');
@@ -96,7 +98,7 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
 
   const fetchMap = async (id: number): Promise<Map | null> => {
     try {
-      const response = await axios.get(`/api/maps/${id}`);
+      const response = await axios.get(`${API_BASE_URL}/api/maps/${id}`);
       return response.data.map;
     } catch (error: any) {
       console.error('Error fetching map:', error);
@@ -106,7 +108,7 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
 
   const createMap = async (mapData: CreateMapData): Promise<Map> => {
     try {
-      const response = await axios.post('/api/maps', mapData);
+      const response = await axios.post(`${API_BASE_URL}/api/maps`, mapData);
       const newMap = response.data.map;
       setMaps(prev => [newMap, ...prev]);
       return newMap;
@@ -117,7 +119,7 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
 
   const updateMap = async (id: number, mapData: Partial<Map>): Promise<Map> => {
     try {
-      const response = await axios.put(`/api/maps/${id}`, mapData);
+      const response = await axios.put(`${API_BASE_URL}/api/maps/${id}`, mapData);
       const updatedMap = response.data.map;
       setMaps(prev => prev.map(map => map.id === id ? updatedMap : map));
       return updatedMap;
@@ -128,7 +130,7 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
 
   const deleteMap = async (id: number): Promise<void> => {
     try {
-      await axios.delete(`/api/maps/${id}`);
+      await axios.delete(`${API_BASE_URL}/api/maps/${id}`);
       setMaps(prev => prev.filter(map => map.id !== id));
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Kunne ikke slette kart');
@@ -145,7 +147,7 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
     }
 
     try {
-      const response = await axios.post(`/api/maps/${mapId}/files`, formData, {
+      const response = await axios.post(`${API_BASE_URL}/api/maps/${mapId}/files`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -161,7 +163,7 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
     formData.append('previewImage', file);
 
     try {
-      const response = await axios.post(`/api/maps/${mapId}/preview`, formData, {
+      const response = await axios.post(`${API_BASE_URL}/api/maps/${mapId}/preview`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },

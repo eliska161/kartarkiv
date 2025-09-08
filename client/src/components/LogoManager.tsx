@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 import { Upload, Image, Trash2, Save, X } from 'lucide-react';
 
 const LogoManager: React.FC = () => {
@@ -15,7 +17,7 @@ const LogoManager: React.FC = () => {
   const fetchCurrentLogo = async () => {
     try {
       // Try to load the current logo
-      const response = await axios.get('/api/settings/logo');
+      const response = await axios.get(`${API_BASE_URL}/api/settings/logo`);
       if (response.data.logo) {
         setCurrentLogo(response.data.logo);
       }
@@ -55,7 +57,7 @@ const LogoManager: React.FC = () => {
       const formData = new FormData();
       formData.append('logo', newLogo);
       
-      await axios.post('/api/settings/logo', formData, {
+      await axios.post(`${API_BASE_URL}/api/settings/logo`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -86,7 +88,7 @@ const LogoManager: React.FC = () => {
     
     setLoading(true);
     try {
-      await axios.delete('/api/settings/logo');
+      await axios.delete(`${API_BASE_URL}/api/settings/logo`);
       setCurrentLogo(null);
       setNewLogo(null);
       window.location.reload();
