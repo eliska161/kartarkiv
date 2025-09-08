@@ -2,7 +2,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const { body, validationResult } = require('express-validator');
 const pool = require('../database/connection');
-const { authenticateUser, requireAdmin } = require('../middleware/auth-jwt');
+const { authenticateUser, requireAdmin } = require('../middleware/auth-clerk');
 
 const router = express.Router();
 

@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useUser, useAuth } from '@clerk/clerk-react';
 import axios from 'axios';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
@@ -44,76 +45,61 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+  const { user: clerkUser, isLoaded } = useUser();
+  const { getToken } = useAuth();
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Configure axios defaults
+  // Configure axios defaults with Clerk token
   useEffect(() => {
-    const storedToken = localStorage.getItem('token');
-    if (storedToken) {
-      setToken(storedToken);
-      axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
-    }
-  }, []);
-
-  // Check if user is logged in on app start
-  useEffect(() => {
-    const checkAuth = async () => {
-      const storedToken = localStorage.getItem('token');
-      if (storedToken) {
+    const setupAuth = async () => {
+      if (isLoaded && clerkUser) {
         try {
-          const response = await axios.get(`${API_BASE_URL}/api/auth/me`);
-          setUser(response.data.user);
+          const token = await getToken();
+          if (token) {
+            setToken(token);
+            axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+            
+            // Set user data from Clerk
+            setUser({
+              id: clerkUser.id,
+              username: clerkUser.username || clerkUser.emailAddresses[0]?.emailAddress || '',
+              email: clerkUser.emailAddresses[0]?.emailAddress || '',
+              firstName: clerkUser.firstName || '',
+              lastName: clerkUser.lastName || '',
+              isAdmin: clerkUser.publicMetadata?.isAdmin || false
+            });
+          }
         } catch (error) {
-          console.error('Auth check failed:', error);
-          localStorage.removeItem('token');
-          delete axios.defaults.headers.common['Authorization'];
+          console.error('Failed to get Clerk token:', error);
         }
+      } else if (isLoaded && !clerkUser) {
+        // User is not signed in
+        setUser(null);
+        setToken(null);
+        delete axios.defaults.headers.common['Authorization'];
       }
-      setLoading(false);
+      setLoading(!isLoaded);
     };
 
-    checkAuth();
-  }, []);
+    setupAuth();
+  }, [clerkUser, isLoaded, getToken]);
 
   const login = async (username: string, password: string) => {
-    try {
-      const response = await axios.post(`${API_BASE_URL}/api/auth/login`, {
-        username,
-        password
-      });
-
-      const { token: newToken, user: userData } = response.data;
-      
-      setToken(newToken);
-      setUser(userData);
-      localStorage.setItem('token', newToken);
-      axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Innlogging feilet');
-    }
+    // Clerk handles login, this is just for compatibility
+    throw new Error('Use Clerk SignIn component instead');
   };
 
   const register = async (userData: RegisterData) => {
-    try {
-      const response = await axios.post(`${API_BASE_URL}/api/auth/register`, userData);
-
-      const { token: newToken, user: newUser } = response.data;
-      
-      setToken(newToken);
-      setUser(newUser);
-      localStorage.setItem('token', newToken);
-      axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Registrering feilet');
-    }
+    // Clerk handles registration, this is just for compatibility
+    throw new Error('Use Clerk SignUp component instead');
   };
 
   const logout = () => {
+    // Clerk handles logout
     setUser(null);
     setToken(null);
-    localStorage.removeItem('token');
     delete axios.defaults.headers.common['Authorization'];
   };
 
