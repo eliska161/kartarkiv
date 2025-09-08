@@ -5,7 +5,7 @@ const fs = require('fs').promises;
 const { body, validationResult } = require('express-validator');
 const pool = require('../database/connection');
 const { authenticateToken, requireAdmin } = require('../middleware/auth');
-const pdf = require('pdf-poppler');
+// const pdf = require('pdf-poppler'); // Removed - not supported on Linux
 const { readOcad } = require('ocad2geojson');
 const toGeoJSON = require('@mapbox/togeojson');
 const { DOMParser } = require('@xmldom/xmldom');
@@ -13,33 +13,10 @@ const AdmZip = require('adm-zip');
 
 const router = express.Router();
 
-// Function to generate preview from PDF
+// Function to generate preview from PDF - DISABLED (pdf-poppler not supported on Linux)
 const generatePreviewFromPDF = async (pdfPath, outputDir) => {
-  try {
-    const options = {
-      format: 'png',
-      out_dir: outputDir,
-      out_prefix: 'preview',
-      page: 1, // Only convert first page
-      scale: 150 // Higher quality
-    };
-    
-    await pdf.convert(pdfPath, options);
-    
-    // Find the generated preview file
-    const files = await fs.readdir(outputDir);
-    const previewFile = files.find(file => file.startsWith('preview') && file.endsWith('.png'));
-    
-    if (previewFile) {
-      const previewPath = path.join(outputDir, previewFile);
-      return previewPath;
-    }
-    
-    return null;
-  } catch (error) {
-    console.error('Error generating PDF preview:', error);
-    return null;
-  }
+  console.log('PDF preview generation disabled - pdf-poppler not supported on Linux');
+  return null;
 };
 
 // Function to extract georeferencing and polygon data from KMZ file
