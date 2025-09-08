@@ -6,7 +6,7 @@ import UserManagement from './UserManagement';
 import EOKLogo from './EOKLogo';
 
 const Header: React.FC = () => {
-  const { user, isSignedIn } = useUser();
+  const { user } = useUser();
   const { signOut } = useClerk();
   const navigate = useNavigate();
   const [showUserManagement, setShowUserManagement] = useState(false);
