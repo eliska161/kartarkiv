@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { ClerkProvider, SignedIn, SignedOut, RedirectToSignIn } from '@clerk/clerk-react';
+import { ClerkProvider } from '@clerk/clerk-react';
 import { AuthProvider } from './contexts/AuthContext';
 import { MapProvider } from './contexts/MapContext';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -27,51 +27,26 @@ function App() {
             <div className="min-h-screen bg-gray-50">
               <Routes>
               {/* Public routes */}
-              <Route path="/login" element={
-                <SignedOut>
-                  <LoginPage />
-                </SignedOut>
-              } />
+              <Route path="/login" element={<LoginPage />} />
               
               {/* Protected routes */}
               <Route path="/" element={
-                <>
-                  <SignedIn>
-                    <ProtectedRoute>
-                      <MapPage />
-                    </ProtectedRoute>
-                  </SignedIn>
-                  <SignedOut>
-                    <RedirectToSignIn />
-                  </SignedOut>
-                </>
+                <ProtectedRoute>
+                  <MapPage />
+                </ProtectedRoute>
               } />
               
               <Route path="/map/:id" element={
-                <>
-                  <SignedIn>
-                    <ProtectedRoute>
-                      <MapDetailPage />
-                    </ProtectedRoute>
-                  </SignedIn>
-                  <SignedOut>
-                    <RedirectToSignIn />
-                  </SignedOut>
-                </>
+                <ProtectedRoute>
+                  <MapDetailPage />
+                </ProtectedRoute>
               } />
               
               {/* Admin routes */}
               <Route path="/admin" element={
-                <>
-                  <SignedIn>
-                    <AdminRoute>
-                      <AdminDashboard />
-                    </AdminRoute>
-                  </SignedIn>
-                  <SignedOut>
-                    <RedirectToSignIn />
-                  </SignedOut>
-                </>
+                <AdminRoute>
+                  <AdminDashboard />
+                </AdminRoute>
               } />
               
               {/* Redirect unknown routes to home */}
