@@ -613,6 +613,9 @@ const previewUpload = multer({
 // Get all maps
 router.get('/', async (req, res) => {
   try {
+    console.log('🔍 Fetching maps...');
+    console.log('📊 Database connection status:', pool.totalCount, 'total connections');
+    
     const result = await pool.query(`
       SELECT 
         m.*,
@@ -625,6 +628,8 @@ router.get('/', async (req, res) => {
       ORDER BY m.created_at DESC
     `);
 
+    console.log('✅ Maps query successful, found', result.rows.length, 'maps');
+    
     res.json({
       maps: result.rows.map(map => ({
         ...map,
@@ -632,8 +637,19 @@ router.get('/', async (req, res) => {
       }))
     });
   } catch (error) {
-    console.error('Error fetching maps:', error);
-    res.status(500).json({ message: 'Error fetching maps' });
+    console.error('❌ Error fetching maps:', error);
+    console.error('❌ Error details:', {
+      message: error.message,
+      code: error.code,
+      detail: error.detail,
+      hint: error.hint,
+      position: error.position
+    });
+    res.status(500).json({ 
+      message: 'Error fetching maps',
+      error: error.message,
+      code: error.code
+    });
   }
 });
 

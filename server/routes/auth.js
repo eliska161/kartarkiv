@@ -36,7 +36,43 @@ router.post('/signup', async (req, res) => {
   }
 });
 
-// Sign in
+// Sign in (alias for /login)
+router.post('/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: username, // Use username as email
+      password
+    });
+
+    if (error) {
+      return res.status(400).json({ error: error.message });
+    }
+
+    // Get user data from our users table
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', data.user.id)
+      .single();
+
+    if (userError) {
+      return res.status(500).json({ error: 'Failed to get user data' });
+    }
+
+    res.json({
+      user: userData,
+      token: data.session.access_token,
+      session: data.session
+    });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ error: 'Login failed' });
+  }
+});
+
+// Sign in (original)
 router.post('/signin', async (req, res) => {
   try {
     const { email, password } = req.body;
