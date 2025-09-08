@@ -7,7 +7,7 @@ import Header from '../components/Header';
 import { MapPin, List, Search, Filter } from 'lucide-react';
 
 const MapPage: React.FC = () => {
-  const { } = useAuth();
+  useAuth(); // Keep auth context active
   const { maps, loading, fetchMaps } = useMap();
   const [viewMode, setViewMode] = useState<'map' | 'list'>('map');
   const [searchTerm, setSearchTerm] = useState('');

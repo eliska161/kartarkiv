@@ -8,7 +8,7 @@ import LogoManager from '../components/LogoManager';
 import { Plus, MapPin, Users, BarChart3, Settings, Edit, Trash2 } from 'lucide-react';
 
 const AdminDashboard: React.FC = () => {
-  const { } = useAuth();
+  useAuth(); // Keep auth context active
   const { maps, loading, fetchMaps, deleteMap, fetchMap } = useMap();
   const [activeTab, setActiveTab] = useState<'maps' | 'users' | 'stats' | 'settings'>('maps');
   const [showAddMapModal, setShowAddMapModal] = useState(false);
