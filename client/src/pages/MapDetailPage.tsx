@@ -36,6 +36,7 @@ const MapDetailPage: React.FC = () => {
     loadMap();
   }, [id, fetchMap]);
 
+
   const handleDownload = async (file: any, event?: React.MouseEvent<HTMLButtonElement>) => {
     try {
       // Show loading state
@@ -87,6 +88,7 @@ const MapDetailPage: React.FC = () => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
+
   const getFileIcon = (fileType: string) => {
     switch (fileType.toLowerCase()) {
       case 'pdf':
@@ -96,6 +98,8 @@ const MapDetailPage: React.FC = () => {
       case 'png':
       case 'gif':
         return <Image className="h-5 w-5 text-green-500" />;
+      case 'ocd':
+        return <File className="h-5 w-5 text-green-600" />;
       default:
         return <File className="h-5 w-5 text-gray-500" />;
     }
@@ -220,6 +224,7 @@ const MapDetailPage: React.FC = () => {
                 </div>
               )}
             </div>
+
           </div>
 
           {/* Sidebar */}

@@ -577,6 +577,7 @@ const extractOCADData = async (ocadPath) => {
   }
 };
 
+
 // Configure multer for file uploads
 const storage = multer.diskStorage({
   destination: async (req, file, cb) => {
@@ -905,6 +906,8 @@ router.post('/:id/files', authenticateToken, requireAdmin, upload.array('files',
               hasGeoreferencing: !!ocadData.georeferencing
             });
           }
+
+          
         } catch (error) {
           console.error('Error extracting OCAD data:', error);
           // Don't fail the upload if OCAD extraction fails

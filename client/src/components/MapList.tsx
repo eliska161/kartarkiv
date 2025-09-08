@@ -98,10 +98,10 @@ const MapList: React.FC<MapListProps> = ({ maps, selectedMap, onSelectMap, viewM
                   e.stopPropagation();
                   navigate(`/map/${map.id}`);
                 }}
-                className="p-1 text-gray-400 hover:text-eok-600 transition-colors"
+                className="p-2 text-gray-400 hover:text-eok-600 transition-colors"
                 title="Se detaljer"
               >
-                <Eye className="h-3 w-3" />
+                <Eye className="h-5 w-5" />
               </button>
               {map.file_count > 0 && (
                 <button
@@ -109,10 +109,10 @@ const MapList: React.FC<MapListProps> = ({ maps, selectedMap, onSelectMap, viewM
                     e.stopPropagation();
                     navigate(`/map/${map.id}`);
                   }}
-                  className="p-1 text-gray-400 hover:text-eok-600 transition-colors"
+                  className="p-2 text-gray-400 hover:text-eok-600 transition-colors"
                   title="Last ned"
                 >
-                  <Download className="h-3 w-3" />
+                  <Download className="h-5 w-5" />
                 </button>
               )}
             </div>

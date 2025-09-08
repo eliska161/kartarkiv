@@ -150,9 +150,9 @@ const MapComponent: React.FC<MapComponentProps> = ({ maps, selectedMap, onSelect
                     {map.file_count > 0 && (
                       <button
                         onClick={() => navigate(`/map/${map.id}`)}
-                        className="flex items-center text-xs bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700"
+                        className="flex items-center text-sm bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 font-medium"
                       >
-                        <Download className="h-3 w-3 mr-1" />
+                        <Download className="h-4 w-4 mr-2" />
                         Last ned
                       </button>
                     )}
