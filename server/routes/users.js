@@ -2,12 +2,12 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const { body, validationResult } = require('express-validator');
 const pool = require('../database/connection');
-const { authenticateToken, requireAdmin } = require('../middleware/auth');
+const { authenticateUser, requireAdmin } = require('../middleware/auth');
 
 const router = express.Router();
 
 // Create new user (Admin only)
-router.post('/', authenticateToken, requireAdmin, [
+router.post('/', authenticateUser, requireAdmin, [
   body('username').trim().isLength({ min: 3 }).withMessage('Username must be at least 3 characters'),
   body('email').isEmail().withMessage('Valid email is required'),
   body('first_name').trim().notEmpty().withMessage('First name is required'),
@@ -58,7 +58,7 @@ router.post('/', authenticateToken, requireAdmin, [
 });
 
 // Get all users (Admin only)
-router.get('/', authenticateToken, requireAdmin, async (req, res) => {
+router.get('/', authenticateUser, requireAdmin, async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT 
@@ -75,7 +75,7 @@ router.get('/', authenticateToken, requireAdmin, async (req, res) => {
 });
 
 // Get single user (Admin only)
-router.get('/:id', authenticateToken, requireAdmin, async (req, res) => {
+router.get('/:id', authenticateUser, requireAdmin, async (req, res) => {
   try {
     const userId = parseInt(req.params.id);
     
@@ -98,7 +98,7 @@ router.get('/:id', authenticateToken, requireAdmin, async (req, res) => {
 });
 
 // Update user (Admin only)
-router.put('/:id', authenticateToken, requireAdmin, [
+router.put('/:id', authenticateUser, requireAdmin, [
   body('username').optional().isLength({ min: 3 }).trim().escape(),
   body('email').optional().isEmail().normalizeEmail(),
   body('firstName').optional().trim().escape(),
@@ -156,7 +156,7 @@ router.put('/:id', authenticateToken, requireAdmin, [
 });
 
 // Change user password (Admin only)
-router.put('/:id/password', authenticateToken, requireAdmin, [
+router.put('/:id/password', authenticateUser, requireAdmin, [
   body('newPassword').isLength({ min: 6 })
 ], async (req, res) => {
   try {
@@ -192,7 +192,7 @@ router.put('/:id/password', authenticateToken, requireAdmin, [
 });
 
 // Delete user (Admin only)
-router.delete('/:id', authenticateToken, requireAdmin, async (req, res) => {
+router.delete('/:id', authenticateUser, requireAdmin, async (req, res) => {
   try {
     const userId = parseInt(req.params.id);
 
@@ -215,7 +215,7 @@ router.delete('/:id', authenticateToken, requireAdmin, async (req, res) => {
 });
 
 // Get user statistics (Admin only)
-router.get('/stats/overview', authenticateToken, requireAdmin, async (req, res) => {
+router.get('/stats/overview', authenticateUser, requireAdmin, async (req, res) => {
   try {
     const statsResult = await pool.query(`
       SELECT 

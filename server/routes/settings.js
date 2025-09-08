@@ -3,7 +3,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs').promises;
 const pool = require('../database/connection');
-const { authenticateToken, requireAdmin } = require('../middleware/auth');
+const { authenticateUser, requireAdmin } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -69,7 +69,7 @@ router.get('/logo', async (req, res) => {
 });
 
 // Upload new logo (Admin only)
-router.post('/logo', authenticateToken, requireAdmin, upload.single('logo'), async (req, res) => {
+router.post('/logo', authenticateUser, requireAdmin, upload.single('logo'), async (req, res) => {
   try {
     console.log('Logo upload request received');
     console.log('User:', req.user);
@@ -105,7 +105,7 @@ router.post('/logo', authenticateToken, requireAdmin, upload.single('logo'), asy
 });
 
 // Delete logo (Admin only)
-router.delete('/logo', authenticateToken, requireAdmin, async (req, res) => {
+router.delete('/logo', authenticateUser, requireAdmin, async (req, res) => {
   try {
     const logoDir = path.join(__dirname, '../uploads/logo');
     
