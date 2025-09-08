@@ -4,7 +4,7 @@ const path = require('path');
 const fs = require('fs').promises;
 const { body, validationResult } = require('express-validator');
 const pool = require('../database/connection');
-const { authenticateToken, requireAdmin } = require('../middleware/auth');
+const { authenticateUser, requireAdmin } = require('../middleware/auth');
 // const pdf = require('pdf-poppler'); // Removed - not supported on Linux
 const { readOcad } = require('ocad2geojson');
 const toGeoJSON = require('@mapbox/togeojson');
@@ -697,7 +697,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // Create new map (Admin only)
-router.post('/', authenticateToken, requireAdmin, [
+router.post('/', authenticateUser, requireAdmin, [
   body('name').trim().notEmpty(),
   body('scale').optional().trim(),
   body('contourInterval').optional().isNumeric(),
@@ -750,7 +750,7 @@ router.post('/', authenticateToken, requireAdmin, [
 });
 
 // Upload preview image for a map (Admin only)
-router.post('/:id/preview', authenticateToken, requireAdmin, previewUpload.single('previewImage'), async (req, res) => {
+router.post('/:id/preview', authenticateUser, requireAdmin, previewUpload.single('previewImage'), async (req, res) => {
   try {
     const mapId = parseInt(req.params.id);
 
@@ -802,7 +802,7 @@ router.post('/:id/preview', authenticateToken, requireAdmin, previewUpload.singl
 });
 
 // Upload files for a map (Admin only)
-router.post('/:id/files', authenticateToken, requireAdmin, upload.array('files', 10), async (req, res) => {
+router.post('/:id/files', authenticateUser, requireAdmin, upload.array('files', 10), async (req, res) => {
   try {
     const mapId = parseInt(req.params.id);
     const { version, isPrimary } = req.body;
@@ -927,7 +927,7 @@ router.post('/:id/files', authenticateToken, requireAdmin, upload.array('files',
 });
 
 // Update map (Admin only)
-router.put('/:id', authenticateToken, requireAdmin, [
+router.put('/:id', authenticateUser, requireAdmin, [
   body('name').optional().trim().notEmpty(),
   body('scale').optional().trim(),
   body('contourInterval').optional().isNumeric(),
@@ -992,7 +992,7 @@ router.put('/:id', authenticateToken, requireAdmin, [
 });
 
 // Delete map (Admin only)
-router.delete('/:id', authenticateToken, requireAdmin, async (req, res) => {
+router.delete('/:id', authenticateUser, requireAdmin, async (req, res) => {
   try {
     const mapId = parseInt(req.params.id);
 
@@ -1025,7 +1025,7 @@ router.delete('/:id', authenticateToken, requireAdmin, async (req, res) => {
 });
 
 // Get KMZ data for a specific file
-router.get('/:id/files/:fileId/kmz-data', authenticateToken, async (req, res) => {
+router.get('/:id/files/:fileId/kmz-data', authenticateUser, async (req, res) => {
   try {
     const mapId = parseInt(req.params.id);
     const fileId = parseInt(req.params.fileId);
@@ -1057,7 +1057,7 @@ router.get('/:id/files/:fileId/kmz-data', authenticateToken, async (req, res) =>
 });
 
 // Get OCAD data for a specific file
-router.get('/:id/files/:fileId/ocad-data', authenticateToken, async (req, res) => {
+router.get('/:id/files/:fileId/ocad-data', authenticateUser, async (req, res) => {
   try {
     const mapId = parseInt(req.params.id);
     const fileId = parseInt(req.params.fileId);
