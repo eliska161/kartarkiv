@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { useUser } from '@clerk/clerk-react';
 import axios from 'axios';
 import { User, UserPlus, Edit, Trash2, Shield, ShieldOff, X } from 'lucide-react';
 
@@ -16,7 +16,7 @@ interface UserData {
 }
 
 const UserManagement: React.FC = () => {
-  const { user } = useAuth();
+  const { user } = useUser();
   const [users, setUsers] = useState<UserData[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddUser, setShowAddUser] = useState(false);

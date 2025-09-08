@@ -23,12 +23,17 @@ const LoginPage: React.FC = () => {
             <SignIn 
               appearance={{
                 elements: {
-                  formButtonPrimary: 'bg-blue-600 hover:bg-blue-700 text-sm normal-case',
+                  formButtonPrimary: 'bg-eok-600 hover:bg-eok-700 text-white text-sm normal-case',
                   card: 'shadow-none',
                   headerTitle: 'hidden',
                   headerSubtitle: 'hidden',
                   socialButtonsBlockButton: 'border border-gray-300 hover:bg-gray-50',
-                  formFieldInput: 'border border-gray-300 rounded-md',
+                  formFieldInput: 'border border-gray-300 rounded-md focus:border-eok-500 focus:ring-eok-500',
+                  footerActionLink: 'text-eok-600 hover:text-eok-700',
+                  identityPreviewText: 'text-gray-600',
+                  formFieldLabel: 'text-gray-700',
+                  dividerLine: 'bg-gray-300',
+                  dividerText: 'text-gray-500'
                 }
               }}
               redirectUrl="/"

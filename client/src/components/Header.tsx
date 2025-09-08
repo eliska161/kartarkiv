@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { useUser, useClerk } from '@clerk/clerk-react';
 import { useNavigate } from 'react-router-dom';
 import { Settings, LogOut, User, Users, X } from 'lucide-react';
 import UserManagement from './UserManagement';
 import EOKLogo from './EOKLogo';
 
 const Header: React.FC = () => {
-  const { user, logout } = useAuth();
+  const { user, isSignedIn } = useUser();
+  const { signOut } = useClerk();
   const navigate = useNavigate();
   const [showUserManagement, setShowUserManagement] = useState(false);
   const [customLogo, setCustomLogo] = useState<string | null>(null);
@@ -37,7 +38,7 @@ const Header: React.FC = () => {
   }, []);
 
   const handleLogout = () => {
-    logout();
+    signOut();
     navigate('/login');
   };
 
@@ -76,7 +77,7 @@ const Header: React.FC = () => {
                 Kart
               </button>
               
-              {user?.isAdmin && (
+              {user?.publicMetadata?.isAdmin && (
                 <button
                   onClick={() => navigate('/admin')}
                   className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium flex items-center"
@@ -98,12 +99,12 @@ const Header: React.FC = () => {
                     {user?.firstName} {user?.lastName}
                   </div>
                   <div className="text-gray-500">
-                    {user?.isAdmin ? 'Administrator' : 'Bruker'}
+                    {user?.publicMetadata?.isAdmin ? 'Administrator' : 'Bruker'}
                   </div>
                 </div>
               </div>
               
-              {user?.isAdmin && (
+              {user?.publicMetadata?.isAdmin && (
                 <button
                   onClick={() => setShowUserManagement(true)}
                   className="text-gray-400 hover:text-gray-600 p-2 rounded-lg hover:bg-gray-100"

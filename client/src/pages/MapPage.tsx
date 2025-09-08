@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { useUser } from '@clerk/clerk-react';
 import { useMap } from '../contexts/MapContext';
 import MapComponent from '../components/MapComponent';
 import MapList from '../components/MapList';
@@ -7,7 +7,7 @@ import Header from '../components/Header';
 import { MapPin, List, Search, Filter } from 'lucide-react';
 
 const MapPage: React.FC = () => {
-  useAuth(); // Keep auth context active
+  const { user } = useUser(); // Get Clerk user data
   const { maps, loading, fetchMaps } = useMap();
   const [viewMode, setViewMode] = useState<'map' | 'list'>('map');
   const [searchTerm, setSearchTerm] = useState('');

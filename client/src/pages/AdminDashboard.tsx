@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { useUser } from '@clerk/clerk-react';
 import { useMap } from '../contexts/MapContext';
 import Header from '../components/Header';
 import AddMapModal from '../components/AddMapModal';
@@ -8,7 +8,7 @@ import LogoManager from '../components/LogoManager';
 import { Plus, MapPin, Users, BarChart3, Settings, Edit, Trash2 } from 'lucide-react';
 
 const AdminDashboard: React.FC = () => {
-  useAuth(); // Keep auth context active
+  const { user } = useUser(); // Get Clerk user data
   const { maps, loading, fetchMaps, deleteMap, fetchMap } = useMap();
   const [activeTab, setActiveTab] = useState<'maps' | 'users' | 'stats' | 'settings'>('maps');
   const [showAddMapModal, setShowAddMapModal] = useState(false);
