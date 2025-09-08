@@ -5,7 +5,7 @@ import axios from 'axios';
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 interface User {
-  id: number;
+  id: string;
   username: string;
   email: string;
   firstName: string;
