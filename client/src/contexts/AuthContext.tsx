@@ -68,7 +68,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               email: clerkUser.emailAddresses[0]?.emailAddress || '',
               firstName: clerkUser.firstName || '',
               lastName: clerkUser.lastName || '',
-              isAdmin: clerkUser.publicMetadata?.isAdmin || false
+              isAdmin: Boolean(clerkUser.publicMetadata?.isAdmin) || false
             });
           }
         } catch (error) {
