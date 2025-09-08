@@ -2,14 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useUser, useClerk } from '@clerk/clerk-react';
 import { useNavigate } from 'react-router-dom';
 import { Settings, LogOut, User, Users, X } from 'lucide-react';
-import UserManagement from './UserManagement';
+import { UserProfile } from '@clerk/clerk-react';
 import EOKLogo from './EOKLogo';
 
 const Header: React.FC = () => {
   const { user } = useUser();
   const { signOut } = useClerk();
   const navigate = useNavigate();
-  const [showUserManagement, setShowUserManagement] = useState(false);
+  const [showUserProfile, setShowUserProfile] = useState(false);
   const [customLogo, setCustomLogo] = useState<string | null>(null);
 
   useEffect(() => {
@@ -107,15 +107,13 @@ const Header: React.FC = () => {
                   </div>
                 </div>
                 
-                {user?.publicMetadata?.isAdmin && (
-                  <button
-                    onClick={() => setShowUserManagement(true)}
-                    className="text-gray-400 hover:text-gray-600 p-2 rounded-lg hover:bg-gray-100"
-                    title="Brukeradministrasjon"
-                  >
-                    <Users className="h-4 w-4" />
-                  </button>
-                )}
+              <button
+                onClick={() => setShowUserProfile(true)}
+                className="text-gray-400 hover:text-gray-600 p-2 rounded-lg hover:bg-gray-100"
+                title="Brukerprofil"
+              >
+                <Users className="h-4 w-4" />
+              </button>
                 
                 <button
                   onClick={handleLogout}
@@ -130,22 +128,37 @@ const Header: React.FC = () => {
         </div>
       </header>
 
-      {/* User Management Modal */}
-      {showUserManagement && (
+      {/* User Profile Modal */}
+      {showUserProfile && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg w-full max-w-6xl h-5/6 overflow-hidden">
+          <div className="bg-white rounded-lg w-full max-w-4xl h-5/6 overflow-hidden">
             <>
               <div className="flex items-center justify-between p-4 border-b">
-                <h2 className="text-lg font-semibold">Brukeradministrasjon</h2>
+                <h2 className="text-lg font-semibold">Brukerprofil</h2>
                 <button
-                  onClick={() => setShowUserManagement(false)}
+                  onClick={() => setShowUserProfile(false)}
                   className="text-gray-400 hover:text-gray-600"
                 >
                   <X className="h-5 w-5" />
                 </button>
               </div>
-              <div className="h-full overflow-y-auto">
-                <UserManagement />
+              <div className="h-full overflow-y-auto p-4">
+                <UserProfile 
+                  appearance={{
+                    elements: {
+                      card: 'shadow-none border-0',
+                      headerTitle: 'text-gray-900',
+                      headerSubtitle: 'text-gray-600',
+                      formButtonPrimary: 'bg-eok-600 hover:bg-eok-700 text-white',
+                      formFieldInput: 'border-gray-300 focus:border-eok-500 focus:ring-eok-500',
+                      footerActionLink: 'text-eok-600 hover:text-eok-700',
+                      identityPreviewText: 'text-gray-600',
+                      formFieldLabel: 'text-gray-700',
+                      dividerLine: 'bg-gray-300',
+                      dividerText: 'text-gray-500'
+                    }
+                  }}
+                />
               </div>
             </>
           </div>
