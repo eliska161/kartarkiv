@@ -6,7 +6,7 @@ import { User, UserPlus, Edit, Trash2, Shield, ShieldOff, X } from 'lucide-react
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 interface UserData {
-  id: number;
+  id: string;
   username: string;
   first_name: string;
   last_name: string;
@@ -86,7 +86,7 @@ const UserManagement: React.FC = () => {
     setShowAddUser(true);
   };
 
-  const handleDelete = async (userId: number) => {
+  const handleDelete = async (userId: string) => {
     if (userId === user?.id) {
       alert('Du kan ikke slette deg selv');
       return;
@@ -103,7 +103,7 @@ const UserManagement: React.FC = () => {
     }
   };
 
-  const toggleAdmin = async (userId: number, currentStatus: boolean) => {
+  const toggleAdmin = async (userId: string, currentStatus: boolean) => {
     if (userId === user?.id) {
       alert('Du kan ikke endre din egen admin-status');
       return;
