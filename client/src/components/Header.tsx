@@ -47,26 +47,26 @@ const Header: React.FC = () => {
       <header className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-          {/* Logo */}
-          <div className="flex items-center">
-            <div className="flex items-center space-x-3">
-              <div className="bg-eokDark-500 p-2 rounded-lg">
-                {customLogo ? (
-                  <img 
-                    src={customLogo} 
-                    alt="Elverum O-Klubb Logo" 
-                    className="w-8 h-8 object-contain"
-                  />
-                ) : (
-                  <EOKLogo size="md" />
-                )}
-              </div>
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">Elverum O-Klubb Kartarkiv</h1>
-                <p className="text-xs text-gray-500">Elverum Orienteringsklubb</p>
+            {/* Logo */}
+            <div className="flex items-center">
+              <div className="flex items-center space-x-3">
+                <div className="bg-eokDark-500 p-2 rounded-lg">
+                  {customLogo ? (
+                    <img 
+                      src={customLogo} 
+                      alt="Elverum O-Klubb Logo" 
+                      className="w-8 h-8 object-contain"
+                    />
+                  ) : (
+                    <EOKLogo size="md" />
+                  )}
+                </div>
+                <div>
+                  <h1 className="text-xl font-bold text-gray-900">Elverum O-Klubb Kartarkiv</h1>
+                  <p className="text-xs text-gray-500">Elverum Orienteringsklubb</p>
+                </div>
               </div>
             </div>
-          </div>
 
             {/* Navigation */}
             <nav className="flex items-center space-x-4">
