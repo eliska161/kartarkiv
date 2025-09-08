@@ -3,6 +3,10 @@ import axios from 'axios';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
+// Debug: Log the API URL to see what's being used
+console.log('API_BASE_URL:', API_BASE_URL);
+console.log('REACT_APP_API_URL:', process.env.REACT_APP_API_URL);
+
 interface User {
   id: number;
   username: string;
