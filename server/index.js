@@ -54,11 +54,17 @@ app.get('/api/routes', (req, res) => {
         path: middleware.route.path
       });
     } else if (middleware.name === 'router') {
+      const basePath = middleware.regexp.source
+        .replace(/\\|\^|\$|\?/g, '')
+        .replace('(?:', '')
+        .replace(')', '')
+        .replace('\\', '');
+      
       middleware.handle.stack.forEach(handler => {
         if (handler.route) {
           routes.push({
             method: Object.keys(handler.route.methods)[0].toUpperCase(),
-            path: '/api' + middleware.regexp.source.replace(/\\|\^|\$|\?/g, '').replace('(?:', '').replace(')', '') + handler.route.path
+            path: basePath + handler.route.path
           });
         }
       });

@@ -39,18 +39,29 @@ router.post('/signup', async (req, res) => {
 // Sign in (alias for /login)
 router.post('/login', async (req, res) => {
   try {
+    console.log('🔐 Login attempt:', { username: req.body.username });
+    
     const { username, password } = req.body;
 
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Username and password are required' });
+    }
+
+    console.log('🔑 Attempting Supabase auth...');
     const { data, error } = await supabase.auth.signInWithPassword({
       email: username, // Use username as email
       password
     });
 
     if (error) {
+      console.error('❌ Supabase auth error:', error);
       return res.status(400).json({ error: error.message });
     }
 
+    console.log('✅ Supabase auth successful, user ID:', data.user.id);
+
     // Get user data from our users table
+    console.log('🔍 Fetching user data from users table...');
     const { data: userData, error: userError } = await supabase
       .from('users')
       .select('*')
@@ -58,8 +69,11 @@ router.post('/login', async (req, res) => {
       .single();
 
     if (userError) {
-      return res.status(500).json({ error: 'Failed to get user data' });
+      console.error('❌ User data fetch error:', userError);
+      return res.status(500).json({ error: 'Failed to get user data', details: userError.message });
     }
+
+    console.log('✅ User data fetched successfully');
 
     res.json({
       user: userData,
@@ -67,8 +81,12 @@ router.post('/login', async (req, res) => {
       session: data.session
     });
   } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ error: 'Login failed' });
+    console.error('💥 Login error:', error);
+    res.status(500).json({ 
+      error: 'Login failed', 
+      details: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 });
 
