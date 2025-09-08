@@ -60,17 +60,42 @@ router.post('/login', async (req, res) => {
 
     console.log('✅ Supabase auth successful, user ID:', data.user.id);
 
-    // Get user data from our users table
+    // Get user data from our users table using email instead of ID
     console.log('🔍 Fetching user data from users table...');
     const { data: userData, error: userError } = await supabase
       .from('users')
       .select('*')
-      .eq('id', data.user.id)
+      .eq('email', username) // Use email to match user
       .single();
 
     if (userError) {
       console.error('❌ User data fetch error:', userError);
-      return res.status(500).json({ error: 'Failed to get user data', details: userError.message });
+      // If user doesn't exist in our table, create a basic user record
+      console.log('🔧 Creating user record...');
+      const { data: newUser, error: createError } = await supabase
+        .from('users')
+        .insert({
+          username: username,
+          email: username,
+          password_hash: 'supabase_managed',
+          first_name: 'User',
+          last_name: 'Name',
+          is_admin: false
+        })
+        .select()
+        .single();
+
+      if (createError) {
+        console.error('❌ User creation error:', createError);
+        return res.status(500).json({ error: 'Failed to create user data', details: createError.message });
+      }
+
+      console.log('✅ User record created successfully');
+      return res.json({
+        user: newUser,
+        token: data.session.access_token,
+        session: data.session
+      });
     }
 
     console.log('✅ User data fetched successfully');
