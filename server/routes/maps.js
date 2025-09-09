@@ -664,7 +664,7 @@ router.get('/:id', async (req, res) => {
         m.*,
         u.username as created_by_username
       FROM maps m
-      LEFT JOIN users u ON m.created_by = u.id
+      LEFT JOIN users u ON m.created_by = u.clerk_id
       WHERE m.id = $1
     `, [mapId]);
 
