@@ -25,11 +25,20 @@ const authenticateUser = async (req, res, next) => {
       
       console.log('🔐 CLERK AUTH - Token verified successfully');
       console.log('🔐 CLERK AUTH - User ID:', payload.sub);
+      console.log('🔐 CLERK AUTH - Full payload:', JSON.stringify(payload, null, 2));
       
       // Extract user data from JWT payload
-      const email = payload.email || payload.email_addresses?.[0]?.email_address || 'user@example.com';
-      const username = payload.username || payload.preferred_username || email?.split('@')[0] || 'Unknown';
-      const isAdmin = Boolean(payload.publicMetadata?.isAdmin);
+      // Clerk JWT payload structure: sub, email_addresses, public_metadata, etc.
+      const email = payload.email || 
+                   payload.email_addresses?.[0]?.email_address || 
+                   payload.email_addresses?.[0]?.email || 
+                   'user@example.com';
+      const username = payload.username || 
+                      payload.preferred_username || 
+                      payload.first_name || 
+                      email?.split('@')[0] || 
+                      'Unknown';
+      const isAdmin = Boolean(payload.public_metadata?.isAdmin || payload.publicMetadata?.isAdmin);
       
       console.log('🔐 CLERK AUTH - User data:', { email, username, isAdmin });
       
