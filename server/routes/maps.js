@@ -848,14 +848,16 @@ router.post('/:id/preview', authenticateUser, requireAdmin, previewUpload.single
 
     const result = await pool.query(`
       INSERT INTO preview_images (
-        map_id, file_name, file_path, file_size
-      ) VALUES ($1, $2, $3, $4)
+        map_id, filename, file_path, file_size, mime_type, created_by
+      ) VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING *
     `, [
       mapId,
       req.file.originalname,
       fileName,
-      req.file.size
+      req.file.size,
+      req.file.mimetype || 'image/jpeg', // mime_type
+      req.user.id // created_by
     ]);
 
     res.status(201).json({
@@ -890,17 +892,18 @@ router.post('/:id/files', authenticateUser, requireAdmin, upload.array('files', 
       
       const result = await pool.query(`
         INSERT INTO map_files (
-          map_id, file_name, file_path, file_type, file_size, version, is_primary
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+          map_id, filename, original_filename, file_path, file_type, file_size, mime_type, created_by
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         RETURNING *
       `, [
         mapId,
-        file.originalname,
-        fileName, // Store only filename
+        fileName, // filename - stored file name
+        file.originalname, // original_filename - user's original file name
+        fileName, // file_path - same as filename for now
         fileType,
         file.size,
-        version || '1.0',
-        isPrimary === 'true'
+        file.mimetype || 'application/octet-stream', // mime_type
+        req.user.id // created_by
       ]);
 
       uploadedFiles.push(result.rows[0]);

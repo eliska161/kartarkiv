@@ -1,8 +1,4 @@
-const { createClerkClient } = require('@clerk/backend');
-
-const clerkClient = createClerkClient({
-  secretKey: process.env.CLERK_SECRET_KEY
-});
+const { verifyToken } = require('@clerk/backend');
 
 const authenticateUser = async (req, res, next) => {
   try {
@@ -23,34 +19,31 @@ const authenticateUser = async (req, res, next) => {
       console.log('🔐 CLERK AUTH - Verifying token...');
       
       // Use Clerk's verifyToken method
-      const payload = await clerkClient.verifyToken(token);
-      const userId = payload.sub;
-      const sessionId = payload.sid;
-      
-      console.log('🔐 CLERK AUTH - Token verified successfully');
-      console.log('🔐 CLERK AUTH - User ID:', userId);
-      console.log('🔐 CLERK AUTH - Session ID:', sessionId);
-      
-      // Get user data from Clerk API
-      const clerkUser = await clerkClient.users.getUser(userId);
-      console.log('🔐 CLERK AUTH - Clerk user data:', {
-        id: clerkUser.id,
-        emailAddresses: clerkUser.emailAddresses,
-        username: clerkUser.username,
-        firstName: clerkUser.firstName,
-        publicMetadata: clerkUser.publicMetadata
+      const payload = await verifyToken(token, {
+        secretKey: process.env.CLERK_SECRET_KEY
       });
       
-      // Extract user data from Clerk user object
-      const email = clerkUser.emailAddresses?.[0]?.emailAddress || 'user@example.com';
-      const username = clerkUser.username || clerkUser.firstName || email?.split('@')[0] || 'Unknown';
-      const isAdmin = Boolean(clerkUser.publicMetadata?.isAdmin);
+      console.log('🔐 CLERK AUTH - Token verified successfully');
+      console.log('🔐 CLERK AUTH - User ID:', payload.sub);
+      console.log('🔐 CLERK AUTH - Full payload:', JSON.stringify(payload, null, 2));
+      
+      // Extract user data from JWT payload
+      const email = payload.email || 
+                   payload.email_addresses?.[0]?.email_address || 
+                   payload.email_addresses?.[0]?.email || 
+                   'user@example.com';
+      const username = payload.username || 
+                      payload.preferred_username || 
+                      payload.first_name || 
+                      email?.split('@')[0] || 
+                      'Unknown';
+      const isAdmin = Boolean(payload.public_metadata?.isAdmin || payload.publicMetadata?.isAdmin);
       
       console.log('🔐 CLERK AUTH - Extracted user data:', { email, username, isAdmin });
       
       // Add user info to request
       req.user = {
-        id: clerkUser.id,
+        id: payload.sub,
         email: email,
         username: username,
         isAdmin: isAdmin
