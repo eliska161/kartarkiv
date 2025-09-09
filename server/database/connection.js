@@ -35,14 +35,18 @@ pool.on('connect', (client) => {
   });
 });
 
-pool.on('error', (err) => {
+pool.on('error', (err, client) => {
   console.error('❌ Database connection error:', err);
   console.error('❌ Error details:', {
     code: err.code,
     message: err.message,
     address: err.address,
-    port: err.port
+    port: err.port,
+    client: client ? 'Client exists' : 'No client'
   });
+  
+  // Don't exit process on database errors - let the app handle it
+  console.log('🔄 Database error occurred, but continuing...');
 });
 
 // Test connection on startup

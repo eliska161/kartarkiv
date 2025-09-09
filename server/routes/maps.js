@@ -741,6 +741,13 @@ router.post('/', authenticateUser, [
       zoomLevel = 13
     } = req.body;
 
+    console.log('🔍 Creating map with data:', {
+      name, description, scale, contourInterval, 
+      areaBounds: areaBounds ? 'Present' : 'None', 
+      centerLat, centerLng, zoomLevel, 
+      createdBy: req.user.id
+    });
+
     const result = await pool.query(`
       INSERT INTO maps (
         name, description, scale, contour_interval, area_bounds,
@@ -752,6 +759,8 @@ router.post('/', authenticateUser, [
       areaBounds ? JSON.stringify(areaBounds) : null, centerLat, centerLng, zoomLevel, req.user.id
     ]);
 
+    console.log('✅ Map created successfully:', result.rows[0]);
+
     res.status(201).json({
       message: 'Map created successfully',
       map: {
@@ -760,8 +769,20 @@ router.post('/', authenticateUser, [
       }
     });
   } catch (error) {
-    console.error('Error creating map:', error);
-    res.status(500).json({ message: 'Error creating map' });
+    console.error('❌ Error creating map:', error);
+    console.error('❌ Error details:', {
+      message: error.message,
+      code: error.code,
+      detail: error.detail,
+      hint: error.hint,
+      position: error.position,
+      stack: error.stack
+    });
+    res.status(500).json({ 
+      message: 'Error creating map',
+      error: error.message,
+      code: error.code
+    });
   }
 });
 
