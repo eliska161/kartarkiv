@@ -26,12 +26,13 @@ Denne guiden viser hvordan du deployer kartarkiv-systemet med:
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- Create users table (Supabase Auth will handle this, but we need our custom fields)
+-- Create users table for Clerk integration
 CREATE TABLE IF NOT EXISTS public.users (
-  id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
+  id SERIAL PRIMARY KEY,
+  clerk_id TEXT UNIQUE NOT NULL,
   email TEXT UNIQUE NOT NULL,
-  full_name TEXT,
-  role TEXT DEFAULT 'user' CHECK (role IN ('user', 'admin')),
+  username TEXT,
+  is_admin BOOLEAN DEFAULT false,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -47,7 +48,7 @@ CREATE TABLE IF NOT EXISTS public.maps (
   center_lng DECIMAL(11, 8),
   area_bounds JSONB,
   preview_image TEXT,
-  created_by UUID REFERENCES public.users(id),
+  created_by TEXT REFERENCES public.users(clerk_id),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -62,7 +63,7 @@ CREATE TABLE IF NOT EXISTS public.map_files (
   file_size INTEGER,
   version INTEGER DEFAULT 1,
   is_primary BOOLEAN DEFAULT false,
-  created_by UUID REFERENCES public.users(id),
+  created_by TEXT REFERENCES public.users(clerk_id),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -72,7 +73,7 @@ CREATE TABLE IF NOT EXISTS public.preview_images (
   map_id UUID REFERENCES public.maps(id) ON DELETE CASCADE,
   image_name TEXT NOT NULL,
   image_path TEXT NOT NULL,
-  created_by UUID REFERENCES public.users(id),
+  created_by TEXT REFERENCES public.users(clerk_id),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 

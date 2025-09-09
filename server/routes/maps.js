@@ -748,6 +748,16 @@ router.post('/', authenticateUser, [
       createdBy: req.user.id
     });
 
+    // First, ensure user exists in database with Clerk ID
+    await pool.query(`
+      INSERT INTO users (clerk_id, email, username, is_admin) 
+      VALUES ($1, $2, $3, $4)
+      ON CONFLICT (clerk_id) DO UPDATE SET
+        email = EXCLUDED.email,
+        username = EXCLUDED.username,
+        is_admin = EXCLUDED.is_admin
+    `, [req.user.id, req.user.email, req.user.username, req.user.isAdmin]);
+
     const result = await pool.query(`
       INSERT INTO maps (
         name, description, scale, contour_interval, area_bounds,
