@@ -56,7 +56,17 @@ const authenticateUser = async (req, res, next) => {
     } catch (jwtError) {
       console.error('🔐 CLERK AUTH - Token verification failed:', jwtError.message);
       
-      // For testing, create a dummy user if JWT fails
+      // Check if token is expired
+      if (jwtError.message.includes('expired') || jwtError.message.includes('jwt expired')) {
+        console.log('🔐 CLERK AUTH - Token expired, returning 401');
+        return res.status(401).json({ 
+          error: 'Token expired', 
+          code: 'TOKEN_EXPIRED',
+          message: 'Please refresh your session and try again'
+        });
+      }
+      
+      // For other JWT errors, create a fallback user for testing
       console.log('🔐 CLERK AUTH - Creating fallback user for testing');
       req.user = {
         id: 'clerk_user_123',

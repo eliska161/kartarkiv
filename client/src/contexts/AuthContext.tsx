@@ -84,6 +84,36 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setupAuth();
   }, [clerkUser, isLoaded, getToken]);
 
+  // Add axios interceptor to handle token expired errors
+  useEffect(() => {
+    const interceptor = axios.interceptors.response.use(
+      (response) => response,
+      async (error) => {
+        if (error.response?.status === 401 && error.response?.data?.code === 'TOKEN_EXPIRED') {
+          console.log('🔄 Token expired, refreshing...');
+          try {
+            const newToken = await getToken();
+            if (newToken) {
+              setToken(newToken);
+              axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
+              // Retry the original request
+              return axios.request(error.config);
+            }
+          } catch (refreshError) {
+            console.error('Failed to refresh token:', refreshError);
+            // Redirect to login or show error
+            window.location.reload();
+          }
+        }
+        return Promise.reject(error);
+      }
+    );
+
+    return () => {
+      axios.interceptors.response.eject(interceptor);
+    };
+  }, [getToken]);
+
   const login = async (username: string, password: string) => {
     // Clerk handles login, this is just for compatibility
     throw new Error('Use Clerk SignIn component instead');
