@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useUser, useAuth } from '@clerk/clerk-react';
+import { useAuth } from '@clerk/clerk-react';
 import { Trash2, UserPlus, Shield, ShieldOff, Search, X } from 'lucide-react';
 
 interface ClerkUser {
@@ -18,7 +18,6 @@ interface ClerkUser {
 }
 
 const UserManagement: React.FC = () => {
-  const { user: currentUser } = useUser();
   const { getToken } = useAuth();
   const [users, setUsers] = useState<ClerkUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,7 +33,7 @@ const UserManagement: React.FC = () => {
 
   useEffect(() => {
     fetchUsers();
-  }, []);
+  }, [getToken]);
 
   const fetchUsers = async () => {
     try {
