@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
-import { useUser } from '@clerk/clerk-react';
+import { useUser, UserProfile } from '@clerk/clerk-react';
 import { useMap } from '../contexts/MapContext';
 import Header from '../components/Header';
 import AddMapModal from '../components/AddMapModal';
 import UserManagement from '../components/UserManagement';
 import LogoManager from '../components/LogoManager';
-import { Plus, MapPin, Users, BarChart3, Settings, Edit, Trash2 } from 'lucide-react';
+import { Plus, MapPin, Users, BarChart3, Settings, Edit, Trash2, User } from 'lucide-react';
 
 const AdminDashboard: React.FC = () => {
   useUser(); // Get Clerk user data
   const { maps, loading, fetchMaps, deleteMap, fetchMap } = useMap();
-  const [activeTab, setActiveTab] = useState<'maps' | 'users' | 'stats' | 'settings'>('maps');
+  const [activeTab, setActiveTab] = useState<'maps' | 'users' | 'profile' | 'stats' | 'settings'>('maps');
   const [showAddMapModal, setShowAddMapModal] = useState(false);
   const [editingMap, setEditingMap] = useState<any>(null);
 
@@ -52,6 +52,7 @@ const AdminDashboard: React.FC = () => {
   const tabs = [
     { id: 'maps', label: 'Kart', icon: MapPin },
     { id: 'users', label: 'Brukere', icon: Users },
+    { id: 'profile', label: 'Min Profil', icon: User },
     { id: 'stats', label: 'Statistikk', icon: BarChart3 },
     { id: 'settings', label: 'Innstillinger', icon: Settings }
   ] as const;
@@ -244,6 +245,37 @@ const AdminDashboard: React.FC = () => {
           {activeTab === 'users' && (
             <div className="p-6">
               <UserManagement />
+            </div>
+          )}
+
+          {activeTab === 'profile' && (
+            <div className="p-6">
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold text-gray-900">Min Profil</h2>
+                <p className="text-gray-600 mt-1">Administrer din egen brukerkonto</p>
+              </div>
+              <div className="bg-white rounded-lg shadow p-6">
+                <UserProfile 
+                  appearance={{
+                    elements: {
+                      card: 'shadow-none border-0',
+                      headerTitle: 'text-gray-900',
+                      headerSubtitle: 'text-gray-600',
+                      formButtonPrimary: 'bg-eok-600 hover:bg-eok-700 text-white',
+                      formFieldInput: 'border-gray-300 focus:border-eok-500 focus:ring-eok-500',
+                      footerActionLink: 'text-eok-600 hover:text-eok-700',
+                      identityPreviewText: 'text-gray-600',
+                      formFieldLabel: 'text-gray-700',
+                      dividerLine: 'bg-gray-300',
+                      dividerText: 'text-gray-500',
+                      navbarButton: 'text-eok-600 hover:text-eok-700',
+                      navbarButtonActive: 'bg-eok-50 text-eok-700',
+                      profileSectionTitle: 'text-gray-900',
+                      profileSectionContent: 'text-gray-600'
+                    }
+                  }}
+                />
+              </div>
             </div>
           )}
 
