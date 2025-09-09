@@ -18,17 +18,10 @@ const authenticateUser = async (req, res, next) => {
     try {
       console.log('🔐 AUTH DEBUG - Verifying token...');
       
-      // Add timeout to prevent hanging
-      const verifyPromise = verifyToken(token, {
+      // Simple token verification without timeout complexity
+      const payload = await verifyToken(token, {
         secretKey: process.env.CLERK_SECRET_KEY
       });
-      
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Token verification timeout')), 10000);
-      });
-      
-      // Verify Clerk JWT token with timeout
-      const payload = await Promise.race([verifyPromise, timeoutPromise]);
       
       console.log('🔐 AUTH DEBUG - Token verified successfully');
       console.log('🔐 AUTH DEBUG - User ID:', payload.sub);
@@ -55,12 +48,7 @@ const authenticateUser = async (req, res, next) => {
       };
       
       console.log('🔐 AUTH DEBUG - User object created:', req.user);
-      
-      // Add timeout for next() call
-      setTimeout(() => {
-        console.log('🔐 AUTH DEBUG - Calling next()...');
-        next();
-      }, 100);
+      next();
     } catch (jwtError) {
       console.error('🔐 AUTH DEBUG - Clerk token verification failed:', jwtError);
       console.error('🔐 AUTH DEBUG - Error details:', {
@@ -70,9 +58,6 @@ const authenticateUser = async (req, res, next) => {
         stack: jwtError.stack
       });
       
-      if (jwtError.message === 'Token verification timeout') {
-        return res.status(408).json({ error: 'Token verification timeout' });
-      }
       
       return res.status(401).json({ error: 'Invalid token' });
     }
