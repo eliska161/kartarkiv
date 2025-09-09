@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import { Trash2, UserPlus, Shield, ShieldOff, Search, X } from 'lucide-react';
 
@@ -31,11 +31,7 @@ const UserManagement: React.FC = () => {
 
   const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
-  useEffect(() => {
-    fetchUsers();
-  }, [getToken]);
-
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
       const response = await fetch(`${API_BASE_URL}/api/admin/users`, {
@@ -55,7 +51,11 @@ const UserManagement: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [getToken, API_BASE_URL]);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
 
   const handleDeleteUser = async (userId: string) => {
     if (!window.confirm('Er du sikker på at du vil slette denne brukeren?')) {
