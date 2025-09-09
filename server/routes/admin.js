@@ -1,5 +1,5 @@
 const express = require('express');
-const { authenticateUser, requireAdmin } = require('../middleware/auth-none');
+const { authenticateUser, requireAdmin } = require('../middleware/auth-clerk-fixed');
 
 const router = express.Router();
 
