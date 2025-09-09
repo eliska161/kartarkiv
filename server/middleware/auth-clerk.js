@@ -2,9 +2,14 @@ const { verifyToken } = require('@clerk/backend');
 
 const authenticateUser = async (req, res, next) => {
   try {
+    console.log('🔐 AUTH DEBUG - CLERK_SECRET_KEY exists:', !!process.env.CLERK_SECRET_KEY);
+    console.log('🔐 AUTH DEBUG - Request URL:', req.url);
+    console.log('🔐 AUTH DEBUG - Authorization header:', req.headers.authorization ? 'Present' : 'Missing');
+    
     const authHeader = req.headers.authorization;
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log('🔐 AUTH DEBUG - No valid authorization header');
       return res.status(401).json({ error: 'No token provided' });
     }
 

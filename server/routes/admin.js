@@ -20,9 +20,14 @@ router.options('*', (req, res) => {
 // Middleware to require authentication and admin role
 const requireAdmin = async (req, res, next) => {
   try {
+    console.log('🔐 ADMIN DEBUG - CLERK_SECRET_KEY exists:', !!process.env.CLERK_SECRET_KEY);
+    console.log('🔐 ADMIN DEBUG - Request URL:', req.url);
+    console.log('🔐 ADMIN DEBUG - Authorization header:', req.headers.authorization ? 'Present' : 'Missing');
+    
     const authHeader = req.headers.authorization;
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log('🔐 ADMIN DEBUG - No valid authorization header');
       return res.status(401).json({ message: 'Ikke autentisert' });
     }
 
