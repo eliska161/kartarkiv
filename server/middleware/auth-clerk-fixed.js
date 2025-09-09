@@ -27,7 +27,7 @@ const authenticateUser = async (req, res, next) => {
       console.log('🔐 CLERK AUTH - User ID:', payload.sub);
       
       // Extract user data from JWT payload
-      const email = payload.email || payload.email_addresses?.[0]?.email_address;
+      const email = payload.email || payload.email_addresses?.[0]?.email_address || 'user@example.com';
       const username = payload.username || payload.preferred_username || email?.split('@')[0] || 'Unknown';
       const isAdmin = Boolean(payload.publicMetadata?.isAdmin);
       

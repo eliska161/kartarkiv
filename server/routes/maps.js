@@ -749,14 +749,17 @@ router.post('/', authenticateUser, [
     });
 
     // First, ensure user exists in database with Clerk ID
+    const userEmail = req.user.email || 'user@example.com';
+    const userUsername = req.user.username || 'Unknown';
+    
     await pool.query(`
       INSERT INTO users (clerk_id, email, username, is_admin) 
       VALUES ($1, $2, $3, $4)
       ON CONFLICT (clerk_id) DO UPDATE SET
-        email = EXCLUDED.email,
-        username = EXCLUDED.username,
+        email = COALESCE(EXCLUDED.email, users.email),
+        username = COALESCE(EXCLUDED.username, users.username),
         is_admin = EXCLUDED.is_admin
-    `, [req.user.id, req.user.email, req.user.username, req.user.isAdmin]);
+    `, [req.user.id, userEmail, userUsername, req.user.isAdmin]);
 
     const result = await pool.query(`
       INSERT INTO maps (
