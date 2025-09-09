@@ -16,10 +16,16 @@ const authenticateUser = async (req, res, next) => {
     const token = authHeader.substring(7);
     
     try {
+      console.log('🔐 AUTH DEBUG - Verifying token...');
+      
       // Verify Clerk JWT token
       const payload = await verifyToken(token, {
         secretKey: process.env.CLERK_SECRET_KEY
       });
+      
+      console.log('🔐 AUTH DEBUG - Token verified successfully');
+      console.log('🔐 AUTH DEBUG - User ID:', payload.sub);
+      console.log('🔐 AUTH DEBUG - Is Admin:', payload.publicMetadata?.isAdmin);
       
       // Add user info to request
       req.user = {
@@ -29,14 +35,21 @@ const authenticateUser = async (req, res, next) => {
         isAdmin: payload.publicMetadata?.isAdmin || false
       };
       
+      console.log('🔐 AUTH DEBUG - User object created:', req.user);
       next();
     } catch (jwtError) {
-      console.error('Clerk token verification failed:', jwtError);
+      console.error('🔐 AUTH DEBUG - Clerk token verification failed:', jwtError);
+      console.error('🔐 AUTH DEBUG - Error details:', {
+        name: jwtError.name,
+        message: jwtError.message,
+        code: jwtError.code
+      });
       return res.status(401).json({ error: 'Invalid token' });
     }
 
   } catch (error) {
-    console.error('Auth middleware error:', error);
+    console.error('🔐 AUTH DEBUG - Auth middleware error:', error);
+    console.error('🔐 AUTH DEBUG - Error stack:', error.stack);
     res.status(500).json({ error: 'Authentication failed' });
   }
 };
