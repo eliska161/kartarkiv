@@ -753,15 +753,30 @@ router.post('/', authenticateUser, [
     const userUsername = req.user.username || 'Unknown';
     const passwordHash = 'clerk_user_no_password'; // Clerk handles auth, we don't need password
     
-    await pool.query(`
-      INSERT INTO users (clerk_id, email, username, password_hash, is_admin) 
-      VALUES ($1, $2, $3, $4, $5)
-      ON CONFLICT (clerk_id) DO UPDATE SET
-        email = COALESCE(EXCLUDED.email, users.email),
-        username = COALESCE(EXCLUDED.username, users.username),
-        password_hash = COALESCE(EXCLUDED.password_hash, users.password_hash),
-        is_admin = EXCLUDED.is_admin
-    `, [req.user.id, userEmail, userUsername, passwordHash, req.user.isAdmin]);
+    // Check if user exists by clerk_id first
+    const existingUser = await pool.query(`
+      SELECT id, clerk_id, email FROM users WHERE clerk_id = $1
+    `, [req.user.id]);
+    
+    if (existingUser.rows.length === 0) {
+      // User doesn't exist, create new one
+      await pool.query(`
+        INSERT INTO users (clerk_id, email, username, password_hash, is_admin) 
+        VALUES ($1, $2, $3, $4, $5)
+      `, [req.user.id, userEmail, userUsername, passwordHash, req.user.isAdmin]);
+      console.log('✅ Created new user:', req.user.id);
+    } else {
+      // User exists, update if needed
+      await pool.query(`
+        UPDATE users SET 
+          email = COALESCE($2, email),
+          username = COALESCE($3, username),
+          password_hash = COALESCE($4, password_hash),
+          is_admin = $5
+        WHERE clerk_id = $1
+      `, [req.user.id, userEmail, userUsername, passwordHash, req.user.isAdmin]);
+      console.log('✅ Updated existing user:', req.user.id);
+    }
 
     const result = await pool.query(`
       INSERT INTO maps (
