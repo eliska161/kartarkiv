@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useUser } from '@clerk/clerk-react';
+import { useUser, useAuth } from '@clerk/clerk-react';
 import { Trash2, UserPlus, Shield, ShieldOff, Search, X } from 'lucide-react';
 
 interface ClerkUser {
@@ -19,6 +19,7 @@ interface ClerkUser {
 
 const UserManagement: React.FC = () => {
   const { user: currentUser } = useUser();
+  const { getToken } = useAuth();
   const [users, setUsers] = useState<ClerkUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +41,7 @@ const UserManagement: React.FC = () => {
       setLoading(true);
       const response = await fetch(`${API_BASE_URL}/api/admin/users`, {
         headers: {
-          'Authorization': `Bearer ${await currentUser?.getToken()}`
+          'Authorization': `Bearer ${await getToken()}`
         }
       });
 
@@ -66,7 +67,7 @@ const UserManagement: React.FC = () => {
       const response = await fetch(`${API_BASE_URL}/api/admin/users/${userId}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${await currentUser?.getToken()}`
+          'Authorization': `Bearer ${await getToken()}`
         }
       });
 
@@ -86,7 +87,7 @@ const UserManagement: React.FC = () => {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${await currentUser?.getToken()}`
+          'Authorization': `Bearer ${await getToken()}`
         },
         body: JSON.stringify({
           isAdmin: !currentAdminStatus
@@ -120,7 +121,7 @@ const UserManagement: React.FC = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${await currentUser?.getToken()}`
+          'Authorization': `Bearer ${await getToken()}`
         },
         body: JSON.stringify({
           email: newUserEmail,
