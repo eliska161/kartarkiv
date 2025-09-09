@@ -751,15 +751,17 @@ router.post('/', authenticateUser, [
     // First, ensure user exists in database with Clerk ID
     const userEmail = req.user.email || 'user@example.com';
     const userUsername = req.user.username || 'Unknown';
+    const passwordHash = 'clerk_user_no_password'; // Clerk handles auth, we don't need password
     
     await pool.query(`
-      INSERT INTO users (clerk_id, email, username, is_admin) 
-      VALUES ($1, $2, $3, $4)
+      INSERT INTO users (clerk_id, email, username, password_hash, is_admin) 
+      VALUES ($1, $2, $3, $4, $5)
       ON CONFLICT (clerk_id) DO UPDATE SET
         email = COALESCE(EXCLUDED.email, users.email),
         username = COALESCE(EXCLUDED.username, users.username),
+        password_hash = COALESCE(EXCLUDED.password_hash, users.password_hash),
         is_admin = EXCLUDED.is_admin
-    `, [req.user.id, userEmail, userUsername, req.user.isAdmin]);
+    `, [req.user.id, userEmail, userUsername, passwordHash, req.user.isAdmin]);
 
     const result = await pool.query(`
       INSERT INTO maps (

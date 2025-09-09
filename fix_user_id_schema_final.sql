@@ -1,5 +1,5 @@
--- FINAL FIX v6: Handle all type mismatches and constraints
--- This will fix the remaining type mismatch issues
+-- FINAL FIX: Complete database schema update for Clerk integration
+-- This will fix all type mismatches and constraint issues
 
 -- Step 1: Disable RLS temporarily on all tables
 ALTER TABLE public.maps DISABLE ROW LEVEL SECURITY;
@@ -36,9 +36,12 @@ ALTER TABLE public.preview_images DROP CONSTRAINT IF EXISTS preview_images_creat
 ALTER TABLE public.users 
 ADD COLUMN IF NOT EXISTS clerk_id TEXT UNIQUE;
 
--- Step 5: Make email nullable temporarily to handle existing data
+-- Step 5: Make email and password_hash nullable to handle Clerk users
 ALTER TABLE public.users 
 ALTER COLUMN email DROP NOT NULL;
+
+ALTER TABLE public.users 
+ALTER COLUMN password_hash DROP NOT NULL;
 
 -- Step 6: Alter created_by columns to TEXT
 ALTER TABLE public.maps 
@@ -89,6 +92,6 @@ SELECT
     is_nullable
 FROM information_schema.columns 
 WHERE table_name IN ('maps', 'map_files', 'preview_images', 'users') 
-AND column_name IN ('created_by', 'clerk_id', 'email');
+AND column_name IN ('created_by', 'clerk_id', 'email', 'password_hash');
 
-SELECT 'Schema updated successfully - all type mismatches fixed' as status;
+SELECT 'Schema updated successfully - all constraints and type mismatches fixed' as status;
