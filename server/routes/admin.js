@@ -1,13 +1,21 @@
 const express = require('express');
-const { ClerkExpressRequireAuth } = require('@clerk/backend');
-const { clerkClient } = require('@clerk/backend');
+const { ClerkExpressRequireAuth, createClerkClient } = require('@clerk/backend');
 
 // Initialize Clerk with secret key
-clerkClient.__unstable_options = {
+const clerkClient = createClerkClient({
   secretKey: process.env.CLERK_SECRET_KEY
-};
+});
 
 const router = express.Router();
+
+// Handle preflight requests for admin routes
+router.options('*', (req, res) => {
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.sendStatus(200);
+});
 
 // Middleware to require authentication and admin role
 const requireAdmin = async (req, res, next) => {

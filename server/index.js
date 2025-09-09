@@ -15,13 +15,31 @@ const PORT = process.env.PORT || 5000;
 
 // Middleware
 app.use(helmet());
-app.use(cors());
+
+// CORS configuration
+const corsOptions = {
+  origin: [
+    'http://localhost:3000',
+    'https://kartarkiv.netlify.app',
+    'https://kartarkiv-production.up.railway.app'
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+};
+
+app.use(cors(corsOptions));
+
+// Handle preflight requests
+app.options('*', cors(corsOptions));
+
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Debug middleware
 app.use((req, res, next) => {
   console.log('🔍 REQUEST DEBUG:', req.method, req.url);
+  console.log('🌐 Origin:', req.headers.origin);
   console.log('📝 Request body:', req.body);
   next();
 });
