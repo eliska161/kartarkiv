@@ -25,14 +25,26 @@ const authenticateUser = async (req, res, next) => {
       
       console.log('🔐 AUTH DEBUG - Token verified successfully');
       console.log('🔐 AUTH DEBUG - User ID:', payload.sub);
+      console.log('🔐 AUTH DEBUG - Full payload keys:', Object.keys(payload));
+      console.log('🔐 AUTH DEBUG - Public metadata:', payload.publicMetadata);
+      console.log('🔐 AUTH DEBUG - Private metadata:', payload.privateMetadata);
       console.log('🔐 AUTH DEBUG - Is Admin:', payload.publicMetadata?.isAdmin);
+      
+      // Extract user data from JWT payload
+      const email = payload.email || payload.email_addresses?.[0]?.email_address;
+      const username = payload.username || payload.preferred_username || email?.split('@')[0] || 'Unknown';
+      const isAdmin = Boolean(payload.publicMetadata?.isAdmin);
+      
+      console.log('🔐 AUTH DEBUG - Extracted email:', email);
+      console.log('🔐 AUTH DEBUG - Extracted username:', username);
+      console.log('🔐 AUTH DEBUG - Extracted isAdmin:', isAdmin);
       
       // Add user info to request
       req.user = {
         id: payload.sub,
-        email: payload.email,
-        username: payload.username || payload.email,
-        isAdmin: payload.publicMetadata?.isAdmin || false
+        email: email,
+        username: username,
+        isAdmin: isAdmin
       };
       
       console.log('🔐 AUTH DEBUG - User object created:', req.user);

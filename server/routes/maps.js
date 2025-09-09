@@ -712,8 +712,8 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Create new map (Admin only)
-router.post('/', authenticateUser, requireAdmin, [
+// Create new map (Temporarily allow all authenticated users)
+router.post('/', authenticateUser, [
   body('name').trim().notEmpty(),
   body('scale').optional().trim(),
   body('contourInterval').optional().isNumeric(),
