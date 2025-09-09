@@ -3,13 +3,14 @@ import { useUser } from '@clerk/clerk-react';
 import { useMap } from '../contexts/MapContext';
 import Header from '../components/Header';
 import AddMapModal from '../components/AddMapModal';
+import UserManagement from '../components/UserManagement';
 import LogoManager from '../components/LogoManager';
-import { Plus, MapPin, BarChart3, Settings, Edit, Trash2 } from 'lucide-react';
+import { Plus, MapPin, Users, BarChart3, Settings, Edit, Trash2 } from 'lucide-react';
 
 const AdminDashboard: React.FC = () => {
   useUser(); // Get Clerk user data
   const { maps, loading, fetchMaps, deleteMap, fetchMap } = useMap();
-  const [activeTab, setActiveTab] = useState<'maps' | 'stats' | 'settings'>('maps');
+  const [activeTab, setActiveTab] = useState<'maps' | 'users' | 'stats' | 'settings'>('maps');
   const [showAddMapModal, setShowAddMapModal] = useState(false);
   const [editingMap, setEditingMap] = useState<any>(null);
 
@@ -50,6 +51,7 @@ const AdminDashboard: React.FC = () => {
 
   const tabs = [
     { id: 'maps', label: 'Kart', icon: MapPin },
+    { id: 'users', label: 'Brukere', icon: Users },
     { id: 'stats', label: 'Statistikk', icon: BarChart3 },
     { id: 'settings', label: 'Innstillinger', icon: Settings }
   ] as const;
@@ -238,7 +240,12 @@ const AdminDashboard: React.FC = () => {
               )}
             </div>
           )}
-          
+
+          {activeTab === 'users' && (
+            <div className="p-6">
+              <UserManagement />
+            </div>
+          )}
 
           {activeTab === 'settings' && (
             <div className="p-6">
