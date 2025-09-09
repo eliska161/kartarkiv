@@ -8,7 +8,7 @@ const authRoutes = require('./routes/auth-jwt'); // Use JWT auth
 const mapRoutes = require('./routes/maps');
 const userRoutes = require('./routes/users');
 const settingsRoutes = require('./routes/settings');
-const adminRoutes = require('./routes/admin');
+const adminRoutes = require('./routes/admin-simple');
 
 const app = express();
 const PORT = process.env.PORT || 5000;

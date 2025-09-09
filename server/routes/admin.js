@@ -1,5 +1,5 @@
 const express = require('express');
-const { createClerkClient, verifyToken } = require('@clerk/backend');
+// const { createClerkClient, verifyToken } = require('@clerk/backend'); // Removed Clerk
 
 // Initialize Clerk with secret key
 const clerkClient = createClerkClient({
