@@ -622,7 +622,7 @@ router.get('/', async (req, res) => {
         u.username as created_by_username,
         COUNT(mf.id) as file_count
       FROM maps m
-      LEFT JOIN users u ON m.created_by = u.id
+      LEFT JOIN users u ON m.created_by = u.clerk_id
       LEFT JOIN map_files mf ON m.id = mf.map_id
       GROUP BY m.id, u.username
       ORDER BY m.created_at DESC

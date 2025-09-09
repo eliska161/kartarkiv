@@ -1,7 +1,7 @@
--- FINAL FIX: Complete database schema update for Clerk integration
--- This will fix all type mismatches and constraint issues
+-- FINAL DATABASE SCHEMA FIX
+-- This will fix all type mismatches and constraints for Clerk integration
 
--- Step 1: Disable RLS temporarily on all tables
+-- Step 1: Disable RLS temporarily
 ALTER TABLE public.maps DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.map_files DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.preview_images DISABLE ROW LEVEL SECURITY;
@@ -11,17 +11,14 @@ DO $$
 DECLARE
     r RECORD;
 BEGIN
-    -- Drop all policies on maps table
     FOR r IN (SELECT policyname FROM pg_policies WHERE tablename = 'maps' AND schemaname = 'public') LOOP
         EXECUTE 'DROP POLICY IF EXISTS ' || quote_ident(r.policyname) || ' ON public.maps';
     END LOOP;
     
-    -- Drop all policies on map_files table
     FOR r IN (SELECT policyname FROM pg_policies WHERE tablename = 'map_files' AND schemaname = 'public') LOOP
         EXECUTE 'DROP POLICY IF EXISTS ' || quote_ident(r.policyname) || ' ON public.map_files';
     END LOOP;
     
-    -- Drop all policies on preview_images table
     FOR r IN (SELECT policyname FROM pg_policies WHERE tablename = 'preview_images' AND schemaname = 'public') LOOP
         EXECUTE 'DROP POLICY IF EXISTS ' || quote_ident(r.policyname) || ' ON public.preview_images';
     END LOOP;
@@ -32,18 +29,18 @@ ALTER TABLE public.maps DROP CONSTRAINT IF EXISTS maps_created_by_fkey;
 ALTER TABLE public.map_files DROP CONSTRAINT IF EXISTS map_files_created_by_fkey;
 ALTER TABLE public.preview_images DROP CONSTRAINT IF EXISTS preview_images_created_by_fkey;
 
--- Step 4: Add clerk_id column to users table if it doesn't exist
+-- Step 4: Add clerk_id column to users table
 ALTER TABLE public.users 
 ADD COLUMN IF NOT EXISTS clerk_id TEXT UNIQUE;
 
--- Step 5: Make email and password_hash nullable to handle Clerk users
+-- Step 5: Make email and password_hash nullable for Clerk users
 ALTER TABLE public.users 
 ALTER COLUMN email DROP NOT NULL;
 
 ALTER TABLE public.users 
 ALTER COLUMN password_hash DROP NOT NULL;
 
--- Step 6: Alter created_by columns to TEXT
+-- Step 6: Change created_by columns to TEXT
 ALTER TABLE public.maps 
 ALTER COLUMN created_by TYPE TEXT;
 
@@ -53,7 +50,7 @@ ALTER COLUMN created_by TYPE TEXT;
 ALTER TABLE public.preview_images 
 ALTER COLUMN created_by TYPE TEXT;
 
--- Step 7: Add new foreign key constraints pointing to clerk_id
+-- Step 7: Add new foreign key constraints
 ALTER TABLE public.maps 
 ADD CONSTRAINT maps_created_by_fkey 
 FOREIGN KEY (created_by) REFERENCES public.users(clerk_id);
@@ -84,7 +81,7 @@ ALTER TABLE public.maps ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.map_files ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.preview_images ENABLE ROW LEVEL SECURITY;
 
--- Step 10: Verify the changes
+-- Step 10: Verify changes
 SELECT 
     table_name, 
     column_name, 
@@ -94,4 +91,4 @@ FROM information_schema.columns
 WHERE table_name IN ('maps', 'map_files', 'preview_images', 'users') 
 AND column_name IN ('created_by', 'clerk_id', 'email', 'password_hash');
 
-SELECT 'Schema updated successfully - all constraints and type mismatches fixed' as status;
+SELECT 'Database schema updated successfully!' as status;
