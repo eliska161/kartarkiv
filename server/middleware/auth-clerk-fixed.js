@@ -22,8 +22,10 @@ const authenticateUser = async (req, res, next) => {
     try {
       console.log('🔐 CLERK AUTH - Verifying token...');
       
-      // Use Clerk's authenticateRequest method
-      const { userId, sessionId } = await clerkClient.verifyToken(token);
+      // Use Clerk's verifyToken method
+      const payload = await clerkClient.verifyToken(token);
+      const userId = payload.sub;
+      const sessionId = payload.sid;
       
       console.log('🔐 CLERK AUTH - Token verified successfully');
       console.log('🔐 CLERK AUTH - User ID:', userId);
