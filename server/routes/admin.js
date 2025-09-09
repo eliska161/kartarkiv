@@ -1,5 +1,5 @@
 const express = require('express');
-const { ClerkExpressRequireAuth, createClerkClient } = require('@clerk/backend');
+const { createClerkClient, verifyToken } = require('@clerk/backend');
 
 // Initialize Clerk with secret key
 const clerkClient = createClerkClient({
@@ -20,20 +20,32 @@ router.options('*', (req, res) => {
 // Middleware to require authentication and admin role
 const requireAdmin = async (req, res, next) => {
   try {
-    const { userId } = req.auth;
+    const authHeader = req.headers.authorization;
     
-    if (!userId) {
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({ message: 'Ikke autentisert' });
     }
 
+    const token = authHeader.substring(7);
+    
+    // Verify token with Clerk
+    const payload = await verifyToken(token, {
+      secretKey: process.env.CLERK_SECRET_KEY
+    });
+
+    if (!payload || !payload.sub) {
+      return res.status(401).json({ message: 'Ugyldig token' });
+    }
+
     // Get user from Clerk
-    const user = await clerkClient.users.getUser(userId);
+    const user = await clerkClient.users.getUser(payload.sub);
     
     if (!user.publicMetadata?.isAdmin) {
       return res.status(403).json({ message: 'Kun administratorer har tilgang' });
     }
 
     req.user = user;
+    req.auth = { userId: payload.sub };
     next();
   } catch (error) {
     console.error('Admin auth error:', error);
@@ -42,7 +54,7 @@ const requireAdmin = async (req, res, next) => {
 };
 
 // Get all users
-router.get('/users', ClerkExpressRequireAuth(), requireAdmin, async (req, res) => {
+router.get('/users', requireAdmin, async (req, res) => {
   try {
     const users = await clerkClient.users.getUserList({
       limit: 100,
@@ -57,7 +69,7 @@ router.get('/users', ClerkExpressRequireAuth(), requireAdmin, async (req, res) =
 });
 
 // Create new user
-router.post('/users', ClerkExpressRequireAuth(), requireAdmin, async (req, res) => {
+router.post('/users', requireAdmin, async (req, res) => {
   try {
     const { email, firstName, lastName, isAdmin } = req.body;
 
@@ -91,7 +103,7 @@ router.post('/users', ClerkExpressRequireAuth(), requireAdmin, async (req, res) 
 });
 
 // Delete user
-router.delete('/users/:userId', ClerkExpressRequireAuth(), requireAdmin, async (req, res) => {
+router.delete('/users/:userId', requireAdmin, async (req, res) => {
   try {
     const { userId } = req.params;
 
@@ -109,7 +121,7 @@ router.delete('/users/:userId', ClerkExpressRequireAuth(), requireAdmin, async (
 });
 
 // Toggle admin status
-router.patch('/users/:userId/admin', ClerkExpressRequireAuth(), requireAdmin, async (req, res) => {
+router.patch('/users/:userId/admin', requireAdmin, async (req, res) => {
   try {
     const { userId } = req.params;
     const { isAdmin } = req.body;
