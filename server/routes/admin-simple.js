@@ -1,5 +1,5 @@
 const express = require('express');
-const { authenticateUser, requireAdmin } = require('../middleware/auth-simple');
+const { authenticateUser, requireAdmin } = require('../middleware/auth-none');
 
 const router = express.Router();
 

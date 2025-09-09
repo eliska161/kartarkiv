@@ -5,17 +5,17 @@ require('dotenv').config();
 const connectionConfig = process.env.DATABASE_URL ? {
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false },
-  max: 10, // Reduce connection pool size for Supabase
-  idleTimeoutMillis: 20000,
-  connectionTimeoutMillis: 15000,
+  max: 5, // Reduce connection pool size for Supabase
+  idleTimeoutMillis: 10000,
+  connectionTimeoutMillis: 10000,
   keepAlive: true,
   keepAliveInitialDelayMillis: 0,
 } : {
   connectionString: `postgresql://${process.env.DB_USER || 'postgres'}:${process.env.DB_PASSWORD || 'password'}@${process.env.DB_HOST || 'localhost'}:${process.env.DB_PORT || 5432}/${process.env.DB_NAME || 'kartarkiv'}`,
   ssl: false,
-  max: 20,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 10000,
+  max: 10,
+  idleTimeoutMillis: 15000,
+  connectionTimeoutMillis: 5000,
   host: process.env.DB_HOST || 'localhost',
   port: process.env.DB_PORT || 5432,
   keepAlive: true,
@@ -36,16 +36,7 @@ pool.on('connect', (client) => {
 });
 
 pool.on('error', (err, client) => {
-  console.error('❌ Database connection error:', err);
-  console.error('❌ Error details:', {
-    code: err.code,
-    message: err.message,
-    address: err.address,
-    port: err.port,
-    client: client ? 'Client exists' : 'No client'
-  });
-  
-  // Don't exit process on database errors - let the app handle it
+  console.error('❌ Database connection error:', err.message);
   console.log('🔄 Database error occurred, but continuing...');
 });
 
