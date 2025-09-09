@@ -94,6 +94,18 @@ app.get('/api/routes', (req, res) => {
   res.json({ routes });
 });
 
+// Global error handler for uncaught exceptions
+process.on('uncaughtException', (err) => {
+  console.error('💥 UNCAUGHT EXCEPTION:', err);
+  console.error('💥 Stack trace:', err.stack);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('💥 UNHANDLED REJECTION at:', promise, 'reason:', reason);
+  process.exit(1);
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('💥 ERROR MIDDLEWARE:', err.stack);
@@ -109,9 +121,15 @@ app.use('*', (req, res) => {
   res.status(404).json({ message: 'Route not found' });
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Kartarkiv server running on port ${PORT}`);
-  console.log(`📁 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log('🔍 DEBUG MODE ENABLED');
-  console.log(`🌐 Server accessible from network at: http://[YOUR_IP]:${PORT}`);
-});
+try {
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Kartarkiv server running on port ${PORT}`);
+    console.log(`📁 Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log('🔍 DEBUG MODE ENABLED');
+    console.log(`🌐 Server accessible from network at: http://[YOUR_IP]:${PORT}`);
+  });
+} catch (error) {
+  console.error('💥 SERVER STARTUP ERROR:', error);
+  console.error('💥 Stack trace:', error.stack);
+  process.exit(1);
+}
