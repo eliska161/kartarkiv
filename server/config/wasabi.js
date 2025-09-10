@@ -10,11 +10,21 @@ const wasabi = new AWS.S3({
   signatureVersion: 'v4'
 });
 
+// Force update the endpoint and region after creation
+if (process.env.WASABI_ENDPOINT) {
+  wasabi.config.endpoint = process.env.WASABI_ENDPOINT;
+}
+if (process.env.WASABI_REGION) {
+  wasabi.config.region = process.env.WASABI_REGION;
+}
+
 // Log current configuration
 console.log('🔧 Wasabi Configuration:');
 console.log('  - Endpoint:', process.env.WASABI_ENDPOINT || 'https://s3.wasabisys.com');
 console.log('  - Region:', process.env.WASABI_REGION || 'us-east-1');
 console.log('  - Bucket:', process.env.WASABI_BUCKET || 'kartarkiv-storage');
+console.log('  - AWS SDK Endpoint:', wasabi.config.endpoint);
+console.log('  - AWS SDK Region:', wasabi.config.region);
 
 const bucketName = process.env.WASABI_BUCKET || 'kartarkiv-storage';
 
