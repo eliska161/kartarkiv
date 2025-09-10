@@ -14,8 +14,8 @@ CREATE TABLE users (
     username VARCHAR(50) UNIQUE NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
-    first_name VARCHAR(50) NOT NULL,
-    last_name VARCHAR(50) NOT NULL,
+    first_name VARCHAR(50), -- Nullable since Clerk handles this
+    last_name VARCHAR(50),  -- Nullable since Clerk handles this
     is_admin BOOLEAN DEFAULT FALSE,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -138,9 +138,9 @@ CREATE POLICY "preview_images_delete_policy" ON preview_images
     FOR DELETE USING (true);
 
 -- Step 8: Insert sample data for testing
-INSERT INTO users (clerk_id, username, email, password_hash, first_name, last_name, is_admin) VALUES
-('clerk_user_123', 'admin', 'admin@kartarkiv.no', 'clerk_user_no_password', 'Admin', 'User', true),
-('clerk_user_456', 'testuser', 'test@kartarkiv.no', 'clerk_user_no_password', 'Test', 'User', false);
+INSERT INTO users (clerk_id, username, email, password_hash, is_admin) VALUES
+('clerk_user_123', 'admin', 'admin@kartarkiv.no', 'clerk_user_no_password', true),
+('clerk_user_456', 'testuser', 'test@kartarkiv.no', 'clerk_user_no_password', false);
 
 -- Step 9: Verify schema
 SELECT 
