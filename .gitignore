@@ -105,3 +105,4 @@ server/uploads/
 # Backup files
 *.backup
 *.bak
+.vercel
