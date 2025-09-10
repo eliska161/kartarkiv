@@ -149,7 +149,7 @@ const UserManagement: React.FC = () => {
 
   const filteredUsers = users.filter(user => {
     const searchLower = searchTerm.toLowerCase();
-    const email = user.emailAddresses[0]?.emailAddress.toLowerCase() || '';
+    const email = user.emailAddresses?.[0]?.emailAddress?.toLowerCase() || '';
     const firstName = (user.firstName || '').toLowerCase();
     const lastName = (user.lastName || '').toLowerCase();
     
@@ -250,7 +250,7 @@ const UserManagement: React.FC = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {user.emailAddresses[0]?.emailAddress || 'Ikke oppgitt'}
+                    {user.emailAddresses?.[0]?.emailAddress || 'Ikke oppgitt'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <button

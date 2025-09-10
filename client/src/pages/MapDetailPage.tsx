@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useMap } from '../contexts/MapContext';
 import axios from 'axios';
-import { ArrowLeft, Download, MapPin, Scale, Ruler, Calendar, User, FileText, Image, File, History } from 'lucide-react';
+import { ArrowLeft, Download, MapPin, Scale, Ruler, Calendar, User, FileText, Image, File, History, Maximize2 } from 'lucide-react';
 import VersionHistory from '../components/VersionHistory';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
@@ -246,7 +246,7 @@ const MapDetailPage: React.FC = () => {
               <div className="space-y-4">
                 {map.scale && (
                   <div className="flex items-center">
-                    <Scale className="h-5 w-5 text-gray-400 mr-3" />
+                    <Maximize2 className="h-5 w-5 text-gray-400 mr-3" />
                     <div>
                       <div className="text-sm font-medium text-gray-900">Målestokk</div>
                       <div className="text-sm text-gray-500">{map.scale}</div>
@@ -256,10 +256,10 @@ const MapDetailPage: React.FC = () => {
                 
                 {map.contour_interval && (
                   <div className="flex items-center">
-                    <Ruler className="h-5 w-5 text-gray-400 mr-3" />
+                    <Scale className="h-5 w-5 text-gray-400 mr-3" />
                     <div>
                       <div className="text-sm font-medium text-gray-900">Ekvidistanse</div>
-                      <div className="text-sm text-gray-500">{map.contour_interval}m</div>
+                      <div className="text-sm text-gray-500">{map.contour_interval} m</div>
                     </div>
                   </div>
                 )}
@@ -294,22 +294,34 @@ const MapDetailPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Metadata */}
-            {map.metadata && Object.keys(map.metadata).length > 0 && (
+            {/* Polygon Area */}
+            {map.area_bounds && (
               <div className="card">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Tilleggsinformasjon</h2>
-                <div className="space-y-2">
-                  {Object.entries(map.metadata).map(([key, value]) => (
-                    <div key={key} className="flex justify-between">
-                      <span className="text-sm font-medium text-gray-900 capitalize">
-                        {key.replace(/([A-Z])/g, ' $1').trim()}:
-                      </span>
-                      <span className="text-sm text-gray-500">
-                        {typeof value === 'object' ? JSON.stringify(value) : String(value)}
-                      </span>
-                    </div>
-                  ))}
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">Kartområde</h2>
+                <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden">
+                  <MapContainer
+                    center={[map.center_lat || 59.9139, map.center_lng || 10.7522]}
+                    zoom={13}
+                    style={{ height: '100%', width: '100%' }}
+                    zoomControl={false}
+                    attributionControl={false}
+                  >
+                    <TileLayer
+                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                    />
+                    <Polygon
+                      positions={map.area_bounds}
+                      color="#059669"
+                      fillColor="#10b981"
+                      fillOpacity={0.3}
+                      weight={2}
+                    />
+                  </MapContainer>
                 </div>
+                <p className="text-sm text-gray-500 mt-2">
+                  Dette området viser kartets dekningsområde
+                </p>
               </div>
             )}
           </div>
