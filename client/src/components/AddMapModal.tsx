@@ -734,12 +734,9 @@ const AddMapModal: React.FC<AddMapModalProps> = ({ isOpen, onClose, mapToEdit, o
                               try {
                                 const response = await axios.delete(`${API_BASE_URL}/api/maps/files/${file.id}`);
                                 if (response.status === 200) {
-                                  // Remove file from local state
-                                  setMapToEdit(prev => ({
-                                    ...prev,
-                                    files: prev.files.filter((f: any) => f.id !== file.id)
-                                  }));
+                                  // File deleted successfully - refresh the map data
                                   showSuccessToast('Filen ble slettet!');
+                                  // Note: The parent component should refresh the map data
                                 }
                               } catch (error) {
                                 const errorMessage = handleApiError(error);
