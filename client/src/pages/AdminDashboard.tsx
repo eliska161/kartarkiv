@@ -4,6 +4,7 @@ import { useMap } from '../contexts/MapContext';
 import Header from '../components/Header';
 import AddMapModal from '../components/AddMapModal';
 import LogoManager from '../components/LogoManager';
+import UserManagement from '../components/UserManagement';
 import { Plus, MapPin, Users, BarChart3, Settings, Edit, Trash2, User, Shield } from 'lucide-react';
 
 const AdminDashboard: React.FC = () => {
@@ -337,48 +338,7 @@ const AdminDashboard: React.FC = () => {
           )}
 
           {activeTab === 'users' && (
-            <div className="p-6">
-              <div className="mb-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-2">Brukeradministrasjon</h2>
-                <p className="text-sm text-gray-600">
-                  Administrer brukere og tilganger med Clerk's innebygde brukeradministrasjon
-                </p>
-              </div>
-              
-              <div className="bg-white rounded-lg shadow border">
-                <div className="p-6">
-                  <div className="text-center py-8">
-                    <Shield className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">
-                      Clerk Brukeradministrasjon
-                    </h3>
-                    <p className="text-gray-600 mb-6">
-                      Bruk Clerk Dashboard for å administrere brukere, roller og tilganger
-                    </p>
-                    <a
-                      href="https://dashboard.clerk.com"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center px-4 py-2 bg-eok-600 text-white rounded-lg hover:bg-eok-700 transition-colors"
-                    >
-                      <Shield className="h-4 w-4 mr-2" />
-                      Åpne Clerk Dashboard
-                    </a>
-                  </div>
-                  
-                  <div className="mt-8 p-4 bg-blue-50 rounded-lg">
-                    <h4 className="text-sm font-medium text-blue-900 mb-2">Tilgjengelige funksjoner:</h4>
-                    <ul className="text-sm text-blue-800 space-y-1">
-                      <li>• Se alle registrerte brukere</li>
-                      <li>• Administrer brukerroller og tilganger</li>
-                      <li>• Slette eller deaktivere brukere</li>
-                      <li>• Se brukeraktivitet og innlogginger</li>
-                      <li>• Konfigurere autentiseringsinnstillinger</li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <UserManagement />
           )}
 
           {activeTab === 'profile' && (

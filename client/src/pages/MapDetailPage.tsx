@@ -296,7 +296,7 @@ const MapDetailPage: React.FC = () => {
             </div>
 
             {/* Polygon Area */}
-            {map.area_bounds && (
+            {map.area_bounds && map.area_bounds.coordinates && map.area_bounds.coordinates[0] && (
               <div className="card">
                 <h2 className="text-lg font-semibold text-gray-900 mb-4">Kartområde</h2>
                 <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden">
@@ -312,7 +312,7 @@ const MapDetailPage: React.FC = () => {
                       attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                     />
                     <Polygon
-                      positions={map.area_bounds}
+                      positions={map.area_bounds.coordinates[0]}
                       color="#059669"
                       fillColor="#10b981"
                       fillOpacity={0.3}

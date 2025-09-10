@@ -77,7 +77,8 @@ const AddMapModal: React.FC<AddMapModalProps> = ({ isOpen, onClose, mapToEdit, o
   
   // Preset options
   const scalePresets = [
-    { value: '1:5000', label: '1:5 000' },
+    { value: '1:4000', label: '1:4 000' },
+    { value: '1:7500', label: '1:7 500' },
     { value: '1:10000', label: '1:10 000' },
     { value: '1:15000', label: '1:15 000' },
     { value: '1:25000', label: '1:25 000' },
@@ -736,7 +737,14 @@ const AddMapModal: React.FC<AddMapModalProps> = ({ isOpen, onClose, mapToEdit, o
                                 if (response.status === 200) {
                                   // File deleted successfully - refresh the map data
                                   showSuccessToast('Filen ble slettet!');
-                                  // Note: The parent component should refresh the map data
+                                  // Update local state
+                                  setMapToEdit(prev => ({
+                                    ...prev,
+                                    files: prev.files.filter(f => f.id !== file.id),
+                                    file_count: prev.file_count - 1
+                                  }));
+                                  // Notify parent component to refresh
+                                  onSuccess?.();
                                 }
                               } catch (error) {
                                 const errorMessage = handleApiError(error);

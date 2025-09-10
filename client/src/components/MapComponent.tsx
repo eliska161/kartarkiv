@@ -184,13 +184,13 @@ const MapComponent: React.FC<MapComponentProps> = ({ maps, selectedMap, onSelect
       <div className="absolute top-4 left-4 bg-white rounded-lg shadow-lg p-4 z-[1000] max-w-sm">
         <div className="flex items-center mb-2">
           <MapPin className="h-4 w-4 text-eok-600 mr-2" />
-          <h3 className="font-semibold text-gray-900">Kartoversikt</h3>
+          <h3 className="font-semibold text-gray-900">Kartarkiv</h3>
         </div>
         <p className="text-sm text-gray-600 mb-3">
-          Klikk på markører eller områder for å se kartdetaljer
+          Klikk på markører eller områder for å se kartdetaljer. Bruk zoom og pan for å navigere.
         </p>
-        <div className="text-xs text-gray-500">
-          <div className="flex items-center mb-1">
+        <div className="text-xs text-gray-500 space-y-1">
+          <div className="flex items-center">
             <div className="w-3 h-3 bg-eok-600 rounded-full mr-2"></div>
             Tilgjengelige kart
           </div>
@@ -198,6 +198,15 @@ const MapComponent: React.FC<MapComponentProps> = ({ maps, selectedMap, onSelect
             <div className="w-3 h-3 bg-red-600 rounded-full mr-2"></div>
             Valgt kart
           </div>
+          <div className="flex items-center">
+            <div className="w-3 h-3 border-2 border-eok-600 rounded-full mr-2"></div>
+            Kartområde
+          </div>
+        </div>
+        <div className="mt-3 pt-2 border-t border-gray-200">
+          <p className="text-xs text-gray-500">
+            <strong>Tips:</strong> Bruk musen til å zoome og panne. Klikk på kart for å velge.
+          </p>
         </div>
       </div>
     </div>

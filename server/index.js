@@ -56,17 +56,30 @@ app.use('/api/maps', strictLimiter);
 
 // CORS configuration
 const corsOptions = {
-  origin: [
-    'http://localhost:3000',
-    'https://kartarkiv.netlify.app',
-    'https://kartarkiv-production.up.railway.app',
-    'https://kart.eddypartiet.com',
-    'https://kartarkiv-dkq6bcpk5-eliska161s-projects.vercel.app',
-    process.env.FRONTEND_URL || 'http://localhost:3000'
-  ],
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'https://kartarkiv.netlify.app',
+      'https://kartarkiv-production.up.railway.app',
+      'https://kart.eddypartiet.com',
+      'https://kartarkiv-dkq6bcpk5-eliska161s-projects.vercel.app',
+      process.env.FRONTEND_URL || 'http://localhost:3000'
+    ];
+    
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    
+    console.log('🚫 CORS blocked origin:', origin);
+    callback(new Error('Not allowed by CORS'));
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Clerk-Auth-Message'],
+  optionsSuccessStatus: 200
 };
 
 app.use(cors(corsOptions));
