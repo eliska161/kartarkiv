@@ -52,9 +52,12 @@ const MapDetailPage: React.FC = () => {
       const downloadResponse = await axios.get(`${API_BASE_URL}/api/maps/files/${file.id}/download`);
       const downloadUrl = downloadResponse.data.downloadUrl;
       
-      // Use axios to download the file
+      // Use axios to download the file (without Authorization header for signed URLs)
       const response = await axios.get(downloadUrl, {
         responseType: 'blob',
+        headers: {
+          'Authorization': undefined // Remove Authorization header for signed URLs
+        }
       });
       
       // Create blob URL and download
