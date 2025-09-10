@@ -20,7 +20,32 @@ function App() {
   }
 
   return (
-    <ClerkProvider publishableKey={clerkPubKey}>
+    <ClerkProvider 
+      publishableKey={clerkPubKey}
+      localization={{
+        locale: 'nb-NO',
+        unstable__errors: {
+          not_allowed_access: 'Din e-postadresse har ikke tilgang til denne applikasjonen. Kontakt administrator for hjelp.',
+          form_password_pwned: 'Dette passordet er kompromittert. Vennligst velg et annet passord.',
+          form_password_size_in_bytes: 'Passordet må være mellom 8 og 128 tegn.',
+          form_username_invalid_length: 'Brukernavnet må være mellom 3 og 30 tegn.',
+          form_email_address_invalid: 'Vennligst oppgi en gyldig e-postadresse.',
+          form_username_exists: 'Dette brukernavnet er allerede i bruk.',
+          form_email_address_exists: 'Denne e-postadressen er allerede registrert.',
+          form_password_validation_failed: 'Passordet oppfyller ikke kravene.',
+          form_identifier_exists: 'Denne e-postadressen eller brukernavnet er allerede i bruk.',
+          form_password_not_strong_enough: 'Passordet er ikke sterkt nok. Prøv å legge til tall, symboler eller store bokstaver.',
+          form_password_size_in_bytes_exceeded: 'Passordet er for langt. Maksimalt 128 tegn tillatt.',
+          form_password_size_in_bytes_not_met: 'Passordet er for kort. Minimum 8 tegn påkrevd.',
+          form_password_pwned__choose_different_password: 'Dette passordet er kompromittert. Velg et annet passord.',
+          form_password_validation_failed__choose_different_password: 'Passordet oppfyller ikke kravene. Velg et annet passord.',
+          form_password_not_strong_enough__choose_different_password: 'Passordet er ikke sterkt nok. Velg et annet passord.',
+          form_password_pwned__choose_different_password_alternative: 'Dette passordet er kompromittert. Prøv et annet passord.',
+          form_password_validation_failed__choose_different_password_alternative: 'Passordet oppfyller ikke kravene. Prøv et annet passord.',
+          form_password_not_strong_enough__choose_different_password_alternative: 'Passordet er ikke sterkt nok. Prøv et annet passord.'
+        }
+      }}
+    >
       <AuthProvider>
         <MapProvider>
           <Router>

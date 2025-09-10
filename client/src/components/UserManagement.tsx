@@ -232,14 +232,14 @@ const UserManagement: React.FC = () => {
                       <div className="flex-shrink-0 h-10 w-10">
                         <div className="h-10 w-10 rounded-full bg-eok-100 flex items-center justify-center">
                           <span className="text-sm font-medium text-eok-600">
-                            {(user.firstName?.[0] || '') + (user.lastName?.[0] || '')}
+                            {(user.firstName?.[0] || '') + (user.lastName?.[0] || '') || '?'}
                           </span>
                         </div>
                       </div>
                       <div className="ml-4">
                         <div className="text-sm font-medium text-gray-900">
-                          {user.firstName && user.lastName 
-                            ? `${user.firstName} ${user.lastName}`
+                          {user.firstName || user.lastName 
+                            ? `${user.firstName || ''} ${user.lastName || ''}`.trim()
                             : 'Ikke oppgitt'
                           }
                         </div>

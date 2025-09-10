@@ -3,6 +3,7 @@ import { X, Upload } from 'lucide-react';
 import { MapContainer, TileLayer, Polygon, Polyline, CircleMarker, useMap as useLeafletMap } from 'react-leaflet';
 import { useMap } from '../contexts/MapContext';
 import axios from 'axios';
+import { handleApiError, showErrorToast, showSuccessToast, validateFile, validateMapForm } from '../utils/errorHandler';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
@@ -43,6 +44,9 @@ const AddMapModal: React.FC<AddMapModalProps> = ({ isOpen, onClose, mapToEdit, o
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [editMode, setEditMode] = useState<'info' | 'polygon' | 'files' | null>(null);
+  const [isDeletingFile, setIsDeletingFile] = useState<number | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
   
   // Map data
   const [mapData, setMapData] = useState({
@@ -123,11 +127,68 @@ const AddMapModal: React.FC<AddMapModalProps> = ({ isOpen, onClose, mapToEdit, o
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    setSelectedFiles(prev => [...prev, ...files]);
+    const validFiles: File[] = [];
+    const errors: string[] = [];
+    
+    files.forEach(file => {
+      const validation = validateFile(file);
+      if (validation.isValid) {
+        validFiles.push(file);
+      } else {
+        errors.push(`${file.name}: ${validation.error}`);
+      }
+    });
+    
+    if (errors.length > 0) {
+      showErrorToast(errors.join('\n'));
+    }
+    
+    if (validFiles.length > 0) {
+      setSelectedFiles(prev => [...prev, ...validFiles]);
+    }
+    
+    // Reset input
+    e.target.value = '';
   };
 
   const removeFile = (index: number) => {
     setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    
+    const files = Array.from(e.dataTransfer.files);
+    const validFiles: File[] = [];
+    const errors: string[] = [];
+    
+    files.forEach(file => {
+      const validation = validateFile(file);
+      if (validation.isValid) {
+        validFiles.push(file);
+      } else {
+        errors.push(`${file.name}: ${validation.error}`);
+      }
+    });
+    
+    if (errors.length > 0) {
+      showErrorToast(errors.join('\n'));
+    }
+    
+    if (validFiles.length > 0) {
+      setSelectedFiles(prev => [...prev, ...validFiles]);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -135,15 +196,23 @@ const AddMapModal: React.FC<AddMapModalProps> = ({ isOpen, onClose, mapToEdit, o
     setIsSubmitting(true);
     setError(null);
 
-    // Valider at polygon er tegnet
-    if (!mapData.areaBounds) {
+    // Validate form data
+    const formValidation = validateMapForm(mapData);
+    if (!formValidation.isValid) {
+      setError(formValidation.errors.join('\n'));
+      setIsSubmitting(false);
+      return;
+    }
+
+    // Valider at polygon er tegnet (kun for nye kart)
+    if (!mapToEdit && !mapData.areaBounds) {
       setError('Du må tegne et polygon før du kan opprette kartet');
       setIsSubmitting(false);
       return;
     }
 
-    // Valider at minst én fil er lastet opp
-    if (selectedFiles.length === 0) {
+    // Valider at minst én fil er lastet opp (kun for nye kart)
+    if (!mapToEdit && selectedFiles.length === 0) {
       setError('Du må laste opp minst én fil');
       setIsSubmitting(false);
       return;
@@ -186,10 +255,13 @@ const AddMapModal: React.FC<AddMapModalProps> = ({ isOpen, onClose, mapToEdit, o
         }
       }
 
+      showSuccessToast(mapToEdit ? 'Kartet ble oppdatert!' : 'Kartet ble opprettet!');
       onSuccess?.();
       onClose();
     } catch (error: any) {
-      setError(error.response?.data?.message || 'En feil oppstod ved oppretting av kartet');
+      const errorMessage = handleApiError(error);
+      setError(errorMessage);
+      showErrorToast(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -201,9 +273,16 @@ const AddMapModal: React.FC<AddMapModalProps> = ({ isOpen, onClose, mapToEdit, o
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">
-            {mapToEdit ? 'Rediger kart' : 'Legg til nytt kart'}
-          </h2>
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900">
+              {mapToEdit ? 'Rediger kart' : 'Legg til nytt kart'}
+            </h2>
+            {mapToEdit && (
+              <p className="text-sm text-gray-600 mt-1">
+                Rediger "{mapToEdit.name}" - velg hva du vil endre
+              </p>
+            )}
+          </div>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600"
@@ -213,6 +292,65 @@ const AddMapModal: React.FC<AddMapModalProps> = ({ isOpen, onClose, mapToEdit, o
         </div>
 
         <form onSubmit={handleSubmit} className="p-6">
+          {/* Edit mode selection for existing maps */}
+          {mapToEdit && step === 1 && (
+            <div className="mb-8">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Hva vil du redigere?</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditMode('polygon');
+                    setStep(2);
+                  }}
+                  className="p-6 border-2 border-gray-200 rounded-lg hover:border-eok-500 hover:bg-eok-50 transition-colors text-left"
+                >
+                  <div className="flex items-center mb-2">
+                    <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                      <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                      </svg>
+                    </div>
+                    <h4 className="font-semibold text-gray-900">Rediger polygon</h4>
+                  </div>
+                  <p className="text-sm text-gray-600">Endre kartområdet ved å tegne et nytt polygon</p>
+                </button>
+                
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditMode('files');
+                    setStep(3);
+                  }}
+                  className="p-6 border-2 border-gray-200 rounded-lg hover:border-eok-500 hover:bg-eok-50 transition-colors text-left"
+                >
+                  <div className="flex items-center mb-2">
+                    <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mr-3">
+                      <Upload className="w-5 h-5 text-green-600" />
+                    </div>
+                    <h4 className="font-semibold text-gray-900">Rediger filer</h4>
+                  </div>
+                  <p className="text-sm text-gray-600">Legg til, fjern eller erstatt kartfiler</p>
+                </button>
+              </div>
+              
+              <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+                <h4 className="font-medium text-gray-900 mb-2">Eller rediger grunnleggende informasjon</h4>
+                <p className="text-sm text-gray-600 mb-3">Du kan også endre navn, beskrivelse, målestokk og ekvidistanse</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditMode('info');
+                    setStep(1);
+                  }}
+                  className="text-eok-600 hover:text-eok-700 font-medium text-sm"
+                >
+                  Fortsett med grunnleggende informasjon →
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Progress indicator */}
           <div className="flex items-center justify-center mb-8">
             <div className="flex items-center space-x-4">
@@ -246,7 +384,7 @@ const AddMapModal: React.FC<AddMapModalProps> = ({ isOpen, onClose, mapToEdit, o
           )}
 
           {/* Step 1: Basic Information */}
-          {step === 1 && (
+          {step === 1 && (!mapToEdit || editMode === 'info') && (
             <div className="space-y-6">
               <div className="text-center">
                 <h3 className="text-lg font-medium text-gray-900 mb-2">Grunnleggende informasjon</h3>
@@ -367,7 +505,7 @@ const AddMapModal: React.FC<AddMapModalProps> = ({ isOpen, onClose, mapToEdit, o
           )}
 
           {/* Step 2: Draw Map Area */}
-          {step === 2 && (
+          {step === 2 && (!mapToEdit || editMode === 'polygon') && (
             <div className="space-y-6">
               <div className="text-center">
                 <h3 className="text-lg font-medium text-gray-900 mb-2">Tegn kartområde</h3>
@@ -533,12 +671,17 @@ const AddMapModal: React.FC<AddMapModalProps> = ({ isOpen, onClose, mapToEdit, o
           )}
 
           {/* Step 3: Upload Files */}
-          {step === 3 && (
+          {step === 3 && (!mapToEdit || editMode === 'files') && (
             <div className="space-y-6">
               <div className="text-center">
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Last opp filer</h3>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  {mapToEdit ? 'Rediger filer' : 'Last opp filer'}
+                </h3>
                 <p className="text-sm text-gray-600 mb-4">
-                  Last opp kartfiler og eventuelle bildefiler
+                  {mapToEdit 
+                    ? 'Legg til nye filer eller fjern eksisterende filer'
+                    : 'Last opp kartfiler og eventuelle bildefiler'
+                  }
                 </p>
               </div>
 
@@ -570,9 +713,76 @@ const AddMapModal: React.FC<AddMapModalProps> = ({ isOpen, onClose, mapToEdit, o
                 </div>
               </div>
               
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                <p className="text-sm text-gray-600 mb-2">Last opp OCAD, PDF eller bildefiler</p>
+              {/* Show existing files when editing */}
+              {mapToEdit && mapToEdit.files && mapToEdit.files.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">Eksisterende filer:</h4>
+                  <div className="space-y-2">
+                    {mapToEdit.files.map((file: any, index: number) => (
+                      <div key={index} className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
+                        <div className="flex items-center">
+                          <File className="h-4 w-4 text-gray-500 mr-2" />
+                          <span className="text-sm text-gray-700">{file.original_filename || file.filename}</span>
+                          <span className="text-xs text-gray-500 ml-2">({file.file_size ? `${(file.file_size / 1024 / 1024).toFixed(1)} MB` : 'Ukjent størrelse'})</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (window.confirm(`Er du sikker på at du vil slette filen "${file.original_filename || file.filename}"?`)) {
+                              setIsDeletingFile(file.id);
+                              try {
+                                const response = await axios.delete(`${API_BASE_URL}/api/maps/files/${file.id}`);
+                                if (response.status === 200) {
+                                  // Remove file from local state
+                                  setMapToEdit(prev => ({
+                                    ...prev,
+                                    files: prev.files.filter((f: any) => f.id !== file.id)
+                                  }));
+                                  showSuccessToast('Filen ble slettet!');
+                                }
+                              } catch (error) {
+                                const errorMessage = handleApiError(error);
+                                showErrorToast(errorMessage);
+                              } finally {
+                                setIsDeletingFile(null);
+                              }
+                            }
+                          }}
+                          disabled={isDeletingFile === file.id}
+                          className={`text-red-500 hover:text-red-700 ${isDeletingFile === file.id ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          title={isDeletingFile === file.id ? 'Sletter...' : 'Slett fil'}
+                        >
+                          {isDeletingFile === file.id ? (
+                            <div className="animate-spin h-4 w-4 border-2 border-red-500 border-t-transparent rounded-full"></div>
+                          ) : (
+                            <X className="h-4 w-4" />
+                          )}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div 
+                className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+                  isDragOver 
+                    ? 'border-eok-500 bg-eok-50' 
+                    : 'border-gray-300 hover:border-gray-400'
+                }`}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+              >
+                <Upload className={`h-8 w-8 mx-auto mb-2 ${isDragOver ? 'text-eok-500' : 'text-gray-400'}`} />
+                <p className={`text-sm mb-2 ${isDragOver ? 'text-eok-700' : 'text-gray-600'}`}>
+                  {isDragOver 
+                    ? 'Slipp filene her...' 
+                    : mapToEdit 
+                      ? 'Dra filer hit eller klikk for å legge til nye filer' 
+                      : 'Dra filer hit eller klikk for å laste opp OCAD, PDF eller bildefiler'
+                  }
+                </p>
                 <input
                   type="file"
                   multiple
@@ -585,7 +795,7 @@ const AddMapModal: React.FC<AddMapModalProps> = ({ isOpen, onClose, mapToEdit, o
                   htmlFor="file-upload"
                   className="btn-primary cursor-pointer"
                 >
-                  Velg filer
+                  {mapToEdit ? 'Legg til filer' : 'Velg filer'}
                 </label>
               </div>
 

@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useMap } from '../contexts/MapContext';
 import axios from 'axios';
-import { ArrowLeft, Download, MapPin, Scale, Ruler, Calendar, User, FileText, Image, File } from 'lucide-react';
+import { ArrowLeft, Download, MapPin, Scale, Ruler, Calendar, User, FileText, Image, File, History } from 'lucide-react';
+import VersionHistory from '../components/VersionHistory';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
@@ -13,6 +14,7 @@ const MapDetailPage: React.FC = () => {
   const [map, setMap] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showVersionHistory, setShowVersionHistory] = useState(false);
 
   useEffect(() => {
     const loadMap = async () => {
@@ -148,6 +150,16 @@ const MapDetailPage: React.FC = () => {
                 <h1 className="text-xl font-bold text-gray-900">{map.name}</h1>
                 <p className="text-sm text-gray-500">Kartdetaljer</p>
               </div>
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setShowVersionHistory(true)}
+                className="flex items-center px-3 py-2 text-sm text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                <History className="h-4 w-4 mr-2" />
+                Versjonshistorikk
+              </button>
             </div>
           </div>
         </div>
@@ -303,6 +315,13 @@ const MapDetailPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Version History Modal */}
+      <VersionHistory
+        mapId={parseInt(id!)}
+        isOpen={showVersionHistory}
+        onClose={() => setShowVersionHistory(false)}
+      />
     </div>
   );
 };

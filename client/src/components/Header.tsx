@@ -97,7 +97,10 @@ const Header: React.FC = () => {
                   </div>
                   <div className="text-sm">
                     <div className="font-medium text-gray-900">
-                      {user?.firstName} {user?.lastName}
+                      {user?.firstName || user?.lastName 
+                        ? `${user?.firstName || ''} ${user?.lastName || ''}`.trim()
+                        : 'Bruker'
+                      }
                     </div>
                     <div className="text-gray-500">
                       {user?.publicMetadata?.isAdmin ? 'Administrator' : 'Bruker'}

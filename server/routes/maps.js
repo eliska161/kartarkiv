@@ -611,6 +611,95 @@ const previewUpload = multer({
   }
 });
 
+// Get version history for a map
+router.get('/:id/versions', authenticateUser, async (req, res) => {
+  try {
+    const mapId = parseInt(req.params.id);
+    
+    const result = await pool.query(`
+      SELECT 
+        vh.*,
+        u.username,
+        u.first_name,
+        u.last_name
+      FROM map_version_history vh
+      LEFT JOIN users u ON vh.changed_by = u.clerk_id
+      WHERE vh.map_id = $1
+      ORDER BY vh.changed_at DESC
+    `, [mapId]);
+    
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching version history:', error);
+    res.status(500).json({ message: 'Error fetching version history' });
+  }
+});
+
+// Create version history entry
+const createVersionHistory = async (mapId, versionNumber, changeDescription, changedBy, changes) => {
+  try {
+    await pool.query(`
+      INSERT INTO map_version_history (map_id, version_number, change_description, changed_by, changes)
+      VALUES ($1, $2, $3, $4, $5)
+    `, [mapId, versionNumber, changeDescription, changedBy, JSON.stringify(changes)]);
+  } catch (error) {
+    console.error('Error creating version history:', error);
+  }
+};
+
+// Delete file
+router.delete('/files/:fileId', authenticateUser, async (req, res) => {
+  try {
+    const fileId = parseInt(req.params.fileId);
+    
+    // Get file info from database
+    const fileResult = await pool.query('SELECT * FROM map_files WHERE id = $1', [fileId]);
+    if (fileResult.rows.length === 0) {
+      return res.status(404).json({ message: 'File not found' });
+    }
+    
+    const file = fileResult.rows[0];
+    const filePath = file.file_path;
+    
+    // Delete from Wasabi if it's a Wasabi file
+    if (filePath.startsWith('maps/')) {
+      if (process.env.WASABI_ACCESS_KEY && process.env.WASABI_SECRET_KEY) {
+        try {
+          const AWS = require('aws-sdk');
+          const wasabi = new AWS.S3({
+            endpoint: process.env.WASABI_ENDPOINT || 'https://s3.wasabisys.com',
+            accessKeyId: process.env.WASABI_ACCESS_KEY,
+            secretAccessKey: process.env.WASABI_SECRET_KEY,
+            region: process.env.WASABI_REGION || 'us-east-1',
+            s3ForcePathStyle: true,
+            signatureVersion: 'v4'
+          });
+          
+          const bucketName = process.env.WASABI_BUCKET || 'kartarkiv-storage';
+          const params = {
+            Bucket: bucketName,
+            Key: filePath
+          };
+          
+          await wasabi.deleteObject(params).promise();
+          console.log('✅ File deleted from Wasabi:', filePath);
+        } catch (error) {
+          console.error('Error deleting from Wasabi:', error);
+          // Continue with database deletion even if Wasabi deletion fails
+        }
+      }
+    }
+    
+    // Delete from database
+    await pool.query('DELETE FROM map_files WHERE id = $1', [fileId]);
+    
+    res.json({ message: 'File deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting file:', error);
+    res.status(500).json({ message: 'Error deleting file' });
+  }
+});
+
 // Download file with signed URL
 router.get('/files/:fileId/download', authenticateUser, async (req, res) => {
   try {
@@ -1142,6 +1231,26 @@ router.put('/:id', authenticateUser, requireAdmin, [
     if (result.rows.length === 0) {
       return res.status(404).json({ message: 'Map not found' });
     }
+
+    // Create version history entry
+    const changedBy = req.user.id;
+    const versionNumber = result.rows[0].current_version || '1.0';
+    const changeDescription = `Updated map: ${Object.keys(updates).join(', ')}`;
+    
+    await createVersionHistory(
+      mapId, 
+      versionNumber, 
+      changeDescription, 
+      changedBy, 
+      updates
+    );
+
+    // Update last_updated fields
+    await pool.query(`
+      UPDATE maps 
+      SET last_updated_by = $1, last_updated_at = CURRENT_TIMESTAMP 
+      WHERE id = $2
+    `, [changedBy, mapId]);
 
     res.json({
       message: 'Map updated successfully',

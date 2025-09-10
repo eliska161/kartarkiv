@@ -13,6 +13,8 @@ const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'maps' | 'users' | 'profile' | 'stats' | 'settings'>('maps');
   const [showAddMapModal, setShowAddMapModal] = useState(false);
   const [editingMap, setEditingMap] = useState<any>(null);
+  const [selectedMaps, setSelectedMaps] = useState<Set<number>>(new Set());
+  const [bulkActionMode, setBulkActionMode] = useState(false);
 
   const stats = {
     totalMaps: maps.length,
@@ -45,6 +47,44 @@ const AdminDashboard: React.FC = () => {
       } catch (error) {
         console.error('Error deleting map:', error);
         alert('Kunne ikke slette kartet. Prøv igjen.');
+      }
+    }
+  };
+
+  const handleSelectMap = (mapId: number) => {
+    const newSelected = new Set(selectedMaps);
+    if (newSelected.has(mapId)) {
+      newSelected.delete(mapId);
+    } else {
+      newSelected.add(mapId);
+    }
+    setSelectedMaps(newSelected);
+  };
+
+  const handleSelectAll = () => {
+    if (selectedMaps.size === maps.length) {
+      setSelectedMaps(new Set());
+    } else {
+      setSelectedMaps(new Set(maps.map(map => map.id)));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedMaps.size === 0) return;
+    
+    const mapNames = maps.filter(map => selectedMaps.has(map.id)).map(map => map.name);
+    if (window.confirm(`Er du sikker på at du vil slette ${selectedMaps.size} kart?\n\n${mapNames.join('\n')}\n\nDette kan ikke angres.`)) {
+      try {
+        for (const mapId of selectedMaps) {
+          await deleteMap(mapId);
+        }
+        setSelectedMaps(new Set());
+        setBulkActionMode(false);
+        fetchMaps(); // Refresh the list
+        alert(`${selectedMaps.size} kart ble slettet!`);
+      } catch (error) {
+        console.error('Error deleting maps:', error);
+        alert('Kunne ikke slette alle kartene. Prøv igjen.');
       }
     }
   };
@@ -149,10 +189,41 @@ const AdminDashboard: React.FC = () => {
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-lg font-semibold text-gray-900">Kartoversikt</h2>
-                <div className="text-sm text-gray-500">
-                  {maps.length} kart totalt
+                <div className="flex items-center space-x-4">
+                  <div className="text-sm text-gray-500">
+                    {maps.length} kart totalt
+                  </div>
+                  <button
+                    onClick={() => setBulkActionMode(!bulkActionMode)}
+                    className={`px-3 py-1 text-sm rounded-lg ${
+                      bulkActionMode 
+                        ? 'bg-eok-100 text-eok-700' 
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    {bulkActionMode ? 'Avbryt' : 'Velg flere'}
+                  </button>
                 </div>
               </div>
+
+              {/* Bulk actions */}
+              {bulkActionMode && selectedMaps.size > 0 && (
+                <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-blue-700">
+                      {selectedMaps.size} kart valgt
+                    </span>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={handleBulkDelete}
+                        className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700"
+                      >
+                        Slett valgte
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
               
               {loading ? (
                 <div className="flex justify-center py-8">
@@ -176,6 +247,16 @@ const AdminDashboard: React.FC = () => {
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
+                        {bulkActionMode && (
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <input
+                              type="checkbox"
+                              checked={selectedMaps.size === maps.length && maps.length > 0}
+                              onChange={handleSelectAll}
+                              className="h-4 w-4 text-eok-600 focus:ring-eok-500 border-gray-300 rounded"
+                            />
+                          </th>
+                        )}
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Kart
                         </th>
@@ -188,14 +269,26 @@ const AdminDashboard: React.FC = () => {
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Opprettet
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Handlinger
-                        </th>
+                        {!bulkActionMode && (
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Handlinger
+                          </th>
+                        )}
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                       {maps.map((map) => (
                         <tr key={map.id} className="hover:bg-gray-50">
+                          {bulkActionMode && (
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <input
+                                type="checkbox"
+                                checked={selectedMaps.has(map.id)}
+                                onChange={() => handleSelectMap(map.id)}
+                                className="h-4 w-4 text-eok-600 focus:ring-eok-500 border-gray-300 rounded"
+                              />
+                            </td>
+                          )}
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div>
                               <div className="text-sm font-medium text-gray-900">{map.name}</div>
@@ -215,24 +308,26 @@ const AdminDashboard: React.FC = () => {
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {map.created_at ? new Date(map.created_at).toLocaleDateString('no-NO') : '-'}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <div className="flex space-x-2">
-                              <button 
-                                onClick={() => handleEditMap(map)}
-                                className="text-eok-600 hover:text-eok-900 flex items-center"
-                              >
-                                <Edit className="h-4 w-4 mr-1" />
-                                Rediger
-                              </button>
-                              <button 
-                                onClick={() => handleDeleteMap(map.id, map.name)}
-                                className="text-red-600 hover:text-red-900 flex items-center"
-                              >
-                                <Trash2 className="h-4 w-4 mr-1" />
-                                Slett
-                              </button>
-                            </div>
-                          </td>
+                          {!bulkActionMode && (
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                              <div className="flex space-x-2">
+                                <button 
+                                  onClick={() => handleEditMap(map)}
+                                  className="text-eok-600 hover:text-eok-900 flex items-center"
+                                >
+                                  <Edit className="h-4 w-4 mr-1" />
+                                  Rediger
+                                </button>
+                                <button 
+                                  onClick={() => handleDeleteMap(map.id, map.name)}
+                                  className="text-red-600 hover:text-red-900 flex items-center"
+                                >
+                                  <Trash2 className="h-4 w-4 mr-1" />
+                                  Slett
+                                </button>
+                              </div>
+                            </td>
+                          )}
                         </tr>
                       ))}
                     </tbody>
