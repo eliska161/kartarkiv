@@ -21,7 +21,8 @@ const corsOptions = {
   origin: [
     'http://localhost:3000',
     'https://kartarkiv.netlify.app',
-    'https://kartarkiv-production.up.railway.app'
+    'https://kartarkiv-production.up.railway.app',
+    'https://kart.eddypartiet.com'
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
