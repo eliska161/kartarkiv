@@ -22,8 +22,8 @@ const uploadToWasabi = async (filePath, key, contentType) => {
       Bucket: bucketName,
       Key: key,
       Body: fileContent,
-      ContentType: contentType,
-      ACL: 'public-read'
+      ContentType: contentType
+      // Removed ACL: 'public-read' - using signed URLs instead
     };
     
     const result = await wasabi.upload(params).promise();
@@ -56,10 +56,28 @@ const getWasabiUrl = (key) => {
   return `${process.env.WASABI_ENDPOINT}/${bucketName}/${key}`;
 };
 
+// Generate signed URL for file download
+const getSignedUrl = (key, expiresIn = 3600) => {
+  try {
+    const params = {
+      Bucket: bucketName,
+      Key: key,
+      Expires: expiresIn
+    };
+    
+    const signedUrl = wasabi.getSignedUrl('getObject', params);
+    return signedUrl;
+  } catch (error) {
+    console.error('Error generating signed URL:', error);
+    throw error;
+  }
+};
+
 module.exports = {
   uploadToWasabi,
   deleteFromWasabi,
   getWasabiUrl,
+  getSignedUrl,
   wasabi,
   bucketName
 };

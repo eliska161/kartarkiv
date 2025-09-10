@@ -48,17 +48,9 @@ const MapDetailPage: React.FC = () => {
         button.disabled = true;
       }
 
-      // Check if file_path is a Wasabi URL or local filename
-      const filePath = file.file_path;
-      let downloadUrl;
-      
-      if (filePath.startsWith('http')) {
-        // It's a Wasabi URL, use it directly
-        downloadUrl = filePath;
-      } else {
-        // It's a local filename, construct the URL
-        downloadUrl = `${API_BASE_URL}/uploads/maps/${filePath}`;
-      }
+      // Get download URL from server (handles both Wasabi and local files)
+      const downloadResponse = await axios.get(`${API_BASE_URL}/api/maps/files/${file.id}/download`);
+      const downloadUrl = downloadResponse.data.downloadUrl;
       
       // Use axios to download the file
       const response = await axios.get(downloadUrl, {

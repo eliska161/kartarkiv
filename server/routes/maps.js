@@ -5,7 +5,7 @@ const fs = require('fs').promises;
 const { body, validationResult } = require('express-validator');
 const pool = require('../database/connection');
 const { authenticateUser, requireAdmin } = require('../middleware/auth-clerk-fixed');
-const { uploadToWasabi, getWasabiUrl } = require('../config/wasabi');
+const { uploadToWasabi, getWasabiUrl, getSignedUrl } = require('../config/wasabi');
 // const pdf = require('pdf-poppler'); // Removed - not supported on Linux
 const { readOcad } = require('ocad2geojson');
 const toGeoJSON = require('@mapbox/togeojson');
@@ -611,6 +611,44 @@ const previewUpload = multer({
   }
 });
 
+// Download file with signed URL
+router.get('/files/:fileId/download', authenticateUser, async (req, res) => {
+  try {
+    const fileId = parseInt(req.params.fileId);
+    
+    // Get file info from database
+    const fileResult = await pool.query('SELECT * FROM map_files WHERE id = $1', [fileId]);
+    if (fileResult.rows.length === 0) {
+      return res.status(404).json({ message: 'File not found' });
+    }
+    
+    const file = fileResult.rows[0];
+    const filePath = file.file_path;
+    
+    // Check if it's a Wasabi key or local file
+    if (filePath.startsWith('maps/')) {
+      // It's a Wasabi key, generate signed URL
+      if (process.env.WASABI_ACCESS_KEY && process.env.WASABI_SECRET_KEY) {
+        try {
+          const signedUrl = getSignedUrl(filePath, 3600); // 1 hour expiry
+          return res.json({ downloadUrl: signedUrl });
+        } catch (error) {
+          console.error('Error generating signed URL:', error);
+          return res.status(500).json({ message: 'Error generating download URL' });
+        }
+      } else {
+        return res.status(500).json({ message: 'Wasabi not configured' });
+      }
+    } else {
+      // It's a local file, redirect to static file
+      return res.redirect(`/uploads/maps/${filePath}`);
+    }
+  } catch (error) {
+    console.error('Error in file download:', error);
+    res.status(500).json({ message: 'Error processing download request' });
+  }
+});
+
 // Get all maps
 router.get('/', async (req, res) => {
   try {
@@ -894,9 +932,9 @@ router.post('/:id/files', authenticateUser, upload.array('files', 10), async (re
       if (process.env.WASABI_ACCESS_KEY && process.env.WASABI_SECRET_KEY) {
         try {
           const wasabiKey = `maps/${mapId}/${fileName}`;
-          const wasabiUrl = await uploadToWasabi(file.path, wasabiKey, file.mimetype);
-          fileUrl = wasabiUrl;
-          console.log('✅ File uploaded to Wasabi:', wasabiUrl);
+          await uploadToWasabi(file.path, wasabiKey, file.mimetype);
+          fileUrl = wasabiKey; // Store the key, not the URL
+          console.log('✅ File uploaded to Wasabi with key:', wasabiKey);
         } catch (wasabiError) {
           console.error('❌ Wasabi upload failed, using local storage:', wasabiError.message);
           // Fallback to local storage
