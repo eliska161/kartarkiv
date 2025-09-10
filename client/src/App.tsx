@@ -28,7 +28,6 @@ function App() {
           not_allowed_access: 'Din e-postadresse har ikke tilgang til denne applikasjonen. Kontakt administrator for hjelp.',
           form_password_pwned: 'Dette passordet er kompromittert. Vennligst velg et annet passord.',
           form_username_invalid_length: 'Brukernavnet må være mellom 3 og 30 tegn.',
-          form_email_address_invalid: 'Vennligst oppgi en gyldig e-postadresse.',
           form_username_exists: 'Dette brukernavnet er allerede i bruk.',
           form_email_address_exists: 'Denne e-postadressen er allerede registrert.',
           form_password_validation_failed: 'Passordet oppfyller ikke kravene.',
