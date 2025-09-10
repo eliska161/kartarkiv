@@ -867,8 +867,8 @@ router.post('/:id/preview', authenticateUser, requireAdmin, previewUpload.single
   }
 });
 
-// Upload files for a map (Admin only)
-router.post('/:id/files', authenticateUser, requireAdmin, upload.array('files', 10), async (req, res) => {
+// Upload files for a map (All authenticated users)
+router.post('/:id/files', authenticateUser, upload.array('files', 10), async (req, res) => {
   try {
     const mapId = parseInt(req.params.id);
     const { version, isPrimary } = req.body;
