@@ -676,20 +676,17 @@ router.get('/:id', async (req, res) => {
 
     // Get map files
     const filesResult = await pool.query(
-      'SELECT * FROM map_files WHERE map_id = $1 ORDER BY is_primary DESC, uploaded_at DESC',
+      'SELECT * FROM map_files WHERE map_id = $1 ORDER BY created_at DESC',
       [mapId]
     );
 
-    // Get map metadata
-    const metadataResult = await pool.query(
-      'SELECT key, value FROM map_metadata WHERE map_id = $1',
-      [mapId]
-    );
-
-    const metadata = {};
-    metadataResult.rows.forEach(row => {
-      metadata[row.key] = row.value;
-    });
+    // Map metadata is stored in the maps table itself (area_bounds, center_lat, center_lng, etc.)
+    const metadata = {
+      area_bounds: map.area_bounds,
+      center_lat: map.center_lat,
+      center_lng: map.center_lng,
+      zoom_level: map.zoom_level
+    };
 
     // Get preview image
     const previewResult = await pool.query(
