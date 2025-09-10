@@ -55,6 +55,7 @@ const MapDetailPage: React.FC = () => {
       // Use direct window.open for signed URLs to avoid CORS/header issues
       if (downloadUrl.startsWith('https://s3.')) {
         // For Wasabi signed URLs, open in new tab
+        console.log('Opening Wasabi URL:', downloadUrl);
         window.open(downloadUrl, '_blank');
         alert(`Filen "${file.original_filename || file.filename}" åpnes i ny fane!`);
       } else {
