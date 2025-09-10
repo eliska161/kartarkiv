@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useMap } from '../contexts/MapContext';
 import axios from 'axios';
 import { ArrowLeft, Download, MapPin, Scale, Ruler, Calendar, User, FileText, Image, File, History, Maximize2 } from 'lucide-react';
+import { MapContainer, TileLayer, Polygon } from 'react-leaflet';
 import VersionHistory from '../components/VersionHistory';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
