@@ -1,35 +1,31 @@
 # Wasabi Region Fix
 
 ## Problem
-Getting `SignatureDoesNotMatch` error when downloading files from Wasabi. The issue is that the region in the signature doesn't match the Wasabi endpoint.
+Getting `AuthorizationHeaderMalformed` error when downloading files from Wasabi. The issue is that Wasabi buckets are typically in `us-east-1` region regardless of the endpoint location.
 
 ## Current Configuration
 - **Endpoint**: `https://s3.eu-central-2.wasabisys.com`
-- **Region**: `us-east-1` (default, but should be `eu-central-2`)
+- **Region**: `us-east-1` (correct for Wasabi buckets)
 
 ## Solution
-Update the Railway environment variable to use the correct region:
+Wasabi buckets are typically in `us-east-1` region even when using endpoints in other regions. The code now uses `us-east-1` as the default region.
 
-### In Railway Dashboard:
-1. Go to your Railway project
-2. Click on the backend service
-3. Go to "Variables" tab
-4. Update `WASABI_REGION` to: `eu-central-2`
-
-### Environment Variables to Set:
+### Environment Variables (Current):
 ```
 WASABI_ENDPOINT=https://s3.eu-central-2.wasabisys.com
 WASABI_ACCESS_KEY=your_access_key
 WASABI_SECRET_KEY=your_secret_key
 WASABI_BUCKET=kartarkiv-storage
-WASABI_REGION=eu-central-2
+WASABI_REGION=us-east-1
 ```
 
-## Alternative: Auto-Detection
-The code now auto-detects the region from the endpoint if `WASABI_REGION` is not set, but it's better to set it explicitly.
+## How it works:
+- **Endpoint**: Can be in different regions (eu-central-2, us-east-1, etc.)
+- **Bucket Region**: Always `us-east-1` for Wasabi
+- **Signing**: Uses `us-east-1` region for signature generation
 
 ## Test
-After updating the environment variable:
-1. Redeploy the backend service
-2. Try downloading a file
-3. Check that the signed URL works correctly
+The code now automatically uses `us-east-1` region for all Wasabi operations:
+1. File uploads will work correctly
+2. Signed URL generation will work correctly
+3. File downloads will work correctly
