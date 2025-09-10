@@ -48,11 +48,20 @@ const MapDetailPage: React.FC = () => {
         button.disabled = true;
       }
 
-      // file.file_path now contains just the filename
-      const fileName = file.file_path;
+      // Check if file_path is a Wasabi URL or local filename
+      const filePath = file.file_path;
+      let downloadUrl;
       
-      // Use axios to download the file from the maps subdirectory
-      const response = await axios.get(`${API_BASE_URL}/uploads/maps/${fileName}`, {
+      if (filePath.startsWith('http')) {
+        // It's a Wasabi URL, use it directly
+        downloadUrl = filePath;
+      } else {
+        // It's a local filename, construct the URL
+        downloadUrl = `${API_BASE_URL}/uploads/maps/${filePath}`;
+      }
+      
+      // Use axios to download the file
+      const response = await axios.get(downloadUrl, {
         responseType: 'blob',
       });
       
@@ -61,14 +70,14 @@ const MapDetailPage: React.FC = () => {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = file.file_name;
+      link.download = file.original_filename || file.filename;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
 
       // Show success message
-      alert(`Filen "${file.file_name}" ble lastet ned!`);
+      alert(`Filen "${file.original_filename || file.filename}" ble lastet ned!`);
     } catch (error) {
       console.error('Download error:', error);
       alert('Kunne ikke laste ned filen. Sjekk at filen eksisterer og prøv igjen.');

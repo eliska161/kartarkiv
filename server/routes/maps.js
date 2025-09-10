@@ -5,6 +5,7 @@ const fs = require('fs').promises;
 const { body, validationResult } = require('express-validator');
 const pool = require('../database/connection');
 const { authenticateUser, requireAdmin } = require('../middleware/auth-clerk-fixed');
+const { uploadToWasabi, getWasabiUrl } = require('../config/wasabi');
 // const pdf = require('pdf-poppler'); // Removed - not supported on Linux
 const { readOcad } = require('ocad2geojson');
 const toGeoJSON = require('@mapbox/togeojson');
@@ -887,6 +888,23 @@ router.post('/:id/files', authenticateUser, upload.array('files', 10), async (re
       // Store only the filename, not the full path
       const fileName = path.basename(file.path);
       
+      // Try to upload to Wasabi if configured, otherwise use local path
+      let fileUrl = fileName; // Default to local filename
+      
+      if (process.env.WASABI_ACCESS_KEY && process.env.WASABI_SECRET_KEY) {
+        try {
+          const wasabiKey = `maps/${mapId}/${fileName}`;
+          const wasabiUrl = await uploadToWasabi(file.path, wasabiKey, file.mimetype);
+          fileUrl = wasabiUrl;
+          console.log('✅ File uploaded to Wasabi:', wasabiUrl);
+        } catch (wasabiError) {
+          console.error('❌ Wasabi upload failed, using local storage:', wasabiError.message);
+          // Fallback to local storage
+        }
+      } else {
+        console.log('⚠️ Wasabi not configured, using local storage');
+      }
+      
       const result = await pool.query(`
         INSERT INTO map_files (
           map_id, filename, original_filename, file_path, file_type, file_size, mime_type, created_by
@@ -896,7 +914,7 @@ router.post('/:id/files', authenticateUser, upload.array('files', 10), async (re
         mapId,
         fileName, // filename - stored file name
         file.originalname, // original_filename - user's original file name
-        fileName, // file_path - same as filename for now
+        fileUrl, // file_path - Wasabi URL or local filename
         fileType,
         file.size,
         file.mimetype || 'application/octet-stream', // mime_type
