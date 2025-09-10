@@ -3,6 +3,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs').promises;
 const { body, validationResult } = require('express-validator');
+const rateLimit = require('express-rate-limit');
 const pool = require('../database/connection');
 const { authenticateUser, requireAdmin } = require('../middleware/auth-clerk-fixed');
 const { uploadToWasabi, getWasabiUrl, getSignedUrl } = require('../config/wasabi');
@@ -13,6 +14,18 @@ const { DOMParser } = require('@xmldom/xmldom');
 const AdmZip = require('adm-zip');
 
 const router = express.Router();
+
+// Upload rate limiting
+const uploadLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 5, // limit each IP to 5 uploads per minute
+  message: {
+    error: 'For mange filopplastinger, vent litt før du prøver igjen.',
+    retryAfter: '1 minutt'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 // Function to generate preview from PDF - DISABLED (pdf-poppler not supported on Linux)
 const generatePreviewFromPDF = async (pdfPath, outputDir) => {
@@ -1038,7 +1051,7 @@ router.post('/:id/preview', authenticateUser, requireAdmin, previewUpload.single
 });
 
 // Upload files for a map (All authenticated users)
-router.post('/:id/files', authenticateUser, upload.array('files', 10), async (req, res) => {
+router.post('/:id/files', authenticateUser, uploadLimiter, upload.array('files', 10), async (req, res) => {
   try {
     const mapId = parseInt(req.params.id);
     const { version, isPrimary } = req.body;

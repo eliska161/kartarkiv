@@ -5,9 +5,10 @@ require('dotenv').config();
 const connectionConfig = process.env.DATABASE_URL ? {
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false },
-  max: 3, // Reduce pool size for Supabase
+  max: 5, // Optimized pool size for Supabase
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 5000,
+  acquireTimeoutMillis: 10000,
   keepAlive: true,
   keepAliveInitialDelayMillis: 0,
   // Additional Supabase-specific settings
@@ -16,9 +17,10 @@ const connectionConfig = process.env.DATABASE_URL ? {
 } : {
   connectionString: `postgresql://${process.env.DB_USER || 'postgres'}:${process.env.DB_PASSWORD || 'password'}@${process.env.DB_HOST || 'localhost'}:${process.env.DB_PORT || 5432}/${process.env.DB_NAME || 'kartarkiv'}`,
   ssl: false,
-  max: 10,
-  idleTimeoutMillis: 15000,
+  max: 8,
+  idleTimeoutMillis: 20000,
   connectionTimeoutMillis: 5000,
+  acquireTimeoutMillis: 10000,
   host: process.env.DB_HOST || 'localhost',
   port: process.env.DB_PORT || 5432,
   keepAlive: true,

@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const path = require('path');
 require('dotenv').config();
 
@@ -16,13 +17,53 @@ const PORT = process.env.PORT || 5000;
 // Middleware
 app.use(helmet());
 
+// Rate limiting configuration
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: {
+    error: 'For mange forespørsler fra denne IP-adressen, prøv igjen senere.',
+    retryAfter: '15 minutter'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const strictLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20, // limit each IP to 20 requests per windowMs
+  message: {
+    error: 'For mange forespørsler fra denne IP-adressen, prøv igjen senere.',
+    retryAfter: '15 minutter'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const uploadLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 5, // limit each IP to 5 uploads per minute
+  message: {
+    error: 'For mange filopplastinger, vent litt før du prøver igjen.',
+    retryAfter: '1 minutt'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Apply rate limiting
+app.use('/api/', generalLimiter);
+app.use('/api/maps', strictLimiter);
+
 // CORS configuration
 const corsOptions = {
   origin: [
     'http://localhost:3000',
     'https://kartarkiv.netlify.app',
     'https://kartarkiv-production.up.railway.app',
-    'https://kart.eddypartiet.com'
+    'https://kart.eddypartiet.com',
+    'https://kartarkiv-dkq6bcpk5-eliska161s-projects.vercel.app',
+    process.env.FRONTEND_URL || 'http://localhost:3000'
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
@@ -107,13 +148,39 @@ process.on('unhandledRejection', (reason, promise) => {
   process.exit(1);
 });
 
+// Memory monitoring
+setInterval(() => {
+  const used = process.memoryUsage();
+  const usedMB = Math.round(used.heapUsed / 1024 / 1024);
+  const totalMB = Math.round(used.heapTotal / 1024 / 1024);
+  
+  if (usedMB > 200) { // Warn if using more than 200MB
+    console.warn(`⚠️ High memory usage: ${usedMB}MB / ${totalMB}MB`);
+  }
+  
+  // Log memory usage every 5 minutes
+  if (Date.now() % 300000 < 1000) {
+    console.log(`📊 Memory usage: ${usedMB}MB / ${totalMB}MB`);
+  }
+}, 30000); // Check every 30 seconds
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('💥 ERROR MIDDLEWARE:', err.stack);
-  res.status(500).json({ 
-    message: 'Something went wrong!',
-    error: process.env.NODE_ENV === 'development' ? err.message : {}
-  });
+  
+  // Don't leak sensitive information in production
+  if (process.env.NODE_ENV === 'production') {
+    res.status(500).json({ 
+      message: 'En intern feil oppstod. Prøv igjen senere.',
+      error: 'Internal Server Error'
+    });
+  } else {
+    res.status(500).json({ 
+      message: 'En feil oppstod: ' + err.message,
+      error: err.message,
+      stack: err.stack
+    });
+  }
 });
 
 // 404 handler
