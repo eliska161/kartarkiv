@@ -627,21 +627,60 @@ router.get('/files/:fileId/download', authenticateUser, async (req, res) => {
     
     // Check if it's a Wasabi key, full Wasabi URL, or local file
     if (filePath.startsWith('maps/')) {
-      // It's a Wasabi key, generate signed URL
+      // It's a Wasabi key, download via server-side proxy
       if (process.env.WASABI_ACCESS_KEY && process.env.WASABI_SECRET_KEY) {
         try {
-          const signedUrl = getSignedUrl(filePath, 3600); // 1 hour expiry
-          return res.json({ downloadUrl: signedUrl });
+          const AWS = require('aws-sdk');
+          const wasabi = new AWS.S3({
+            endpoint: process.env.WASABI_ENDPOINT || 'https://s3.wasabisys.com',
+            accessKeyId: process.env.WASABI_ACCESS_KEY,
+            secretAccessKey: process.env.WASABI_SECRET_KEY,
+            region: process.env.WASABI_REGION || 'us-east-1',
+            s3ForcePathStyle: true,
+            signatureVersion: 'v4'
+          });
+          
+          const bucketName = process.env.WASABI_BUCKET || 'kartarkiv-storage';
+          const params = {
+            Bucket: bucketName,
+            Key: filePath
+          };
+          
+          // Get the file from Wasabi
+          const data = await wasabi.getObject(params).promise();
+          
+          // Set appropriate headers
+          res.setHeader('Content-Type', file.mime_type || 'application/octet-stream');
+          res.setHeader('Content-Disposition', `attachment; filename="${file.original_filename || file.filename}"`);
+          res.setHeader('Content-Length', data.ContentLength);
+          
+          // Send the file
+          res.send(data.Body);
+          
         } catch (error) {
-          console.error('Error generating signed URL:', error);
-          return res.status(500).json({ message: 'Error generating download URL' });
+          console.error('Error downloading from Wasabi:', error);
+          return res.status(500).json({ message: 'Error downloading file from Wasabi' });
         }
       } else {
         return res.status(500).json({ message: 'Wasabi not configured' });
       }
     } else if (filePath.startsWith('https://')) {
-      // It's a full Wasabi URL (old format), return it directly
-      return res.json({ downloadUrl: filePath });
+      // It's a full Wasabi URL (old format), download via server-side proxy
+      try {
+        const axios = require('axios');
+        const response = await axios.get(filePath, { responseType: 'stream' });
+        
+        // Set appropriate headers
+        res.setHeader('Content-Type', file.mime_type || 'application/octet-stream');
+        res.setHeader('Content-Disposition', `attachment; filename="${file.original_filename || file.filename}"`);
+        
+        // Pipe the response to the client
+        response.data.pipe(res);
+        
+      } catch (error) {
+        console.error('Error downloading from Wasabi URL:', error);
+        return res.status(500).json({ message: 'Error downloading file from Wasabi URL' });
+      }
     } else {
       // It's a local file, redirect to static file
       return res.redirect(`/uploads/maps/${filePath}`);
