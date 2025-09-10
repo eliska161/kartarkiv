@@ -10,23 +10,11 @@ const wasabi = new AWS.S3({
   signatureVersion: 'v4'
 });
 
-// Auto-detect region from endpoint if not specified
-if (process.env.WASABI_ENDPOINT && !process.env.WASABI_REGION) {
-  const endpoint = process.env.WASABI_ENDPOINT;
-  if (endpoint.includes('eu-central-2')) {
-    wasabi.config.region = 'eu-central-2';
-  } else if (endpoint.includes('eu-central-1')) {
-    wasabi.config.region = 'eu-central-1';
-  } else if (endpoint.includes('us-east-1')) {
-    wasabi.config.region = 'us-east-1';
-  } else if (endpoint.includes('us-west-1')) {
-    wasabi.config.region = 'us-west-1';
-  } else {
-    // Default fallback
-    wasabi.config.region = 'us-east-1';
-  }
-  console.log('🔧 Auto-detected Wasabi region:', wasabi.config.region, 'for endpoint:', endpoint);
-}
+// Log current configuration
+console.log('🔧 Wasabi Configuration:');
+console.log('  - Endpoint:', process.env.WASABI_ENDPOINT || 'https://s3.wasabisys.com');
+console.log('  - Region:', process.env.WASABI_REGION || 'us-east-1');
+console.log('  - Bucket:', process.env.WASABI_BUCKET || 'kartarkiv-storage');
 
 const bucketName = process.env.WASABI_BUCKET || 'kartarkiv-storage';
 
