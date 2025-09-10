@@ -52,27 +52,31 @@ const MapDetailPage: React.FC = () => {
       const downloadResponse = await axios.get(`${API_BASE_URL}/api/maps/files/${file.id}/download`);
       const downloadUrl = downloadResponse.data.downloadUrl;
       
-      // Use axios to download the file (without Authorization header for signed URLs)
-      const response = await axios.get(downloadUrl, {
-        responseType: 'blob',
-        headers: {
-          'Authorization': undefined // Remove Authorization header for signed URLs
-        }
-      });
-      
-      // Create blob URL and download
-      const blob = new Blob([response.data]);
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = file.original_filename || file.filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
+      // Use direct window.open for signed URLs to avoid CORS/header issues
+      if (downloadUrl.startsWith('https://s3.')) {
+        // For Wasabi signed URLs, open in new tab
+        window.open(downloadUrl, '_blank');
+        alert(`Filen "${file.original_filename || file.filename}" åpnes i ny fane!`);
+      } else {
+        // For local files, use axios
+        const response = await axios.get(downloadUrl, {
+          responseType: 'blob',
+        });
+        
+        // Create blob URL and download
+        const blob = new Blob([response.data]);
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = file.original_filename || file.filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
 
-      // Show success message
-      alert(`Filen "${file.original_filename || file.filename}" ble lastet ned!`);
+        // Show success message
+        alert(`Filen "${file.original_filename || file.filename}" ble lastet ned!`);
+      }
     } catch (error) {
       console.error('Download error:', error);
       alert('Kunne ikke laste ned filen. Sjekk at filen eksisterer og prøv igjen.');
