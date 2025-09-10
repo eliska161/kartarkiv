@@ -86,23 +86,61 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Add axios interceptor to handle token expired errors
   useEffect(() => {
+    let isRefreshing = false;
+    let failedQueue: any[] = [];
+
+    const processQueue = (error: any, token: string | null = null) => {
+      failedQueue.forEach(prom => {
+        if (error) {
+          prom.reject(error);
+        } else {
+          prom.resolve(token);
+        }
+      });
+      
+      failedQueue = [];
+    };
+
     const interceptor = axios.interceptors.response.use(
       (response) => response,
       async (error) => {
-        if (error.response?.status === 401 && error.response?.data?.code === 'TOKEN_EXPIRED') {
-          console.log('🔄 Token expired, refreshing...');
+        const originalRequest = error.config;
+
+        if (error.response?.status === 401 && !originalRequest._retry) {
+          if (isRefreshing) {
+            return new Promise((resolve, reject) => {
+              failedQueue.push({ resolve, reject });
+            }).then(token => {
+              originalRequest.headers['Authorization'] = 'Bearer ' + token;
+              return axios(originalRequest);
+            }).catch(err => {
+              return Promise.reject(err);
+            });
+          }
+
+          originalRequest._retry = true;
+          isRefreshing = true;
+
           try {
+            console.log('🔄 Token expired, refreshing...');
             const newToken = await getToken();
             if (newToken) {
               setToken(newToken);
               axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
-              // Retry the original request
-              return axios.request(error.config);
+              originalRequest.headers['Authorization'] = 'Bearer ' + newToken;
+              processQueue(null, newToken);
+              return axios(originalRequest);
+            } else {
+              throw new Error('No token received');
             }
           } catch (refreshError) {
             console.error('Failed to refresh token:', refreshError);
-            // Redirect to login or show error
-            window.location.reload();
+            processQueue(refreshError, null);
+            // Redirect to login
+            window.location.href = '/login';
+            return Promise.reject(refreshError);
+          } finally {
+            isRefreshing = false;
           }
         }
         return Promise.reject(error);

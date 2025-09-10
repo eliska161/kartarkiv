@@ -625,7 +625,7 @@ router.get('/files/:fileId/download', authenticateUser, async (req, res) => {
     const file = fileResult.rows[0];
     const filePath = file.file_path;
     
-    // Check if it's a Wasabi key or local file
+    // Check if it's a Wasabi key, full Wasabi URL, or local file
     if (filePath.startsWith('maps/')) {
       // It's a Wasabi key, generate signed URL
       if (process.env.WASABI_ACCESS_KEY && process.env.WASABI_SECRET_KEY) {
@@ -639,6 +639,9 @@ router.get('/files/:fileId/download', authenticateUser, async (req, res) => {
       } else {
         return res.status(500).json({ message: 'Wasabi not configured' });
       }
+    } else if (filePath.startsWith('https://')) {
+      // It's a full Wasabi URL (old format), return it directly
+      return res.json({ downloadUrl: filePath });
     } else {
       // It's a local file, redirect to static file
       return res.redirect(`/uploads/maps/${filePath}`);
