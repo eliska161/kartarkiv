@@ -10,6 +10,21 @@ const wasabi = new AWS.S3({
   signatureVersion: 'v4'
 });
 
+// Auto-detect region from endpoint if not specified
+if (process.env.WASABI_ENDPOINT && !process.env.WASABI_REGION) {
+  const endpoint = process.env.WASABI_ENDPOINT;
+  if (endpoint.includes('eu-central-2')) {
+    wasabi.config.region = 'eu-central-2';
+  } else if (endpoint.includes('eu-central-1')) {
+    wasabi.config.region = 'eu-central-1';
+  } else if (endpoint.includes('us-east-1')) {
+    wasabi.config.region = 'us-east-1';
+  } else if (endpoint.includes('us-west-1')) {
+    wasabi.config.region = 'us-west-1';
+  }
+  console.log('🔧 Auto-detected Wasabi region:', wasabi.config.region);
+}
+
 const bucketName = process.env.WASABI_BUCKET || 'kartarkiv-storage';
 
 // Upload file to Wasabi
@@ -65,10 +80,18 @@ const getSignedUrl = (key, expiresIn = 3600) => {
       Expires: expiresIn
     };
     
+    console.log('🔧 Generating signed URL with params:', {
+      bucket: bucketName,
+      key: key,
+      region: wasabi.config.region,
+      endpoint: wasabi.config.endpoint
+    });
+    
     const signedUrl = wasabi.getSignedUrl('getObject', params);
+    console.log('✅ Generated signed URL:', signedUrl);
     return signedUrl;
   } catch (error) {
-    console.error('Error generating signed URL:', error);
+    console.error('❌ Error generating signed URL:', error);
     throw error;
   }
 };
