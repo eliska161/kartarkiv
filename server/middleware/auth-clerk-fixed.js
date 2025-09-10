@@ -1,4 +1,4 @@
-const { verifyToken } = require('@clerk/backend');
+const { verifyToken, createClerkClient } = require('@clerk/backend');
 
 const authenticateUser = async (req, res, next) => {
   try {
@@ -28,39 +28,58 @@ const authenticateUser = async (req, res, next) => {
       console.log('🔐 CLERK AUTH - Full payload:', JSON.stringify(payload, null, 2));
       
       // Get user data from Clerk API
-      const clerkClient = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY });
-      const clerkUser = await clerkClient.users.getUser(payload.sub);
-      
-      console.log('🔐 CLERK AUTH - Clerk user data:', {
-        id: clerkUser.id,
-        emailAddresses: clerkUser.emailAddresses,
-        username: clerkUser.username,
-        firstName: clerkUser.firstName,
-        lastName: clerkUser.lastName,
-        publicMetadata: clerkUser.publicMetadata
-      });
-      
-      // Extract user data from Clerk user object
-      const email = clerkUser.emailAddresses?.[0]?.emailAddress || 'user@example.com';
-      const username = clerkUser.username || 
-                      clerkUser.firstName || 
-                      email?.split('@')[0] || 
-                      'Unknown';
-      const firstName = clerkUser.firstName || null;
-      const lastName = clerkUser.lastName || null;
-      const isAdmin = Boolean(clerkUser.publicMetadata?.isAdmin);
-      
-      console.log('🔐 CLERK AUTH - Extracted user data:', { email, username, firstName, lastName, isAdmin });
-      
-      // Add user info to request
-      req.user = {
-        id: payload.sub,
-        email: email,
-        username: username,
-        firstName: firstName,
-        lastName: lastName,
-        isAdmin: isAdmin
-      };
+      try {
+        const clerkClient = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY });
+        const clerkUser = await clerkClient.users.getUser(payload.sub);
+        
+        console.log('🔐 CLERK AUTH - Clerk user data:', {
+          id: clerkUser.id,
+          emailAddresses: clerkUser.emailAddresses,
+          username: clerkUser.username,
+          firstName: clerkUser.firstName,
+          lastName: clerkUser.lastName,
+          publicMetadata: clerkUser.publicMetadata
+        });
+        
+        // Extract user data from Clerk user object
+        const email = clerkUser.emailAddresses?.[0]?.emailAddress || 'user@example.com';
+        const username = clerkUser.username || 
+                        clerkUser.firstName || 
+                        email?.split('@')[0] || 
+                        'Unknown';
+        const firstName = clerkUser.firstName || null;
+        const lastName = clerkUser.lastName || null;
+        const isAdmin = Boolean(clerkUser.publicMetadata?.isAdmin);
+        
+        console.log('🔐 CLERK AUTH - Extracted user data:', { email, username, firstName, lastName, isAdmin });
+        
+        // Add user info to request
+        req.user = {
+          id: payload.sub,
+          email: email,
+          username: username,
+          firstName: firstName,
+          lastName: lastName,
+          isAdmin: isAdmin
+        };
+      } catch (clerkApiError) {
+        console.error('🔐 CLERK AUTH - Clerk API error:', clerkApiError.message);
+        console.log('🔐 CLERK AUTH - Using fallback user data from JWT');
+        
+        // Fallback to JWT payload data
+        const email = payload.email || 'user@example.com';
+        const username = payload.username || email?.split('@')[0] || 'Unknown';
+        const isAdmin = Boolean(payload.public_metadata?.isAdmin || payload.publicMetadata?.isAdmin);
+        
+        req.user = {
+          id: payload.sub,
+          email: email,
+          username: username,
+          firstName: null,
+          lastName: null,
+          isAdmin: isAdmin
+        };
+      }
       
       console.log('🔐 CLERK AUTH - User object created:', req.user);
       next();
@@ -80,10 +99,11 @@ const authenticateUser = async (req, res, next) => {
       
       // For other JWT errors, create a fallback user for testing
       console.log('🔐 CLERK AUTH - Creating fallback user for testing');
+      const fallbackId = `clerk_fallback_${Date.now()}`;
       req.user = {
-        id: 'clerk_user_123',
-        email: 'user@example.com',
-        username: 'ClerkUser',
+        id: fallbackId,
+        email: `fallback_${Date.now()}@example.com`,
+        username: 'FallbackUser',
         isAdmin: true
       };
       
