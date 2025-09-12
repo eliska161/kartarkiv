@@ -7,7 +7,6 @@ require('dotenv').config();
 
 const authRoutes = require('./routes/auth-jwt'); // Use JWT auth
 const mapRoutes = require('./routes/maps');
-const settingsRoutes = require('./routes/settings');
 const adminRoutes = require('./routes/admin');
 const adminUsersRoutes = require('./routes/admin-users');
 const { requestLogger, getLogs, clearLogs } = require('./middleware/requestLogger');
@@ -168,8 +167,6 @@ app.use('/api/auth', authRoutes);
 console.log('✅ Auth routes registered at /api/auth');
 app.use('/api/maps', mapRoutes);
 console.log('✅ Maps routes registered at /api/maps');
-app.use('/api/settings', settingsRoutes);
-console.log('✅ Settings routes registered at /api/settings');
 app.use('/api/admin', adminUsersRoutes);
 console.log('✅ Admin users routes registered at /api/admin');
 app.use('/api/admin', adminRoutes);

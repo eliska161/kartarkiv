@@ -3,16 +3,15 @@ import { useUser, UserProfile, OrganizationProfile } from '@clerk/clerk-react';
 import { useMap } from '../contexts/MapContext';
 import Header from '../components/Header';
 import AddMapModal from '../components/AddMapModal';
-import LogoManager from '../components/LogoManager';
 import UserManagement from '../components/UserManagement';
 import UptimeStatus from '../components/UptimeStatus';
 import ApiLogs from '../components/ApiLogs';
-import { Plus, MapPin, Users, BarChart3, Settings, Edit, Trash2, User, Shield, Activity } from 'lucide-react';
+import { Plus, MapPin, Users, BarChart3, Edit, Trash2, User, Shield, Activity } from 'lucide-react';
 
 const AdminDashboard: React.FC = () => {
   useUser(); // Get Clerk user data
   const { maps, loading, fetchMaps, deleteMap, fetchMap } = useMap();
-  const [activeTab, setActiveTab] = useState<'maps' | 'users' | 'profile' | 'stats' | 'settings' | 'logs'>('maps');
+  const [activeTab, setActiveTab] = useState<'maps' | 'users' | 'profile' | 'stats' | 'logs'>('maps');
   const [showAddMapModal, setShowAddMapModal] = useState(false);
   const [editingMap, setEditingMap] = useState<any>(null);
   const [selectedMaps, setSelectedMaps] = useState<Set<number>>(new Set());
@@ -89,8 +88,7 @@ const AdminDashboard: React.FC = () => {
     { id: 'users', label: 'Brukeradministrasjon', icon: Shield },
     { id: 'profile', label: 'Min Profil', icon: User },
     { id: 'stats', label: 'Statistikk', icon: BarChart3 },
-    { id: 'logs', label: 'API Logs', icon: Activity },
-    { id: 'settings', label: 'Innstillinger', icon: Settings }
+    { id: 'logs', label: 'API Logs', icon: Activity }
   ] as const;
 
   return (
@@ -344,11 +342,6 @@ const AdminDashboard: React.FC = () => {
             </div>
           )}
 
-          {activeTab === 'settings' && (
-            <div className="p-6">
-              <LogoManager />
-            </div>
-          )}
           
           {activeTab === 'stats' && (
             <div className="p-6">

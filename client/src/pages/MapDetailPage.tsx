@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useMap } from '../contexts/MapContext';
+import { useToast } from '../contexts/ToastContext';
 import axios from 'axios';
 import { ArrowLeft, Download, MapPin, Scale, Ruler, Calendar, User, FileText, Image, File, History, Maximize2 } from 'lucide-react';
 import { MapContainer, TileLayer, Polygon } from 'react-leaflet';
@@ -12,6 +13,7 @@ const MapDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { fetchMap } = useMap();
+  const { showSuccess, showError } = useToast();
   const [map, setMap] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -68,10 +70,10 @@ const MapDetailPage: React.FC = () => {
       window.URL.revokeObjectURL(url);
 
       // Show success message
-      alert(`Filen "${file.original_filename || file.filename}" ble lastet ned!`);
+      showSuccess('Fil lastet ned', `Filen "${file.original_filename || file.filename}" ble lastet ned!`);
     } catch (error) {
       console.error('Download error:', error);
-      alert('Kunne ikke laste ned filen. Sjekk at filen eksisterer og prøv igjen.');
+      showError('Nedlasting feilet', 'Kunne ikke laste ned filen. Sjekk at filen eksisterer og prøv igjen.');
     } finally {
       // Reset button state
       const button = event?.currentTarget as HTMLButtonElement;
