@@ -12,31 +12,52 @@ const clerkClient = createClerkClient({
 router.use(authenticateUser);
 router.use(requireAdmin);
 
-// Get all users
+// Get all users from Clerk
 router.get('/users', async (req, res) => {
   try {
-    console.log('🔍 ADMIN - Fetching users...');
+    console.log('🔍 ADMIN - Fetching users from Clerk...');
     
-    const users = await clerkClient.users.getUserList({
-      limit: 100,
-      orderBy: '-created_at'
-    });
+    // Get all users from Clerk with pagination
+    let allUsers = [];
+    let hasMore = true;
+    let offset = 0;
+    const limit = 100;
 
-    const formattedUsers = users.data.map(user => ({
+    while (hasMore) {
+      const users = await clerkClient.users.getUserList({
+        limit: limit,
+        offset: offset,
+        orderBy: '-created_at'
+      });
+
+      allUsers = allUsers.concat(users.data);
+      hasMore = users.hasMore;
+      offset += limit;
+
+      // Safety break to prevent infinite loops
+      if (offset > 1000) {
+        console.warn('⚠️ ADMIN - Stopping pagination at 1000 users');
+        break;
+      }
+    }
+
+    const formattedUsers = allUsers.map(user => ({
       id: user.id,
       firstName: user.firstName,
       lastName: user.lastName,
       emailAddresses: user.emailAddresses,
       publicMetadata: user.publicMetadata || {},
       createdAt: user.createdAt,
-      lastSignInAt: user.lastSignInAt
+      lastSignInAt: user.lastSignInAt,
+      // Add status information
+      status: user.banned ? 'banned' : (user.locked ? 'locked' : 'active')
     }));
 
-    console.log('✅ ADMIN - Found', formattedUsers.length, 'users');
+    console.log('✅ ADMIN - Found', formattedUsers.length, 'users from Clerk');
     res.json(formattedUsers);
   } catch (error) {
-    console.error('❌ ADMIN - Error fetching users:', error);
-    res.status(500).json({ message: 'Failed to fetch users' });
+    console.error('❌ ADMIN - Error fetching users from Clerk:', error);
+    res.status(500).json({ message: 'Failed to fetch users from Clerk' });
   }
 });
 

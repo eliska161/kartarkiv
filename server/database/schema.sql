@@ -1,4 +1,4 @@
--- Kartarkiv Database Schema
+w-- Kartarkiv Database Schema
 -- For EOK (Elverum Orienteringsklubb)
 
 -- Users table

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Mail, Shield, Trash2, Edit, Plus, Search, Filter, UserPlus, X } from 'lucide-react';
+import { User, Mail, Shield, Trash2, Edit, Plus, Search, Filter, UserPlus, X, RefreshCw } from 'lucide-react';
 import { showErrorToast, showSuccessToast } from '../utils/errorHandler';
 import axios from 'axios';
 
@@ -27,17 +27,33 @@ const UserManagement: React.FC = () => {
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<'user' | 'admin'>('user');
   const [isInviting, setIsInviting] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
     fetchUsers();
+    
+    // Refresh users every 30 seconds to catch new invitations
+    const interval = setInterval(() => {
+      fetchUsers();
+    }, 30000);
+    
+    return () => clearInterval(interval);
   }, []);
 
-  const fetchUsers = async () => {
+  const fetchUsers = async (showRefreshSpinner = false) => {
     try {
-      setLoading(true);
+      if (showRefreshSpinner) {
+        setIsRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+      
       const response = await axios.get(`${API_BASE_URL}/api/admin/users`);
       if (response.data && Array.isArray(response.data)) {
         setUsers(response.data);
+        if (showRefreshSpinner) {
+          showSuccessToast('Brukerliste oppdatert');
+        }
       } else {
         console.error('Invalid response format:', response.data);
         setUsers([]);
@@ -48,6 +64,7 @@ const UserManagement: React.FC = () => {
       setUsers([]);
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
     }
   };
 
@@ -101,7 +118,8 @@ const UserManagement: React.FC = () => {
       setInviteEmail('');
       setInviteRole('user');
       setShowAddUser(false);
-      fetchUsers(); // Refresh user list
+      // Refresh user list to show any immediate changes
+      setTimeout(() => fetchUsers(true), 1000);
     } catch (error) {
       console.error('Error inviting user:', error);
       showErrorToast('Kunne ikke sende invitasjon');
@@ -140,13 +158,23 @@ const UserManagement: React.FC = () => {
           <h2 className="text-2xl font-bold text-gray-900">Brukeradministrasjon</h2>
           <p className="text-gray-600">Administrer brukere og tilganger</p>
         </div>
-        <button
-          onClick={() => setShowAddUser(true)}
-          className="btn-primary flex items-center"
-        >
-          <UserPlus className="h-4 w-4 mr-2" />
-          Inviter bruker
-        </button>
+        <div className="flex space-x-3">
+          <button
+            onClick={() => fetchUsers(true)}
+            disabled={isRefreshing}
+            className="btn-secondary flex items-center"
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+            {isRefreshing ? 'Oppdaterer...' : 'Oppdater'}
+          </button>
+          <button
+            onClick={() => setShowAddUser(true)}
+            className="btn-primary flex items-center"
+          >
+            <UserPlus className="h-4 w-4 mr-2" />
+            Inviter bruker
+          </button>
+        </div>
       </div>
 
       {/* Search and Filters */}
@@ -229,14 +257,27 @@ const UserManagement: React.FC = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      user.publicMetadata.isAdmin
-                        ? 'bg-red-100 text-red-800'
-                        : 'bg-green-100 text-green-800'
-                    }`}>
-                      <Shield className="h-3 w-3 mr-1" />
-                      {user.publicMetadata.isAdmin ? 'Administrator' : 'Bruker'}
-                    </span>
+                    <div className="flex flex-col space-y-1">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        user.publicMetadata.isAdmin
+                          ? 'bg-red-100 text-red-800'
+                          : 'bg-green-100 text-green-800'
+                      }`}>
+                        <Shield className="h-3 w-3 mr-1" />
+                        {user.publicMetadata.isAdmin ? 'Administrator' : 'Bruker'}
+                      </span>
+                      {user.status && (
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs ${
+                          user.status === 'active' 
+                            ? 'bg-green-100 text-green-800'
+                            : user.status === 'banned'
+                            ? 'bg-red-100 text-red-800'
+                            : 'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {user.status === 'active' ? 'Aktiv' : user.status === 'banned' ? 'Bannlyst' : 'Låst'}
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {user.lastSignInAt 
