@@ -70,7 +70,7 @@ const retryRequest = async (config: AxiosRequestConfig, retryCount = 0): Promise
     if (error.response?.data?.code === 'TOKEN_EXPIRED') {
       console.error('🚫 API: Token expired, redirecting to login');
       window.location.href = '/login';
-      return;
+      throw new Error('Token expired - redirecting to login');
     }
     
     // If it's rate limiting after all retries
