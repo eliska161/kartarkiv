@@ -13,6 +13,7 @@ interface ClerkUser {
   };
   createdAt: string;
   lastSignInAt: string | null;
+  status?: 'active' | 'banned' | 'locked';
 }
 
 const UserManagement: React.FC = () => {
