@@ -111,7 +111,7 @@ const UserManagement: React.FC = () => {
 
   const handleToggleAdmin = async (user: ClerkUser) => {
     try {
-      const newAdminStatus = !user.publicMetadata.isAdmin;
+      const newAdminStatus = !user.publicMetadata?.isAdmin;
       await axios.put(`${API_BASE_URL}/api/admin/users/${user.id}/role`, {
         isAdmin: newAdminStatus
       });
@@ -300,12 +300,12 @@ const UserManagement: React.FC = () => {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex flex-col space-y-1">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        user.publicMetadata.isAdmin
+                        user.publicMetadata?.isAdmin
                           ? 'bg-red-100 text-red-800'
                           : 'bg-green-100 text-green-800'
                       }`}>
                         <Shield className="h-3 w-3 mr-1" />
-                        {user.publicMetadata.isAdmin ? 'Administrator' : 'Bruker'}
+                        {user.publicMetadata?.isAdmin ? 'Administrator' : 'Bruker'}
                       </span>
                       {user.status && (
                         <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs ${
@@ -331,12 +331,12 @@ const UserManagement: React.FC = () => {
                       <button
                         onClick={() => handleToggleAdmin(user)}
                         className={`text-sm px-3 py-1 rounded-md ${
-                          user.publicMetadata.isAdmin
+                          user.publicMetadata?.isAdmin
                             ? 'bg-green-100 text-green-700 hover:bg-green-200'
                             : 'bg-red-100 text-red-700 hover:bg-red-200'
                         }`}
                       >
-                        {user.publicMetadata.isAdmin ? 'Fjern admin' : 'Gjør admin'}
+                        {user.publicMetadata?.isAdmin ? 'Fjern admin' : 'Gjør admin'}
                       </button>
                       <button
                         onClick={() => handleDeleteUser(user)}
@@ -384,7 +384,7 @@ const UserManagement: React.FC = () => {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Administratorer</p>
               <p className="text-2xl font-bold text-gray-900">
-                {users.filter(u => u.publicMetadata.isAdmin).length}
+                {users.filter(u => u.publicMetadata?.isAdmin).length}
               </p>
             </div>
           </div>
@@ -395,7 +395,7 @@ const UserManagement: React.FC = () => {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Vanlige brukere</p>
               <p className="text-2xl font-bold text-gray-900">
-                {users.filter(u => !u.publicMetadata.isAdmin).length}
+                {users.filter(u => !u.publicMetadata?.isAdmin).length}
               </p>
             </div>
           </div>

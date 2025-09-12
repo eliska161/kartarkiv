@@ -36,7 +36,7 @@ const LoginPage: React.FC = () => {
                   dividerText: 'text-gray-500'
                 }
               }}
-              redirectUrl="/"
+              fallbackRedirectUrl="/"
             />
           </div>
         </div>
