@@ -169,9 +169,39 @@ console.log('✅ Admin routes registered at /api/admin');
 app.use('/api/admin', adminUsersRoutes);
 console.log('✅ Admin users routes registered at /api/admin');
 
-// Health check endpoint
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', message: 'Kartarkiv server is running' });
+// Health check endpoint for uptime monitoring
+app.get('/api/health', async (req, res) => {
+  try {
+    // Test database connection
+    const result = await pool.query('SELECT 1 as test');
+    
+    res.json({
+      status: 'OK',
+      database: 'Connected',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      service: 'Kartarkiv API',
+      version: '1.0.0'
+    });
+  } catch (error) {
+    console.error('Health check failed:', error);
+    res.status(503).json({
+      status: 'ERROR',
+      database: 'Disconnected',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Simple health check endpoint (for UptimeRobot)
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'OK', 
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    service: 'Kartarkiv API'
+  });
 });
 
 // Debug: List all available routes
