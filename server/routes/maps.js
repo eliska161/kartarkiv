@@ -967,11 +967,29 @@ router.post('/', authenticateUser, [
     
     if (existingUser.rows.length === 0) {
       // User doesn't exist, create new one
-      await pool.query(`
-        INSERT INTO users (clerk_id, email, username, password_hash, is_admin) 
-        VALUES ($1, $2, $3, $4, $5)
-      `, [req.user.id, userEmail, userUsername, passwordHash, req.user.isAdmin]);
-      console.log('✅ Created new user:', req.user.id);
+      // Handle potential username conflicts by adding a suffix
+      let finalUsername = userUsername;
+      let counter = 1;
+      
+      while (true) {
+        try {
+          await pool.query(`
+            INSERT INTO users (clerk_id, email, username, password_hash, is_admin) 
+            VALUES ($1, $2, $3, $4, $5)
+          `, [req.user.id, userEmail, finalUsername, passwordHash, req.user.isAdmin]);
+          console.log('✅ Created new user:', req.user.id, 'with username:', finalUsername);
+          break;
+        } catch (error) {
+          if (error.code === '23505' && error.constraint === 'users_username_key') {
+            // Username already exists, try with a number suffix
+            finalUsername = `${userUsername}${counter}`;
+            counter++;
+            console.log('⚠️ Username conflict, trying:', finalUsername);
+          } else {
+            throw error; // Re-throw if it's a different error
+          }
+        }
+      }
     } else {
       // User exists, update if needed
       await pool.query(`
@@ -1102,12 +1120,30 @@ router.post('/:id/files', authenticateUser, uploadLimiter, upload.array('files',
     let userId;
     if (existingUser.rows.length === 0) {
       // User doesn't exist, create new one
-      const newUser = await pool.query(`
-        INSERT INTO users (clerk_id, email, username, password_hash, is_admin) 
-        VALUES ($1, $2, $3, $4, $5) RETURNING id
-      `, [req.user.id, userEmail, userUsername, passwordHash, req.user.isAdmin]);
-      userId = newUser.rows[0].id;
-      console.log('✅ Created new user for file upload:', req.user.id);
+      // Handle potential username conflicts by adding a suffix
+      let finalUsername = userUsername;
+      let counter = 1;
+      
+      while (true) {
+        try {
+          const newUser = await pool.query(`
+            INSERT INTO users (clerk_id, email, username, password_hash, is_admin) 
+            VALUES ($1, $2, $3, $4, $5) RETURNING id
+          `, [req.user.id, userEmail, finalUsername, passwordHash, req.user.isAdmin]);
+          userId = newUser.rows[0].id;
+          console.log('✅ Created new user for file upload:', req.user.id, 'with username:', finalUsername);
+          break;
+        } catch (error) {
+          if (error.code === '23505' && error.constraint === 'users_username_key') {
+            // Username already exists, try with a number suffix
+            finalUsername = `${userUsername}${counter}`;
+            counter++;
+            console.log('⚠️ Username conflict, trying:', finalUsername);
+          } else {
+            throw error; // Re-throw if it's a different error
+          }
+        }
+      }
     } else {
       // User exists, update if needed
       await pool.query(`
