@@ -206,7 +206,7 @@ const UptimeStatus: React.FC<UptimeStatusProps> = ({ className = '', showDetails
               </span>
               {showDetails && (
                 <span className="text-xs text-gray-500">
-                  {monitor.uptime}% uptime
+                  {monitor.uptime}% nedetid
                 </span>
               )}
             </div>
@@ -220,7 +220,7 @@ const UptimeStatus: React.FC<UptimeStatusProps> = ({ className = '', showDetails
         </p>
         <p className="text-xs text-gray-500">
           <a 
-            href="https://stats.uptimerobot.com/kartarkiv" 
+            href="https://stats.uptimerobot.com/jcONK7VXFW" 
             target="_blank" 
             rel="noopener noreferrer"
             className="text-eok-600 hover:text-eok-700"

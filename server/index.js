@@ -166,10 +166,10 @@ app.use('/api/maps', mapRoutes);
 console.log('✅ Maps routes registered at /api/maps');
 app.use('/api/settings', settingsRoutes);
 console.log('✅ Settings routes registered at /api/settings');
-app.use('/api/admin', adminRoutes);
-console.log('✅ Admin routes registered at /api/admin');
 app.use('/api/admin', adminUsersRoutes);
 console.log('✅ Admin users routes registered at /api/admin');
+app.use('/api/admin', adminRoutes);
+console.log('✅ Admin routes registered at /api/admin');
 
 // Health check endpoint for uptime monitoring
 app.get('/api/health', async (req, res) => {
