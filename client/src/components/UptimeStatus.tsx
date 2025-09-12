@@ -68,13 +68,23 @@ const UptimeStatus: React.FC<UptimeStatusProps> = ({ className = '', showDetails
         const data = await response.json();
         
         if (data.stat === 'ok') {
-          const monitors: MonitorStatus[] = data.monitors.map((monitor: any) => ({
-            id: monitor.id,
-            name: monitor.friendly_name,
-            status: monitor.status === 2 ? 'up' : monitor.status === 9 ? 'down' : 'paused',
-            uptime: parseFloat(monitor.custom_uptime_ratio) || 0,
-            lastCheck: new Date(monitor.datetime * 1000).toISOString()
-          }));
+          const monitors: MonitorStatus[] = data.monitors.map((monitor: any) => {
+            let lastCheck = new Date().toISOString(); // Default to current time
+            if (monitor.datetime && !isNaN(monitor.datetime)) {
+              const date = new Date(monitor.datetime * 1000);
+              if (!isNaN(date.getTime())) {
+                lastCheck = date.toISOString();
+              }
+            }
+            
+            return {
+              id: monitor.id,
+              name: monitor.friendly_name,
+              status: monitor.status === 2 ? 'up' : monitor.status === 9 ? 'down' : 'paused',
+              uptime: parseFloat(monitor.custom_uptime_ratio) || 0,
+              lastCheck: lastCheck
+            };
+          });
           
           setStatus(monitors);
           setError(null);

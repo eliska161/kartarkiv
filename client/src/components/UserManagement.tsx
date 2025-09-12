@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, Mail, Shield, Trash2, Edit, Plus, Search, Filter, UserPlus, X, RefreshCw } from 'lucide-react';
 import { showErrorToast, showSuccessToast } from '../utils/errorHandler';
-import { useUser, useClerk } from '@clerk/clerk-react';
+import { apiGet, apiPut, apiDelete, apiPost } from '../utils/apiClient';
 import axios from 'axios';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
@@ -20,8 +20,6 @@ interface ClerkUser {
 }
 
 const UserManagement: React.FC = () => {
-  const { user: currentUser } = useUser();
-  const { session } = useClerk();
   const [users, setUsers] = useState<ClerkUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -49,53 +47,24 @@ const UserManagement: React.FC = () => {
         setLoading(true);
       }
       
-      if (!session) {
-        throw new Error('No active session');
-      }
-
-      // Get token for API calls
-      const token = await session.getToken();
+      const response = await apiGet('/api/admin/users');
+      console.log('🔄 UserManagement: API response received:', response);
       
-      // Use Clerk API directly to get organization members
-      const response = await axios.get('https://api.clerk.com/v1/organizations', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      // Get the first organization (assuming single org setup)
-      const org = response.data.data[0];
-      if (!org) {
-        throw new Error('No organization found');
+      // Handle both array and object with users property
+      let usersData = response;
+      if (response && typeof response === 'object' && response.users) {
+        usersData = response.users;
       }
-
-      // Get organization members
-      const membersResponse = await axios.get(`https://api.clerk.com/v1/organizations/${org.id}/memberships`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+      
+      if (usersData && Array.isArray(usersData)) {
+        setUsers(usersData);
+        console.log('🔄 UserManagement: Users updated successfully:', usersData.length, 'users');
+        if (showRefreshSpinner) {
+          showSuccessToast('Brukerliste oppdatert');
         }
-      });
-
-      // Transform Clerk data to our format
-      const usersData = membersResponse.data.data.map((member: any) => ({
-        id: member.public_user_data.user_id,
-        firstName: member.public_user_data.first_name,
-        lastName: member.public_user_data.last_name,
-        emailAddresses: [{ emailAddress: member.public_user_data.email_address }],
-        publicMetadata: {
-          isAdmin: member.role === 'admin'
-        },
-        createdAt: member.created_at,
-        lastSignInAt: member.public_user_data.last_sign_in_at,
-        status: 'active'
-      }));
-
-      setUsers(usersData);
-      console.log('🔄 UserManagement: Users updated successfully:', usersData.length, 'users');
-      if (showRefreshSpinner) {
-        showSuccessToast('Brukerliste oppdatert');
+      } else {
+        console.error('❌ UserManagement: Invalid response format:', response);
+        setUsers([]);
       }
     } catch (error) {
       console.error('Error fetching users:', error);
@@ -110,34 +79,9 @@ const UserManagement: React.FC = () => {
 
   const handleToggleAdmin = async (user: ClerkUser) => {
     try {
-      if (!session) {
-        throw new Error('No active session');
-      }
-
-      const token = await session.getToken();
       const newAdminStatus = !user.publicMetadata?.isAdmin;
-      
-      // Get organization ID first
-      const orgResponse = await axios.get('https://api.clerk.com/v1/organizations', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      const org = orgResponse.data.data[0];
-      if (!org) {
-        throw new Error('No organization found');
-      }
-
-      // Update user role in organization
-      await axios.patch(`https://api.clerk.com/v1/organizations/${org.id}/memberships/${user.id}`, {
-        role: newAdminStatus ? 'admin' : 'basic_member'
-      }, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+      await apiPut(`/api/admin/users/${user.id}/role`, {
+        isAdmin: newAdminStatus
       });
       
       setUsers(prev => prev.map(u => 
@@ -159,33 +103,7 @@ const UserManagement: React.FC = () => {
     }
 
     try {
-      if (!session) {
-        throw new Error('No active session');
-      }
-
-      const token = await session.getToken();
-      
-      // Get organization ID first
-      const orgResponse = await axios.get('https://api.clerk.com/v1/organizations', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      const org = orgResponse.data.data[0];
-      if (!org) {
-        throw new Error('No organization found');
-      }
-
-      // Remove user from organization
-      await axios.delete(`https://api.clerk.com/v1/organizations/${org.id}/memberships/${user.id}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
+      await apiDelete(`/api/admin/users/${user.id}`);
       setUsers(prev => prev.filter(u => u.id !== user.id));
       showSuccessToast('Brukeren ble slettet');
     } catch (error) {
@@ -199,35 +117,10 @@ const UserManagement: React.FC = () => {
     if (!inviteEmail.trim()) return;
 
     try {
-      if (!session) {
-        throw new Error('No active session');
-      }
-
       setIsInviting(true);
-      const token = await session.getToken();
-      
-      // Get organization ID first
-      const orgResponse = await axios.get('https://api.clerk.com/v1/organizations', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      const org = orgResponse.data.data[0];
-      if (!org) {
-        throw new Error('No organization found');
-      }
-
-      // Create organization invitation
-      await axios.post(`https://api.clerk.com/v1/organizations/${org.id}/invitations`, {
-        email_address: inviteEmail,
-        role: inviteRole === 'admin' ? 'admin' : 'basic_member'
-      }, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+      await apiPost('/api/admin/users/invite', {
+        email: inviteEmail,
+        role: inviteRole
       });
       
       showSuccessToast(`Invitasjon sendt til ${inviteEmail}`);
