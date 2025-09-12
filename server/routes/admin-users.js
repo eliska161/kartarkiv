@@ -1,5 +1,6 @@
 const express = require('express');
 const { createClerkClient } = require('@clerk/backend');
+const { authenticateUser, requireAdmin } = require('../middleware/auth-clerk-fixed');
 const router = express.Router();
 
 // Initialize Clerk client
@@ -7,33 +8,9 @@ const clerkClient = createClerkClient({
   secretKey: process.env.CLERK_SECRET_KEY
 });
 
-// Middleware to verify admin access
-const verifyAdmin = async (req, res, next) => {
-  try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ message: 'Authorization token required' });
-    }
-
-    const token = authHeader.substring(7);
-    const payload = await clerkClient.verifyToken(token, {
-      secretKey: process.env.CLERK_SECRET_KEY
-    });
-    
-    if (!payload.publicMetadata?.isAdmin) {
-      return res.status(403).json({ message: 'Admin access required' });
-    }
-
-    req.user = payload;
-    next();
-  } catch (error) {
-    console.error('Admin verification error:', error);
-    return res.status(401).json({ message: 'Invalid token' });
-  }
-};
-
-// Apply admin middleware to all routes
-router.use(verifyAdmin);
+// Apply auth middleware to all routes
+router.use(authenticateUser);
+router.use(requireAdmin);
 
 // Get all users
 router.get('/users', async (req, res) => {
