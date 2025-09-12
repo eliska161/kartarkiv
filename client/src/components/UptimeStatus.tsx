@@ -61,10 +61,10 @@ const UptimeStatus: React.FC<UptimeStatusProps> = ({ className = '', showDetails
             logs: '0',
             response_times: '0',
             response_times_average: '0',
-            response_times_start_date': '0',
-            response_times_end_date': '0',
-            custom_uptime_ratios': '1-7-30',
-            custom_uptime_ranges': '1-7-30'
+            'response_times_start_date': '0',
+            'response_times_end_date': '0',
+            'custom_uptime_ratios': '1-7-30',
+            'custom_uptime_ranges': '1-7-30'
           })
         });
 
