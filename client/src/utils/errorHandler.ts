@@ -50,18 +50,20 @@ export const handleApiError = (error: any): string => {
   }
 };
 
+// These functions are now replaced by the toast system
+// They are kept for backward compatibility but should be replaced with useToast hook
 export const showErrorToast = (message: string) => {
-  // Simple alert for now, can be replaced with a proper toast library
+  console.warn('showErrorToast is deprecated, use useToast hook instead');
   alert(`❌ ${message}`);
 };
 
 export const showSuccessToast = (message: string) => {
-  // Simple alert for now, can be replaced with a proper toast library
+  console.warn('showSuccessToast is deprecated, use useToast hook instead');
   alert(`✅ ${message}`);
 };
 
 export const showWarningToast = (message: string) => {
-  // Simple alert for now, can be replaced with a proper toast library
+  console.warn('showWarningToast is deprecated, use useToast hook instead');
   alert(`⚠️ ${message}`);
 };
 

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { User, Mail, Shield, Trash2, Edit, Plus, Search, Filter, UserPlus, X, RefreshCw } from 'lucide-react';
-import { showErrorToast, showSuccessToast } from '../utils/errorHandler';
 import { apiGet, apiPut, apiDelete, apiPost } from '../utils/apiClient';
 import { useConfirmation } from '../hooks/useConfirmation';
+import { useToast } from '../contexts/ToastContext';
 import ConfirmationModal from './ConfirmationModal';
 import axios from 'axios';
 
@@ -34,6 +34,7 @@ const UserManagement: React.FC = () => {
   const [isInviting, setIsInviting] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const confirmation = useConfirmation();
+  const { showSuccess, showError } = useToast();
 
   useEffect(() => {
     // Only fetch users on component mount
@@ -69,7 +70,7 @@ const UserManagement: React.FC = () => {
           isAdmin: u.publicMetadata?.isAdmin
         })));
         if (showRefreshSpinner) {
-          showSuccessToast('Brukerliste oppdatert');
+          showSuccess('Brukerliste oppdatert');
         }
       } else {
         console.error('❌ UserManagement: Invalid response format:', response);
@@ -77,7 +78,7 @@ const UserManagement: React.FC = () => {
       }
     } catch (error) {
       console.error('Error fetching users:', error);
-      showErrorToast('Kunne ikke hente brukerliste');
+      showError('Kunne ikke hente brukerliste');
       setUsers([]);
     } finally {
       setLoading(false);
@@ -113,10 +114,10 @@ const UserManagement: React.FC = () => {
           : u
       ));
       
-      showSuccessToast(`${newAdminStatus ? 'Gav' : 'Fjernet'} administratorrettigheter til ${user.firstName || user.emailAddresses?.[0]?.emailAddress || 'bruker'}`);
+      showSuccess(`${newAdminStatus ? 'Gav' : 'Fjernet'} administratorrettigheter til ${user.firstName || user.emailAddresses?.[0]?.emailAddress || 'bruker'}`);
     } catch (error) {
       console.error('Error updating user:', error);
-      showErrorToast('Kunne ikke oppdatere bruker');
+      showError('Kunne ikke oppdatere bruker');
     }
   };
 
@@ -134,10 +135,10 @@ const UserManagement: React.FC = () => {
     try {
       await apiDelete(`/api/admin/users/${user.id}`);
       setUsers(prev => prev.filter(u => u.id !== user.id));
-      showSuccessToast('Brukeren ble slettet');
+      showSuccess('Brukeren ble slettet');
     } catch (error) {
       console.error('Error deleting user:', error);
-      showErrorToast('Kunne ikke slette bruker');
+      showError('Kunne ikke slette bruker');
     }
   };
 
@@ -152,7 +153,7 @@ const UserManagement: React.FC = () => {
         role: inviteRole
       });
       
-      showSuccessToast(`Invitasjon sendt til ${inviteEmail}`);
+      showSuccess(`Invitasjon sendt til ${inviteEmail}`);
       setInviteEmail('');
       setInviteRole('user');
       setShowAddUser(false);
@@ -161,7 +162,7 @@ const UserManagement: React.FC = () => {
       setTimeout(() => fetchUsers(true), 1000);
     } catch (error) {
       console.error('Error inviting user:', error);
-      showErrorToast('Kunne ikke sende invitasjon');
+      showError('Kunne ikke sende invitasjon');
     } finally {
       setIsInviting(false);
     }

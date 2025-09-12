@@ -3,8 +3,9 @@ import { X, Upload, File, HelpCircle } from 'lucide-react';
 import { MapContainer, TileLayer, Polygon, Polyline, CircleMarker, useMap as useLeafletMap } from 'react-leaflet';
 import { useMap } from '../contexts/MapContext';
 import axios from 'axios';
-import { handleApiError, showErrorToast, showSuccessToast, validateFile, validateMapForm } from '../utils/errorHandler';
+import { handleApiError, validateFile, validateMapForm } from '../utils/errorHandler';
 import { useConfirmation } from '../hooks/useConfirmation';
+import { useToast } from '../contexts/ToastContext';
 import ConfirmationModal from './ConfirmationModal';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
@@ -50,6 +51,7 @@ const AddMapModal: React.FC<AddMapModalProps> = ({ isOpen, onClose, mapToEdit, o
   const [isDeletingFile, setIsDeletingFile] = useState<number | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const confirmation = useConfirmation();
+  const { showSuccess, showError } = useToast();
   
   // Map data
   const [mapData, setMapData] = useState({
@@ -144,7 +146,7 @@ const AddMapModal: React.FC<AddMapModalProps> = ({ isOpen, onClose, mapToEdit, o
     });
     
     if (errors.length > 0) {
-      showErrorToast(errors.join('\n'));
+      showError('Valideringsfeil', errors.join('\n'));
     }
     
     if (validFiles.length > 0) {
@@ -188,7 +190,7 @@ const AddMapModal: React.FC<AddMapModalProps> = ({ isOpen, onClose, mapToEdit, o
     });
     
     if (errors.length > 0) {
-      showErrorToast(errors.join('\n'));
+      showError('Valideringsfeil', errors.join('\n'));
     }
     
     if (validFiles.length > 0) {
@@ -260,13 +262,13 @@ const AddMapModal: React.FC<AddMapModalProps> = ({ isOpen, onClose, mapToEdit, o
         }
       }
 
-      showSuccessToast(mapToEdit ? 'Kartet ble oppdatert!' : 'Kartet ble opprettet!');
+      showSuccess(mapToEdit ? 'Kartet ble oppdatert!' : 'Kartet ble opprettet!');
       onSuccess?.();
       onClose();
     } catch (error: any) {
       const errorMessage = handleApiError(error);
       setError(errorMessage);
-      showErrorToast(errorMessage);
+      showError('Feil ved opprettelse/oppdatering', errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -761,13 +763,13 @@ const AddMapModal: React.FC<AddMapModalProps> = ({ isOpen, onClose, mapToEdit, o
                               const response = await axios.delete(`${API_BASE_URL}/api/maps/files/${file.id}`);
                               if (response.status === 200) {
                                 // File deleted successfully - refresh the map data
-                                showSuccessToast('Filen ble slettet!');
+                                showSuccess('Filen ble slettet!');
                                 // Notify parent component to refresh
                                 onSuccess?.();
                               }
                             } catch (error) {
                               const errorMessage = handleApiError(error);
-                              showErrorToast(errorMessage);
+                              showError('Kunne ikke slette fil', errorMessage);
                             } finally {
                               setIsDeletingFile(null);
                             }

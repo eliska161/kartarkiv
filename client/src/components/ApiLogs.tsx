@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Activity, RefreshCw, Filter, Search, Clock, Globe, Database, AlertCircle, CheckCircle, XCircle, Info } from 'lucide-react';
+import { Activity, RefreshCw, Filter, Search, Clock, Globe, Database, AlertCircle, CheckCircle, XCircle, Info, Trash2 } from 'lucide-react';
+import { apiGet, apiDelete } from '../utils/apiClient';
 
 interface ApiLog {
   id: string;
@@ -21,79 +22,31 @@ const ApiLogs: React.FC = () => {
   const [methodFilter, setMethodFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isRefreshing, setIsRefreshing] = useState(false);
-
-  // Mock data for demonstration - in real app, this would come from backend
-  const mockLogs: ApiLog[] = [
-    {
-      id: '1',
-      timestamp: new Date().toISOString(),
-      method: 'GET',
-      url: '/api/maps',
-      status: 200,
-      responseTime: 145,
-      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-      ip: '192.168.1.100',
-      userId: 'user_123'
-    },
-    {
-      id: '2',
-      timestamp: new Date(Date.now() - 30000).toISOString(),
-      method: 'POST',
-      url: '/api/maps',
-      status: 201,
-      responseTime: 234,
-      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-      ip: '192.168.1.100',
-      userId: 'user_123'
-    },
-    {
-      id: '3',
-      timestamp: new Date(Date.now() - 60000).toISOString(),
-      method: 'GET',
-      url: '/api/admin/users',
-      status: 401,
-      responseTime: 89,
-      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-      ip: '192.168.1.100',
-      error: 'Token expired'
-    },
-    {
-      id: '4',
-      timestamp: new Date(Date.now() - 120000).toISOString(),
-      method: 'DELETE',
-      url: '/api/maps/123',
-      status: 200,
-      responseTime: 156,
-      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-      ip: '192.168.1.100',
-      userId: 'user_456'
-    },
-    {
-      id: '5',
-      timestamp: new Date(Date.now() - 180000).toISOString(),
-      method: 'PUT',
-      url: '/api/maps/123',
-      status: 500,
-      responseTime: 1200,
-      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-      ip: '192.168.1.100',
-      userId: 'user_123',
-      error: 'Internal server error'
-    }
-  ];
+  const [totalLogs, setTotalLogs] = useState(0);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [pageSize] = useState(50);
 
   useEffect(() => {
     fetchLogs();
-  }, []);
+  }, [currentPage, methodFilter, statusFilter, searchTerm]);
 
   const fetchLogs = async () => {
     setLoading(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setLogs(mockLogs);
+      const params = new URLSearchParams({
+        limit: pageSize.toString(),
+        offset: (currentPage * pageSize).toString(),
+        ...(methodFilter !== 'all' && { method: methodFilter }),
+        ...(statusFilter !== 'all' && { status: statusFilter }),
+        ...(searchTerm && { search: searchTerm })
+      });
+
+      const response = await apiGet(`/api/logs?${params}`);
+      setLogs(response.logs || []);
+      setTotalLogs(response.total || 0);
     } catch (error) {
       console.error('Error fetching logs:', error);
+      setLogs([]);
     } finally {
       setLoading(false);
     }
@@ -103,6 +56,19 @@ const ApiLogs: React.FC = () => {
     setIsRefreshing(true);
     await fetchLogs();
     setIsRefreshing(false);
+  };
+
+  const handleClearLogs = async () => {
+    if (window.confirm('Er du sikker på at du vil slette alle logger? Dette kan ikke angres.')) {
+      try {
+        await apiDelete('/api/logs');
+        setLogs([]);
+        setTotalLogs(0);
+        setCurrentPage(0);
+      } catch (error) {
+        console.error('Error clearing logs:', error);
+      }
+    }
   };
 
   const getStatusIcon = (status: number) => {
@@ -144,18 +110,6 @@ const ApiLogs: React.FC = () => {
     }
   };
 
-  const filteredLogs = logs.filter(log => {
-    const matchesSearch = log.url.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         log.method.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         log.userId?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesMethod = methodFilter === 'all' || log.method === methodFilter;
-    const matchesStatus = statusFilter === 'all' || 
-                         (statusFilter === 'success' && log.status >= 200 && log.status < 300) ||
-                         (statusFilter === 'client-error' && log.status >= 400 && log.status < 500) ||
-                         (statusFilter === 'server-error' && log.status >= 500);
-    
-    return matchesSearch && matchesMethod && matchesStatus;
-  });
 
   if (loading) {
     return (
@@ -173,14 +127,23 @@ const ApiLogs: React.FC = () => {
           <Activity className="h-6 w-6 text-eok-500" />
           <h2 className="text-2xl font-bold text-gray-900">API Logs</h2>
         </div>
-        <button
-          onClick={handleRefresh}
-          disabled={isRefreshing}
-          className="flex items-center space-x-2 px-4 py-2 bg-eok-500 text-white rounded-lg hover:bg-eok-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        >
-          <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-          <span>Oppdater</span>
-        </button>
+        <div className="flex items-center space-x-3">
+          <button
+            onClick={handleClearLogs}
+            className="flex items-center space-x-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+          >
+            <Trash2 className="h-4 w-4" />
+            <span>Slett alle</span>
+          </button>
+          <button
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="flex items-center space-x-2 px-4 py-2 bg-eok-500 text-white rounded-lg hover:bg-eok-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <span>Oppdater</span>
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -227,7 +190,7 @@ const ApiLogs: React.FC = () => {
           {/* Stats */}
           <div className="flex items-center space-x-2 text-sm text-gray-600">
             <Database className="h-4 w-4" />
-            <span>{filteredLogs.length} logs</span>
+            <span>{totalLogs} total logs</span>
           </div>
         </div>
       </div>
@@ -262,7 +225,7 @@ const ApiLogs: React.FC = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredLogs.map((log) => (
+              {logs.map((log) => (
                 <tr key={log.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center space-x-2">
@@ -317,7 +280,7 @@ const ApiLogs: React.FC = () => {
           </table>
         </div>
 
-        {filteredLogs.length === 0 && (
+        {logs.length === 0 && (
           <div className="text-center py-12">
             <Activity className="mx-auto h-12 w-12 text-gray-400" />
             <h3 className="mt-2 text-sm font-medium text-gray-900">Ingen logs funnet</h3>

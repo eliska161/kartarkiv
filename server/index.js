@@ -10,6 +10,7 @@ const mapRoutes = require('./routes/maps');
 const settingsRoutes = require('./routes/settings');
 const adminRoutes = require('./routes/admin');
 const adminUsersRoutes = require('./routes/admin-users');
+const { requestLogger, getLogs, clearLogs } = require('./middleware/requestLogger');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -19,6 +20,9 @@ app.set('trust proxy', 1);
 
 // Middleware
 app.use(helmet());
+
+// Request logging middleware
+app.use(requestLogger);
 
 // Rate limiting configuration
 const generalLimiter = rateLimit({
@@ -170,6 +174,11 @@ app.use('/api/admin', adminUsersRoutes);
 console.log('✅ Admin users routes registered at /api/admin');
 app.use('/api/admin', adminRoutes);
 console.log('✅ Admin routes registered at /api/admin');
+
+// API Logs endpoints
+app.get('/api/logs', getLogs);
+app.delete('/api/logs', clearLogs);
+console.log('✅ API Logs routes registered at /api/logs');
 
 // Health check endpoint for uptime monitoring
 app.get('/api/health', async (req, res) => {

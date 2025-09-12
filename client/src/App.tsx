@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { ClerkProvider } from '@clerk/clerk-react';
 import { AuthProvider } from './contexts/AuthContext';
 import { MapProvider } from './contexts/MapContext';
+import { ToastProvider } from './contexts/ToastContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminRoute from './components/AdminRoute';
 
@@ -31,7 +32,8 @@ function App() {
     >
       <AuthProvider>
         <MapProvider>
-          <Router>
+          <ToastProvider>
+            <Router>
             <div className="min-h-screen bg-gray-50">
               <Routes>
               {/* Public routes */}
@@ -62,8 +64,9 @@ function App() {
             </Routes>
           </div>
         </Router>
-      </MapProvider>
-    </AuthProvider>
+          </ToastProvider>
+        </MapProvider>
+      </AuthProvider>
     </ClerkProvider>
   );
 }
