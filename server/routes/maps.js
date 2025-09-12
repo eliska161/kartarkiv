@@ -1131,7 +1131,7 @@ router.post('/:id/files', authenticateUser, uploadLimiter, upload.array('files',
             VALUES ($1, $2, $3, $4, $5) RETURNING id
           `, [req.user.id, userEmail, finalUsername, passwordHash, req.user.isAdmin]);
           userId = newUser.rows[0].id;
-          console.log('✅ Created new user for file upload:', req.user.id, 'with username:', finalUsername);
+          console.log('✅ Created new user for file upload:', req.user.id, 'with username:', finalUsername, 'database ID:', userId);
           break;
         } catch (error) {
           if (error.code === '23505' && error.constraint === 'users_username_key') {
@@ -1154,9 +1154,15 @@ router.post('/:id/files', authenticateUser, uploadLimiter, upload.array('files',
         WHERE clerk_id = $1
       `, [req.user.id, userEmail, userUsername, req.user.isAdmin]);
       userId = existingUser.rows[0].id;
-      console.log('✅ Updated existing user for file upload:', req.user.id);
+      console.log('✅ Updated existing user for file upload:', req.user.id, 'database ID:', userId);
     }
 
+    if (!userId) {
+      console.error('❌ No userId found for file upload');
+      return res.status(500).json({ message: 'User not found in database' });
+    }
+
+    console.log('🔍 Using userId for file upload:', userId);
     const uploadedFiles = [];
 
     for (const file of req.files) {
@@ -1181,6 +1187,8 @@ router.post('/:id/files', authenticateUser, uploadLimiter, upload.array('files',
       } else {
         console.log('⚠️ Wasabi not configured, using local storage');
       }
+      
+      console.log('🔍 Inserting file with created_by:', userId, 'for map:', mapId);
       
       const result = await pool.query(`
         INSERT INTO map_files (
