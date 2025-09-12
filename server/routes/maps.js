@@ -717,6 +717,13 @@ router.delete('/files/:fileId', authenticateUser, async (req, res) => {
 router.get('/files/:fileId/download', authenticateUser, async (req, res) => {
   try {
     const fileId = parseInt(req.params.fileId);
+    console.log('🌐 CORS: File download request origin:', req.headers.origin);
+    
+    // Set CORS headers explicitly for file download
+    res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-Clerk-Auth-Message, Accept, Origin');
     
     // Get file info from database
     const fileResult = await pool.query('SELECT * FROM map_files WHERE id = $1', [fileId]);
@@ -798,6 +805,8 @@ router.get('/', async (req, res) => {
   try {
     console.log('🔍 Fetching maps...');
     console.log('📊 Database connection status:', pool.totalCount, 'total connections');
+    console.log('🌐 CORS: Request origin:', req.headers.origin);
+    console.log('🌐 CORS: Request headers:', req.headers);
     
     const result = await pool.query(`
       SELECT 
@@ -812,6 +821,12 @@ router.get('/', async (req, res) => {
     `);
 
     console.log('✅ Maps query successful, found', result.rows.length, 'maps');
+    
+    // Set CORS headers explicitly for maps endpoint
+    res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-Clerk-Auth-Message, Accept, Origin');
     
     res.json({
       maps: result.rows.map(map => ({
@@ -828,6 +843,11 @@ router.get('/', async (req, res) => {
       hint: error.hint,
       position: error.position
     });
+    
+    // Set CORS headers even for errors
+    res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    
     res.status(500).json({ 
       message: 'Error fetching maps',
       error: error.message,
@@ -840,6 +860,13 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const mapId = parseInt(req.params.id);
+    console.log('🌐 CORS: Single map request origin:', req.headers.origin);
+    
+    // Set CORS headers explicitly for single map endpoint
+    res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-Clerk-Auth-Message, Accept, Origin');
     
     // Get map details
     const mapResult = await pool.query(`

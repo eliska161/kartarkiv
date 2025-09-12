@@ -76,16 +76,22 @@ const UserManagement: React.FC = () => {
       }
       
       const response = await apiGet('/api/admin/users');
-      console.log('🔄 UserManagement: API response received:', response.data?.length, 'users');
+      console.log('🔄 UserManagement: API response received:', response.data);
       
-      if (response.data && Array.isArray(response.data)) {
-        setUsers(response.data);
-        console.log('🔄 UserManagement: Users updated successfully');
+      // Handle both array and object with users property
+      let usersData = response.data;
+      if (response.data && typeof response.data === 'object' && response.data.users) {
+        usersData = response.data.users;
+      }
+      
+      if (usersData && Array.isArray(usersData)) {
+        setUsers(usersData);
+        console.log('🔄 UserManagement: Users updated successfully:', usersData.length, 'users');
         if (showRefreshSpinner) {
           showSuccessToast('Brukerliste oppdatert');
         }
       } else {
-        console.error('Invalid response format:', response.data);
+        console.error('❌ UserManagement: Invalid response format:', response.data);
         setUsers([]);
       }
     } catch (error) {

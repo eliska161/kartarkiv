@@ -16,6 +16,13 @@ router.use(requireAdmin);
 router.get('/users', async (req, res) => {
   try {
     console.log('🔍 ADMIN - Fetching users from Clerk...');
+    console.log('🌐 CORS: Admin users request origin:', req.headers.origin);
+    
+    // Set CORS headers explicitly for admin users endpoint
+    res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-Clerk-Auth-Message, Accept, Origin');
     
     // Get all users from Clerk with pagination
     let allUsers = [];
@@ -57,6 +64,11 @@ router.get('/users', async (req, res) => {
     res.json(formattedUsers);
   } catch (error) {
     console.error('❌ ADMIN - Error fetching users from Clerk:', error);
+    
+    // Set CORS headers even for errors
+    res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    
     res.status(500).json({ message: 'Failed to fetch users from Clerk' });
   }
 });
@@ -68,6 +80,12 @@ router.put('/users/:userId/role', async (req, res) => {
     const { isAdmin } = req.body;
 
     console.log('🔍 ADMIN - Updating user role:', userId, 'isAdmin:', isAdmin);
+    
+    // Set CORS headers explicitly
+    res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-Clerk-Auth-Message, Accept, Origin');
 
     await clerkClient.users.updateUser(userId, {
       publicMetadata: {
@@ -79,6 +97,11 @@ router.put('/users/:userId/role', async (req, res) => {
     res.json({ message: 'User role updated successfully' });
   } catch (error) {
     console.error('❌ ADMIN - Error updating user role:', error);
+    
+    // Set CORS headers even for errors
+    res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    
     res.status(500).json({ message: 'Failed to update user role' });
   }
 });
@@ -89,6 +112,12 @@ router.delete('/users/:userId', async (req, res) => {
     const { userId } = req.params;
 
     console.log('🔍 ADMIN - Deleting user:', userId);
+    
+    // Set CORS headers explicitly
+    res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-Clerk-Auth-Message, Accept, Origin');
 
     await clerkClient.users.deleteUser(userId);
 
@@ -96,6 +125,11 @@ router.delete('/users/:userId', async (req, res) => {
     res.json({ message: 'User deleted successfully' });
   } catch (error) {
     console.error('❌ ADMIN - Error deleting user:', error);
+    
+    // Set CORS headers even for errors
+    res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    
     res.status(500).json({ message: 'Failed to delete user' });
   }
 });
@@ -106,6 +140,12 @@ router.post('/users/invite', async (req, res) => {
     const { email, role } = req.body;
 
     console.log('🔍 ADMIN - Inviting user:', email, 'role:', role);
+    
+    // Set CORS headers explicitly
+    res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-Clerk-Auth-Message, Accept, Origin');
 
     const invitation = await clerkClient.invitations.createInvitation({
       emailAddress: email,
@@ -121,6 +161,11 @@ router.post('/users/invite', async (req, res) => {
     });
   } catch (error) {
     console.error('❌ ADMIN - Error sending invitation:', error);
+    
+    // Set CORS headers even for errors
+    res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    
     res.status(500).json({ message: 'Failed to send invitation' });
   }
 });
