@@ -755,21 +755,21 @@ const AddMapModal: React.FC<AddMapModalProps> = ({ isOpen, onClose, mapToEdit, o
                             });
 
                             if (!confirmed) return;
-                              setIsDeletingFile(file.id);
-                              try {
-                                const response = await axios.delete(`${API_BASE_URL}/api/maps/files/${file.id}`);
-                                if (response.status === 200) {
-                                  // File deleted successfully - refresh the map data
-                                  showSuccessToast('Filen ble slettet!');
-                                  // Notify parent component to refresh
-                                  onSuccess?.();
-                                }
-                              } catch (error) {
-                                const errorMessage = handleApiError(error);
-                                showErrorToast(errorMessage);
-                              } finally {
-                                setIsDeletingFile(null);
+
+                            setIsDeletingFile(file.id);
+                            try {
+                              const response = await axios.delete(`${API_BASE_URL}/api/maps/files/${file.id}`);
+                              if (response.status === 200) {
+                                // File deleted successfully - refresh the map data
+                                showSuccessToast('Filen ble slettet!');
+                                // Notify parent component to refresh
+                                onSuccess?.();
                               }
+                            } catch (error) {
+                              const errorMessage = handleApiError(error);
+                              showErrorToast(errorMessage);
+                            } finally {
+                              setIsDeletingFile(null);
                             }
                           }}
                           disabled={isDeletingFile === file.id}
