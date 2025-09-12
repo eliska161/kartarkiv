@@ -122,7 +122,7 @@ const UserManagement: React.FC = () => {
           : u
       ));
       
-      showSuccessToast(`${newAdminStatus ? 'Gav' : 'Fjernet'} administratorrettigheter til ${user.firstName || user.emailAddresses[0]?.emailAddress}`);
+      showSuccessToast(`${newAdminStatus ? 'Gav' : 'Fjernet'} administratorrettigheter til ${user.firstName || user.emailAddresses?.[0]?.emailAddress || 'bruker'}`);
     } catch (error) {
       console.error('Error updating user:', error);
       showErrorToast('Kunne ikke oppdatere bruker');
@@ -130,7 +130,7 @@ const UserManagement: React.FC = () => {
   };
 
   const handleDeleteUser = async (user: ClerkUser) => {
-    if (!window.confirm(`Er du sikker på at du vil slette brukeren "${user.firstName || user.emailAddresses[0]?.emailAddress}"?`)) {
+    if (!window.confirm(`Er du sikker på at du vil slette brukeren "${user.firstName || user.emailAddresses?.[0]?.emailAddress || 'bruker'}"?`)) {
       return;
     }
 
@@ -173,12 +173,12 @@ const UserManagement: React.FC = () => {
     const matchesSearch = 
       user.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.emailAddresses[0]?.emailAddress.toLowerCase().includes(searchTerm.toLowerCase());
+      (user.emailAddresses && user.emailAddresses[0]?.emailAddress?.toLowerCase().includes(searchTerm.toLowerCase()));
     
     const matchesRole = 
       filterRole === 'all' ||
-      (filterRole === 'admin' && user.publicMetadata.isAdmin) ||
-      (filterRole === 'user' && !user.publicMetadata.isAdmin);
+      (filterRole === 'admin' && user.publicMetadata?.isAdmin) ||
+      (filterRole === 'user' && !user.publicMetadata?.isAdmin);
     
     return matchesSearch && matchesRole;
   });
@@ -293,7 +293,7 @@ const UserManagement: React.FC = () => {
                     <div className="flex items-center">
                       <Mail className="h-4 w-4 text-gray-400 mr-2" />
                       <span className="text-sm text-gray-900">
-                        {user.emailAddresses[0]?.emailAddress || 'N/A'}
+                        {user.emailAddresses?.[0]?.emailAddress || 'N/A'}
                       </span>
                     </div>
                   </td>
