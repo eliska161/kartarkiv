@@ -17,14 +17,7 @@ const AdminDashboard: React.FC = () => {
   const [bulkActionMode, setBulkActionMode] = useState(false);
 
   const stats = {
-    totalMaps: maps.length,
-    totalFiles: maps.reduce((sum, map) => sum + (map.file_count || 0), 0),
-    recentMaps: maps.filter(map => {
-      if (!map.created_at) return false;
-      const weekAgo = new Date();
-      weekAgo.setDate(weekAgo.getDate() - 7);
-      return new Date(map.created_at) > weekAgo;
-    }).length
+    totalMaps: maps.length
   };
 
   const handleEditMap = async (map: any) => {
@@ -120,7 +113,7 @@ const AdminDashboard: React.FC = () => {
         </div>
 
         {/* Stats cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 gap-6 mb-8">
           <div className="card">
             <div className="flex items-center">
               <div className="bg-eok-100 p-3 rounded-lg">
@@ -129,30 +122,6 @@ const AdminDashboard: React.FC = () => {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Totalt antall kart</p>
                 <p className="text-2xl font-bold text-gray-900">{stats.totalMaps}</p>
-              </div>
-            </div>
-          </div>
-          
-          <div className="card">
-            <div className="flex items-center">
-              <div className="bg-green-100 p-3 rounded-lg">
-                <BarChart3 className="h-6 w-6 text-green-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Totalt antall filer</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.totalFiles}</p>
-              </div>
-            </div>
-          </div>
-          
-          <div className="card">
-            <div className="flex items-center">
-              <div className="bg-blue-100 p-3 rounded-lg">
-                <Settings className="h-6 w-6 text-blue-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Nye kart (7 dager)</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.recentMaps}</p>
               </div>
             </div>
           </div>
@@ -388,14 +357,6 @@ const AdminDashboard: React.FC = () => {
                     <div className="flex justify-between">
                       <span className="text-gray-600">Totalt antall kart:</span>
                       <span className="font-medium">{stats.totalMaps}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Totalt antall filer:</span>
-                      <span className="font-medium">{stats.totalFiles}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Nye kart (7 dager):</span>
-                      <span className="font-medium">{stats.recentMaps}</span>
                     </div>
                   </div>
                 </div>
