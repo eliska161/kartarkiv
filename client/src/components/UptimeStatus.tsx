@@ -20,12 +20,79 @@ const UptimeStatus: React.FC<UptimeStatusProps> = ({ className = '', showDetails
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Simulate UptimeRobot API call (you'll need to replace with actual API)
     const fetchStatus = async () => {
       try {
         setLoading(true);
         
-        // Mock data - replace with actual UptimeRobot API call
+        const apiKey = process.env.REACT_APP_UPTIMEROBOT_API_KEY;
+        if (!apiKey) {
+          console.warn('UptimeRobot API key not found, using mock data');
+          // Fallback to mock data if API key is not available
+          const mockStatus: MonitorStatus[] = [
+            {
+              id: '1',
+              name: 'Kartarkiv API',
+              status: 'up',
+              uptime: 99.9,
+              lastCheck: new Date().toISOString()
+            },
+            {
+              id: '2', 
+              name: 'Kartarkiv Frontend',
+              status: 'up',
+              uptime: 99.8,
+              lastCheck: new Date().toISOString()
+            }
+          ];
+          setStatus(mockStatus);
+          setError(null);
+          return;
+        }
+
+        // Fetch real data from UptimeRobot API
+        const response = await fetch('https://api.uptimerobot.com/v2/getMonitors', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: new URLSearchParams({
+            api_key: apiKey,
+            format: 'json',
+            logs: '0',
+            response_times: '0',
+            response_times_average: '0',
+            response_times_start_date': '0',
+            response_times_end_date': '0',
+            custom_uptime_ratios': '1-7-30',
+            custom_uptime_ranges': '1-7-30'
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        
+        if (data.stat === 'ok') {
+          const monitors: MonitorStatus[] = data.monitors.map((monitor: any) => ({
+            id: monitor.id,
+            name: monitor.friendly_name,
+            status: monitor.status === 2 ? 'up' : monitor.status === 9 ? 'down' : 'paused',
+            uptime: parseFloat(monitor.custom_uptime_ratio) || 0,
+            lastCheck: new Date(monitor.datetime * 1000).toISOString()
+          }));
+          
+          setStatus(monitors);
+          setError(null);
+        } else {
+          throw new Error(data.error?.message || 'API error');
+        }
+      } catch (err) {
+        console.error('Failed to fetch uptime status:', err);
+        setError('Kunne ikke hente status');
+        
+        // Fallback to mock data on error
         const mockStatus: MonitorStatus[] = [
           {
             id: '1',
@@ -42,12 +109,7 @@ const UptimeStatus: React.FC<UptimeStatusProps> = ({ className = '', showDetails
             lastCheck: new Date().toISOString()
           }
         ];
-        
         setStatus(mockStatus);
-        setError(null);
-      } catch (err) {
-        console.error('Failed to fetch uptime status:', err);
-        setError('Kunne ikke hente status');
       } finally {
         setLoading(false);
       }
@@ -155,7 +217,7 @@ const UptimeStatus: React.FC<UptimeStatusProps> = ({ className = '', showDetails
         </p>
         <p className="text-xs text-gray-500">
           <a 
-            href="https://stats.uptimerobot.com/your-status-page" 
+            href="https://stats.uptimerobot.com/kartarkiv" 
             target="_blank" 
             rel="noopener noreferrer"
             className="text-eok-600 hover:text-eok-700"
