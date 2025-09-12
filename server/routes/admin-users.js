@@ -24,7 +24,7 @@ router.get('/users', async (req, res) => {
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-Clerk-Auth-Message, Accept, Origin');
     
-    // Get all users from Clerk with pagination
+    // Get all users from Clerk with pagination (no organization needed)
     let allUsers = [];
     let hasMore = true;
     let offset = 0;
@@ -33,8 +33,7 @@ router.get('/users', async (req, res) => {
     while (hasMore) {
       const users = await clerkClient.users.getUserList({
         limit: limit,
-        offset: offset,
-        orderBy: '-created_at'
+        offset: offset
       });
 
       allUsers = allUsers.concat(users.data);
@@ -87,6 +86,7 @@ router.put('/users/:userId/role', async (req, res) => {
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-Clerk-Auth-Message, Accept, Origin');
 
+    // Update user metadata directly
     await clerkClient.users.updateUser(userId, {
       publicMetadata: {
         isAdmin: isAdmin
@@ -167,6 +167,62 @@ router.post('/users/invite', async (req, res) => {
     res.header('Access-Control-Allow-Credentials', 'true');
     
     res.status(500).json({ message: 'Failed to send invitation' });
+  }
+});
+
+// Get all invitations
+router.get('/invitations', async (req, res) => {
+  try {
+    console.log('🔍 ADMIN - Fetching invitations from Clerk...');
+    
+    // Set CORS headers explicitly
+    res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-Clerk-Auth-Message, Accept, Origin');
+
+    // Get all invitations from Clerk
+    let allInvitations = [];
+    let hasMore = true;
+    let offset = 0;
+    const limit = 100;
+
+    while (hasMore) {
+      const invitations = await clerkClient.invitations.getInvitationList({
+        limit: limit,
+        offset: offset,
+        status: 'pending'
+      });
+
+      allInvitations = allInvitations.concat(invitations.data);
+      hasMore = invitations.hasMore;
+      offset += limit;
+
+      // Safety break to prevent infinite loops
+      if (offset > 1000) {
+        console.warn('⚠️ ADMIN - Stopping pagination at 1000 invitations');
+        break;
+      }
+    }
+
+    const formattedInvitations = allInvitations.map(invitation => ({
+      id: invitation.id,
+      emailAddress: invitation.emailAddress,
+      publicMetadata: invitation.publicMetadata || {},
+      createdAt: invitation.createdAt,
+      status: invitation.status
+    }));
+
+    console.log('✅ ADMIN - Found', formattedInvitations.length, 'invitations from Clerk');
+    res.json(formattedInvitations);
+  } catch (error) {
+    console.error('❌ ADMIN - Error fetching invitations from Clerk:', error);
+    
+    // Set CORS headers even for errors
+    res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    
+    res.status(500).json({ message: 'Failed to fetch invitations from Clerk' });
   }
 });
 

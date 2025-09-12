@@ -21,6 +21,7 @@ interface ClerkUser {
 
 const UserManagement: React.FC = () => {
   const [users, setUsers] = useState<ClerkUser[]>([]);
+  const [invitations, setInvitations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState<'all' | 'admin' | 'user'>('all');
@@ -35,6 +36,7 @@ const UserManagement: React.FC = () => {
     // Only fetch users on component mount
     console.log('🔄 UserManagement: Fetching users on mount');
     fetchUsers();
+    fetchInvitations();
   }, []);
 
   const fetchUsers = async (showRefreshSpinner = false) => {
@@ -50,15 +52,18 @@ const UserManagement: React.FC = () => {
       const response = await apiGet('/api/admin/users');
       console.log('🔄 UserManagement: API response received:', response);
       
-      // Handle both array and object with users property
-      let usersData = response.data;
-      if (response.data && typeof response.data === 'object' && response.data.users) {
-        usersData = response.data.users;
-      }
+      // Backend returns array directly
+      const usersData = response.data;
       
       if (usersData && Array.isArray(usersData)) {
         setUsers(usersData);
         console.log('🔄 UserManagement: Users updated successfully:', usersData.length, 'users');
+        console.log('🔄 UserManagement: Users data:', usersData.map(u => ({
+          id: u.id,
+          name: `${u.firstName} ${u.lastName}`,
+          email: u.emailAddresses?.[0]?.emailAddress,
+          isAdmin: u.publicMetadata?.isAdmin
+        })));
         if (showRefreshSpinner) {
           showSuccessToast('Brukerliste oppdatert');
         }
@@ -74,6 +79,18 @@ const UserManagement: React.FC = () => {
       setLoading(false);
       setIsRefreshing(false);
       console.log('🔄 UserManagement: fetchUsers completed');
+    }
+  };
+
+  const fetchInvitations = async () => {
+    try {
+      console.log('🔄 UserManagement: Fetching invitations...');
+      const response = await apiGet('/api/admin/invitations');
+      setInvitations(response.data || []);
+      console.log('🔄 UserManagement: Invitations fetched:', response.data?.length || 0);
+    } catch (error) {
+      console.error('Error fetching invitations:', error);
+      setInvitations([]);
     }
   };
 
@@ -127,7 +144,8 @@ const UserManagement: React.FC = () => {
       setInviteEmail('');
       setInviteRole('user');
       setShowAddUser(false);
-      // Refresh user list to show any immediate changes
+      // Refresh invitations and user list
+      fetchInvitations();
       setTimeout(() => fetchUsers(true), 1000);
     } catch (error) {
       console.error('Error inviting user:', error);
@@ -147,6 +165,16 @@ const UserManagement: React.FC = () => {
       filterRole === 'all' ||
       (filterRole === 'admin' && user.publicMetadata?.isAdmin) ||
       (filterRole === 'user' && !user.publicMetadata?.isAdmin);
+    
+    return matchesSearch && matchesRole;
+  });
+
+  const filteredInvitations = invitations.filter(invitation => {
+    const matchesSearch = invitation.emailAddress?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesRole = 
+      filterRole === 'all' ||
+      (filterRole === 'admin' && invitation.publicMetadata?.isAdmin) ||
+      (filterRole === 'user' && !invitation.publicMetadata?.isAdmin);
     
     return matchesSearch && matchesRole;
   });
@@ -317,19 +345,76 @@ const UserManagement: React.FC = () => {
                   </td>
                 </tr>
               ))}
+              
+              {/* Invitations */}
+              {filteredInvitations.map((invitation) => (
+                <tr key={`invitation-${invitation.id}`} className="hover:bg-gray-50 bg-yellow-50">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0 h-10 w-10">
+                        <div className="h-10 w-10 rounded-full bg-yellow-100 flex items-center justify-center">
+                          <UserPlus className="h-5 w-5 text-yellow-600" />
+                        </div>
+                      </div>
+                      <div className="ml-4">
+                        <div className="text-sm font-medium text-gray-900">
+                          Ventende invitasjon
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          ID: {invitation.id}
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <Mail className="h-4 w-4 text-gray-400 mr-2" />
+                      <span className="text-sm text-gray-900">
+                        {invitation.emailAddress}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex flex-col space-y-1">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        invitation.publicMetadata?.isAdmin
+                          ? 'bg-red-100 text-red-800'
+                          : 'bg-green-100 text-green-800'
+                      }`}>
+                        <Shield className="h-3 w-3 mr-1" />
+                        {invitation.publicMetadata?.isAdmin ? 'Administrator' : 'Bruker'}
+                      </span>
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-yellow-100 text-yellow-800">
+                        <UserPlus className="h-3 w-3 mr-1" />
+                        Ventende
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {new Date(invitation.createdAt).toLocaleDateString('no-NO')}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <div className="flex space-x-2">
+                      <span className="text-gray-400 text-sm">
+                        Vent på at brukeren accepterer invitasjonen
+                      </span>
+                    </div>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
       </div>
 
-      {filteredUsers.length === 0 && (
+      {filteredUsers.length === 0 && filteredInvitations.length === 0 && (
         <div className="text-center py-12">
           <User className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Ingen brukere funnet</h3>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Ingen brukere eller invitasjoner funnet</h3>
           <p className="text-gray-500">
             {searchTerm || filterRole !== 'all'
               ? 'Prøv å endre søkekriteriene dine'
-              : 'Det er ingen brukere registrert ennå'
+              : 'Det er ingen brukere eller invitasjoner registrert ennå'
             }
           </p>
         </div>
