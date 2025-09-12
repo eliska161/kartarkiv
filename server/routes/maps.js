@@ -7,6 +7,17 @@ const rateLimit = require('express-rate-limit');
 const pool = require('../database/connection');
 const { authenticateUser, requireAdmin } = require('../middleware/auth-clerk-fixed');
 const { uploadToWasabi, getWasabiUrl, getSignedUrl } = require('../config/wasabi');
+
+// Function to convert Norwegian characters to ASCII-friendly equivalents
+function sanitizeFilename(filename) {
+  return filename
+    .replace(/[åÅ]/g, 'a')
+    .replace(/[æÆ]/g, 'ae')
+    .replace(/[øØ]/g, 'o')
+    .replace(/[^a-zA-Z0-9._-]/g, '_') // Replace any other special characters with underscore
+    .replace(/_+/g, '_') // Replace multiple underscores with single underscore
+    .replace(/^_|_$/g, ''); // Remove leading/trailing underscores
+}
 // const pdf = require('pdf-poppler'); // Removed - not supported on Linux
 const { readOcad } = require('ocad2geojson');
 const toGeoJSON = require('@mapbox/togeojson');
@@ -1067,8 +1078,11 @@ router.post('/:id/preview', authenticateUser, requireAdmin, previewUpload.single
       await pool.query('DELETE FROM preview_images WHERE map_id = $1', [mapId]);
     }
 
-    // Store only the filename, not the full path
-    const fileName = path.basename(req.file.path);
+    // Generate a sanitized filename for storage (without Norwegian characters)
+    const originalName = path.basename(req.file.originalname, path.extname(req.file.originalname));
+    const extension = path.extname(req.file.originalname);
+    const sanitizedBaseName = sanitizeFilename(originalName);
+    const fileName = `${sanitizedBaseName}${extension}`;
 
     const result = await pool.query(`
       INSERT INTO preview_images (
@@ -1113,8 +1127,11 @@ router.post('/:id/files', authenticateUser, uploadLimiter, upload.array('files',
     for (const file of req.files) {
       const fileType = path.extname(file.originalname).toLowerCase().substring(1).toUpperCase();
       
-      // Store only the filename, not the full path
-      const fileName = path.basename(file.path);
+      // Generate a sanitized filename for storage (without Norwegian characters)
+      const originalName = path.basename(file.originalname, path.extname(file.originalname));
+      const extension = path.extname(file.originalname);
+      const sanitizedBaseName = sanitizeFilename(originalName);
+      const fileName = `${sanitizedBaseName}${extension}`;
       
       // Try to upload to Wasabi if configured, otherwise use local path
       let fileUrl = fileName; // Default to local filename
