@@ -89,8 +89,18 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
       const response = await axios.get(`${API_BASE_URL}/api/maps`);
       setMaps(response.data.maps);
     } catch (error: any) {
-      setError(error.response?.data?.message || 'Kunne ikke hente kart');
       console.error('Error fetching maps:', error);
+      
+      // Handle different types of errors
+      if (error.response?.status === 429 || error.response?.status === 503) {
+        setError('API er midlertidig utilgjengelig på grunn av for mange forespørsler. Vennligst vent et minutt og prøv igjen.');
+      } else if (error.code === 'ERR_NETWORK' || error.message?.includes('Network Error')) {
+        setError('Nettverksfeil. Sjekk internettforbindelsen og prøv igjen.');
+      } else if (error.response?.status >= 500) {
+        setError('Serverfeil. Vennligst prøv igjen senere.');
+      } else {
+        setError(error.response?.data?.message || 'Kunne ikke hente kart');
+      }
     } finally {
       setLoading(false);
     }
@@ -102,6 +112,13 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
       return response.data.map;
     } catch (error: any) {
       console.error('Error fetching map:', error);
+      
+      // Handle rate limiting for individual map fetch
+      if (error.response?.status === 429 || error.response?.status === 503) {
+        console.log('⏳ Rate limited while fetching map, will retry automatically');
+        // Don't set error state for individual map fetch, let retry logic handle it
+      }
+      
       return null;
     }
   };

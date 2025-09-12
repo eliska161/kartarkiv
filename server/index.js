@@ -33,14 +33,19 @@ const generalLimiter = rateLimit({
 });
 
 const strictLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 20, // limit each IP to 20 requests per windowMs
+  windowMs: 1 * 60 * 1000, // 1 minute (reduced from 15 minutes)
+  max: 30, // limit each IP to 30 requests per minute (increased from 20)
   message: {
-    error: 'For mange forespørsler fra denne IP-adressen, prøv igjen senere.',
-    retryAfter: '15 minutter'
+    error: 'API er midlertidig utilgjengelig på grunn av for mange forespørsler. Vennligst vent et minutt og prøv igjen.',
+    retryAfter: '1 minutt',
+    statusCode: 429
   },
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => {
+    // Skip rate limiting for health checks
+    return req.path === '/health' || req.path === '/api/health';
+  }
 });
 
 const uploadLimiter = rateLimit({

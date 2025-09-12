@@ -13,8 +13,9 @@ const apiClient: AxiosInstance = axios.create({
 });
 
 // Retry configuration
-const MAX_RETRIES = 3;
-const RETRY_DELAY = 1000; // 1 second
+const MAX_RETRIES = 5;
+const RETRY_DELAY = 2000; // 2 seconds
+const RATE_LIMIT_DELAY = 10000; // 10 seconds for rate limiting
 
 // Retry function
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -34,13 +35,26 @@ const retryRequest = async (config: AxiosRequestConfig, retryCount = 0): Promise
                        error.code === 'ERR_NETWORK' ||
                        error.response?.status === 0;
     
+    // Check if it's rate limiting
+    const isRateLimited = error.response?.status === 429 || 
+                         error.response?.status === 503 ||
+                         error.message?.includes('rate limit') ||
+                         error.message?.includes('too many requests');
+    
     const isRetryableError = isCorsError || 
                             (error.response?.status >= 500 && error.response?.status < 600) ||
-                            error.response?.status === 429; // Rate limited
+                            isRateLimited;
     
     if (isRetryableError && retryCount < MAX_RETRIES) {
-      console.log(`🔄 API: Retrying request in ${RETRY_DELAY * (retryCount + 1)}ms...`);
-      await sleep(RETRY_DELAY * (retryCount + 1));
+      const delay = isRateLimited ? RATE_LIMIT_DELAY : RETRY_DELAY * (retryCount + 1);
+      console.log(`🔄 API: Retrying request in ${delay}ms... (${isRateLimited ? 'Rate limited' : 'Error'})`);
+      
+      // Show user-friendly message for rate limiting
+      if (isRateLimited && retryCount === 0) {
+        console.log('⏳ API: Rate limited - please wait...');
+      }
+      
+      await sleep(delay);
       return retryRequest(config, retryCount + 1);
     }
     
@@ -50,6 +64,12 @@ const retryRequest = async (config: AxiosRequestConfig, retryCount = 0): Promise
       if (window.confirm('Det oppstod en tilkoblingsfeil. Vil du oppdatere siden?')) {
         window.location.reload();
       }
+    }
+    
+    // If it's rate limiting after all retries
+    if (isRateLimited && retryCount >= MAX_RETRIES) {
+      console.error('🚫 API: Rate limited after all retries');
+      throw new Error('API er midlertidig utilgjengelig på grunn av for mange forespørsler. Vennligst vent et minutt og prøv igjen.');
     }
     
     throw error;

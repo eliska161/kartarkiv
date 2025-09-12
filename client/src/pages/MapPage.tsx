@@ -8,7 +8,7 @@ import { MapPin, List, Search, Filter, HelpCircle } from 'lucide-react';
 
 const MapPage: React.FC = () => {
   useUser(); // Get Clerk user data
-  const { maps, loading, fetchMaps } = useMap();
+  const { maps, loading, error, fetchMaps } = useMap();
   const [viewMode, setViewMode] = useState<'map' | 'list'>('map');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedMap, setSelectedMap] = useState<number | null>(null);
@@ -35,6 +35,45 @@ const MapPage: React.FC = () => {
 
   const uniqueScales = Array.from(new Set(maps.map(map => map.scale).filter(Boolean)));
   const uniqueContours = Array.from(new Set(maps.map(map => map.contour_interval).filter(Boolean)));
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <div className="flex items-center justify-center h-96">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-eok-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Henter kart...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <div className="flex items-center justify-center h-96">
+          <div className="text-center max-w-md">
+            <div className="bg-red-100 rounded-full p-3 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+              <MapPin className="h-8 w-8 text-red-600" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Kunne ikke hente kart</h3>
+            <p className="text-gray-600 mb-4">{error}</p>
+            <button
+              onClick={() => fetchMaps()}
+              className="bg-eok-600 text-white px-4 py-2 rounded-lg hover:bg-eok-700 transition-colors"
+            >
+              Prøv igjen
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
