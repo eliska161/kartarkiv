@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { User, Mail, Shield, Trash2, Edit, Plus, Search, Filter, UserPlus, X, RefreshCw } from 'lucide-react';
 import { showErrorToast, showSuccessToast } from '../utils/errorHandler';
 import { apiGet, apiPut, apiDelete, apiPost } from '../utils/apiClient';
+import axios from 'axios';
+
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 interface ClerkUser {
   id: string;
@@ -76,7 +79,7 @@ const UserManagement: React.FC = () => {
         setLoading(true);
       }
       
-      const response = await apiGet('/api/admin/users');
+      const response = await axios.get(`${API_BASE_URL}/api/admin/users`);
       console.log('🔄 UserManagement: API response received:', response.data);
       
       // Handle both array and object with users property
@@ -109,7 +112,7 @@ const UserManagement: React.FC = () => {
   const handleToggleAdmin = async (user: ClerkUser) => {
     try {
       const newAdminStatus = !user.publicMetadata.isAdmin;
-      await apiPut(`/api/admin/users/${user.id}/role`, {
+      await axios.put(`${API_BASE_URL}/api/admin/users/${user.id}/role`, {
         isAdmin: newAdminStatus
       });
       
@@ -132,7 +135,7 @@ const UserManagement: React.FC = () => {
     }
 
     try {
-      await apiDelete(`/api/admin/users/${user.id}`);
+      await axios.delete(`${API_BASE_URL}/api/admin/users/${user.id}`);
       setUsers(prev => prev.filter(u => u.id !== user.id));
       showSuccessToast('Brukeren ble slettet');
     } catch (error) {
@@ -147,7 +150,7 @@ const UserManagement: React.FC = () => {
 
     try {
       setIsInviting(true);
-      await apiPost('/api/admin/users/invite', {
+      await axios.post(`${API_BASE_URL}/api/admin/users/invite`, {
         email: inviteEmail,
         role: inviteRole
       });

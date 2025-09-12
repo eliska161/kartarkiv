@@ -56,10 +56,17 @@ const retryRequest = async (config: AxiosRequestConfig, retryCount = 0): Promise
   }
 };
 
-// Request interceptor
+// Request interceptor to add auth token
 apiClient.interceptors.request.use(
   (config) => {
     console.log(`🌐 API: Making request to ${config.url}`);
+    
+    // Use the global axios authorization header if available
+    if (axios.defaults.headers.common['Authorization']) {
+      config.headers.Authorization = axios.defaults.headers.common['Authorization'];
+      console.log('🔐 API: Using global auth token');
+    }
+    
     return config;
   },
   (error) => {
