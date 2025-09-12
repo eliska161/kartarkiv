@@ -98,7 +98,7 @@ export const validateFile = (file: File): { isValid: boolean; error?: string } =
 };
 
 // Form validation
-export const validateMapForm = (data: any): { isValid: boolean; errors: string[] } => {
+export const validateMapForm = (data: any, isEdit: boolean = false): { isValid: boolean; errors: string[] } => {
   const errors: string[] = [];
   
   if (!data.name || data.name.trim().length === 0) {
@@ -113,7 +113,8 @@ export const validateMapForm = (data: any): { isValid: boolean; errors: string[]
     errors.push('Beskrivelse kan ikke være lengre enn 500 tegn');
   }
   
-  if (!data.scale || data.scale.trim().length === 0) {
+  // Only require scale for new maps, not when editing
+  if (!isEdit && (!data.scale || data.scale.trim().length === 0)) {
     errors.push('Målestokk er påkrevd');
   }
   

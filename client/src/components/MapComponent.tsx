@@ -47,7 +47,24 @@ const MapComponent: React.FC<MapComponentProps> = ({ maps, selectedMap, onSelect
     if (selectedMap) {
       const selectedMapData = maps.find(map => map.id === selectedMap);
       if (selectedMapData) {
-        setMapCenter([selectedMapData.center_lat, selectedMapData.center_lng]);
+        // If area_bounds exists, calculate center from polygon
+        if (selectedMapData.area_bounds && selectedMapData.area_bounds.coordinates && selectedMapData.area_bounds.coordinates[0]) {
+          const coords = selectedMapData.area_bounds.coordinates[0];
+          let sumLat = 0;
+          let sumLng = 0;
+          
+          coords.forEach((coord: [number, number]) => {
+            sumLat += coord[0];
+            sumLng += coord[1];
+          });
+          
+          const centerLat = sumLat / coords.length;
+          const centerLng = sumLng / coords.length;
+          setMapCenter([centerLat, centerLng]);
+        } else {
+          // Fallback to stored center
+          setMapCenter([selectedMapData.center_lat, selectedMapData.center_lng]);
+        }
         setMapZoom(selectedMapData.zoom_level || 13);
       }
     }

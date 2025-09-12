@@ -199,7 +199,7 @@ const AddMapModal: React.FC<AddMapModalProps> = ({ isOpen, onClose, mapToEdit, o
     setError(null);
 
     // Validate form data
-    const formValidation = validateMapForm(mapData);
+    const formValidation = validateMapForm(mapData, !!mapToEdit);
     if (!formValidation.isValid) {
       setError(formValidation.errors.join('\n'));
       setIsSubmitting(false);
@@ -281,7 +281,12 @@ const AddMapModal: React.FC<AddMapModalProps> = ({ isOpen, onClose, mapToEdit, o
             </h2>
             {mapToEdit && (
               <p className="text-sm text-gray-600 mt-1">
-                Rediger "{mapToEdit.name}" - velg hva du vil endre
+                Rediger "{mapToEdit.name}" - endre informasjon eller legg til filer
+              </p>
+            )}
+            {!mapToEdit && (
+              <p className="text-sm text-gray-600 mt-1">
+                Fyll ut grunnleggende informasjon og tegn kartområdet
               </p>
             )}
           </div>

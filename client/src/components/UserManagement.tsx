@@ -36,12 +36,16 @@ const UserManagement: React.FC = () => {
     try {
       setLoading(true);
       const response = await axios.get(`${API_BASE_URL}/api/admin/users`);
-      if (response.data) {
+      if (response.data && Array.isArray(response.data)) {
         setUsers(response.data);
+      } else {
+        console.error('Invalid response format:', response.data);
+        setUsers([]);
       }
     } catch (error) {
       console.error('Error fetching users:', error);
       showErrorToast('Kunne ikke hente brukerliste');
+      setUsers([]);
     } finally {
       setLoading(false);
     }
