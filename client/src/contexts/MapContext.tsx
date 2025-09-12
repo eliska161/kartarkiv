@@ -95,7 +95,7 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
       if (error.response?.status === 429 || error.response?.status === 503) {
         setError('API er midlertidig utilgjengelig på grunn av for mange forespørsler. Vennligst vent et minutt og prøv igjen.');
       } else if (error.code === 'ERR_NETWORK' || error.message?.includes('Network Error')) {
-        setError('Nettverksfeil. Sjekk internettforbindelsen og prøv igjen.');
+        setError('API er midlertidig utilgjengelig på grunn av for mange forespørsler. Vennligst vent et minutt og prøv igjen.');
       } else if (error.response?.status >= 500) {
         setError('Serverfeil. Vennligst prøv igjen senere.');
       } else {
