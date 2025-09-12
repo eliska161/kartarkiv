@@ -67,6 +67,7 @@ const corsOptions = {
       'https://kartarkiv-production.up.railway.app',
       'https://kart.eddypartiet.com',
       'https://kartarkiv-dkq6bcpk5-eliska161s-projects.vercel.app',
+      'https://kartarkiv-jk629p4kc-eliska161s-projects.vercel.app',
       process.env.FRONTEND_URL || 'http://localhost:3000'
     ];
     

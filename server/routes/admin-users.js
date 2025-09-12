@@ -1,6 +1,11 @@
 const express = require('express');
-const { clerkClient } = require('@clerk/clerk-sdk-node');
+const { createClerkClient } = require('@clerk/backend');
 const router = express.Router();
+
+// Initialize Clerk client
+const clerkClient = createClerkClient({
+  secretKey: process.env.CLERK_SECRET_KEY
+});
 
 // Middleware to verify admin access
 const verifyAdmin = async (req, res, next) => {
@@ -11,7 +16,9 @@ const verifyAdmin = async (req, res, next) => {
     }
 
     const token = authHeader.substring(7);
-    const payload = await clerkClient.verifyToken(token);
+    const payload = await clerkClient.verifyToken(token, {
+      secretKey: process.env.CLERK_SECRET_KEY
+    });
     
     if (!payload.publicMetadata?.isAdmin) {
       return res.status(403).json({ message: 'Admin access required' });
