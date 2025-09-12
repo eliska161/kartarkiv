@@ -53,16 +53,32 @@ const AddMapModal: React.FC<AddMapModalProps> = ({ isOpen, onClose, mapToEdit, o
   const confirmation = useConfirmation();
   const { showSuccess, showError } = useToast();
   
+  // Update mapData when mapToEdit changes
+  useEffect(() => {
+    if (mapToEdit) {
+      setMapData({
+        name: mapToEdit.name || '',
+        description: mapToEdit.description || '',
+        scale: mapToEdit.scale || '',
+        contourInterval: mapToEdit.contour_interval || 0,
+        centerLat: mapToEdit.center_lat || 60.8832,
+        centerLng: mapToEdit.center_lng || 11.5519,
+        zoomLevel: mapToEdit.zoom_level || 10,
+        areaBounds: mapToEdit.area_bounds || null
+      });
+    }
+  }, [mapToEdit]);
+  
   // Map data
   const [mapData, setMapData] = useState({
-    name: '',
-    description: '',
-    scale: '',
-    contourInterval: 0,
-    centerLat: 60.8832,
-    centerLng: 11.5519,
-    zoomLevel: 10,
-    areaBounds: null as any
+    name: mapToEdit?.name || '',
+    description: mapToEdit?.description || '',
+    scale: mapToEdit?.scale || '',
+    contourInterval: mapToEdit?.contour_interval || 0,
+    centerLat: mapToEdit?.center_lat || 60.8832,
+    centerLng: mapToEdit?.center_lng || 11.5519,
+    zoomLevel: mapToEdit?.zoom_level || 10,
+    areaBounds: mapToEdit?.area_bounds || null
   });
   
   // File upload
@@ -203,12 +219,14 @@ const AddMapModal: React.FC<AddMapModalProps> = ({ isOpen, onClose, mapToEdit, o
     setIsSubmitting(true);
     setError(null);
 
-    // Validate form data
-    const formValidation = validateMapForm(mapData, !!mapToEdit);
-    if (!formValidation.isValid) {
-      setError(formValidation.errors.join('\n'));
-      setIsSubmitting(false);
-      return;
+    // Only validate form data if we're editing info or creating new map
+    if (!mapToEdit || editMode === 'info') {
+      const formValidation = validateMapForm(mapData, !!mapToEdit);
+      if (!formValidation.isValid) {
+        setError(formValidation.errors.join('\n'));
+        setIsSubmitting(false);
+        return;
+      }
     }
 
     // Valider at polygon er tegnet (kun for nye kart)
@@ -227,8 +245,10 @@ const AddMapModal: React.FC<AddMapModalProps> = ({ isOpen, onClose, mapToEdit, o
 
     try {
       if (mapToEdit) {
-        // Update existing map
-        await axios.put(`${API_BASE_URL}/api/maps/${mapToEdit.id}`, mapData);
+        // Update existing map - only send data if we're editing info
+        if (editMode === 'info') {
+          await axios.put(`${API_BASE_URL}/api/maps/${mapToEdit.id}`, mapData);
+        }
         
         // Upload new files if any
         if (selectedFiles.length > 0) {
@@ -262,7 +282,19 @@ const AddMapModal: React.FC<AddMapModalProps> = ({ isOpen, onClose, mapToEdit, o
         }
       }
 
-      showSuccess(mapToEdit ? 'Kartet ble oppdatert!' : 'Kartet ble opprettet!');
+      if (mapToEdit) {
+        if (editMode === 'info') {
+          showSuccess('Kartinformasjon ble oppdatert!');
+        } else if (editMode === 'files') {
+          showSuccess('Filer ble lagt til!');
+        } else if (editMode === 'polygon') {
+          showSuccess('Kartområde ble oppdatert!');
+        } else {
+          showSuccess('Kartet ble oppdatert!');
+        }
+      } else {
+        showSuccess('Kartet ble opprettet!');
+      }
       onSuccess?.();
       onClose();
     } catch (error: any) {
