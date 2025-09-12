@@ -57,10 +57,7 @@ const UptimeStatus: React.FC<UptimeStatusProps> = ({ className = '', showDetails
           },
           body: new URLSearchParams({
             api_key: apiKey,
-            format: 'json',
-            logs: '0',
-            'custom_uptime_ratios': '1-7-30',
-            'custom_uptime_ranges': '1-7-30'
+            format: 'json'
           })
         });
 
