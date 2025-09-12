@@ -5,6 +5,7 @@ import Header from '../components/Header';
 import AddMapModal from '../components/AddMapModal';
 import LogoManager from '../components/LogoManager';
 import UserManagement from '../components/UserManagement';
+import UptimeStatus from '../components/UptimeStatus';
 import { Plus, MapPin, Users, BarChart3, Settings, Edit, Trash2, User, Shield } from 'lucide-react';
 
 const AdminDashboard: React.FC = () => {
@@ -374,6 +375,11 @@ const AdminDashboard: React.FC = () => {
                     ))}
                   </div>
                 </div>
+              </div>
+              
+              {/* UptimeRobot Status */}
+              <div className="mt-6">
+                <UptimeStatus showDetails={true} />
               </div>
             </div>
           )}

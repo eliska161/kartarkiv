@@ -4,6 +4,7 @@ import { useMap } from '../contexts/MapContext';
 import MapComponent from '../components/MapComponent';
 import MapList from '../components/MapList';
 import Header from '../components/Header';
+import UptimeStatus from '../components/UptimeStatus';
 import { MapPin, List, Search, Filter, HelpCircle } from 'lucide-react';
 
 const MapPage: React.FC = () => {
@@ -56,19 +57,33 @@ const MapPage: React.FC = () => {
     return (
       <div className="min-h-screen bg-gray-50">
         <Header />
-        <div className="flex items-center justify-center h-96">
-          <div className="text-center max-w-md">
+        <div className="flex items-center justify-center min-h-96 p-4">
+          <div className="text-center max-w-2xl w-full">
             <div className="bg-red-100 rounded-full p-3 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
               <MapPin className="h-8 w-8 text-red-600" />
             </div>
             <h3 className="text-lg font-medium text-gray-900 mb-2">Kunne ikke hente kart</h3>
-            <p className="text-gray-600 mb-4">{error}</p>
-            <button
-              onClick={() => fetchMaps()}
-              className="bg-eok-600 text-white px-4 py-2 rounded-lg hover:bg-eok-700 transition-colors"
-            >
-              Prøv igjen
-            </button>
+            <p className="text-gray-600 mb-6">{error}</p>
+            
+            {/* UptimeRobot Status */}
+            <div className="mb-6">
+              <UptimeStatus showDetails={true} />
+            </div>
+            
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <button
+                onClick={() => fetchMaps()}
+                className="bg-eok-600 text-white px-6 py-2 rounded-lg hover:bg-eok-700 transition-colors"
+              >
+                Prøv igjen
+              </button>
+              <button
+                onClick={() => window.location.reload()}
+                className="bg-gray-600 text-white px-6 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+              >
+                Oppdater siden
+              </button>
+            </div>
           </div>
         </div>
       </div>
