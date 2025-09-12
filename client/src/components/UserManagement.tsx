@@ -16,7 +16,7 @@ interface ClerkUser {
 }
 
 const UserManagement: React.FC = () => {
-  const { clerk } = useClerk();
+  const clerk = useClerk();
   const [users, setUsers] = useState<ClerkUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -31,7 +31,7 @@ const UserManagement: React.FC = () => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await clerk?.users.getUserList();
+      const response = await clerk.users.getUserList();
       if (response) {
         setUsers(response.data);
       }
@@ -46,7 +46,7 @@ const UserManagement: React.FC = () => {
   const handleToggleAdmin = async (user: ClerkUser) => {
     try {
       const newAdminStatus = !user.publicMetadata.isAdmin;
-      await clerk?.users.updateUser(user.id, {
+      await clerk.users.updateUser(user.id, {
         publicMetadata: {
           ...user.publicMetadata,
           isAdmin: newAdminStatus
@@ -72,7 +72,7 @@ const UserManagement: React.FC = () => {
     }
 
     try {
-      await clerk?.users.deleteUser(user.id);
+      await clerk.users.deleteUser(user.id);
       setUsers(prev => prev.filter(u => u.id !== user.id));
       showSuccessToast('Brukeren ble slettet');
     } catch (error) {
