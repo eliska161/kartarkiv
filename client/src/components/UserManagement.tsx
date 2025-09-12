@@ -51,6 +51,7 @@ const UserManagement: React.FC = () => {
       
       const response = await apiGet('/api/admin/users');
       console.log('🔄 UserManagement: API response received:', response);
+      console.log('🔄 UserManagement: Response data:', response.data);
       
       // Backend returns array directly
       const usersData = response.data;
@@ -86,6 +87,8 @@ const UserManagement: React.FC = () => {
     try {
       console.log('🔄 UserManagement: Fetching invitations...');
       const response = await apiGet('/api/admin/invitations');
+      console.log('🔄 UserManagement: Invitations response:', response);
+      console.log('🔄 UserManagement: Invitations data:', response.data);
       setInvitations(response.data || []);
       console.log('🔄 UserManagement: Invitations fetched:', response.data?.length || 0);
     } catch (error) {
