@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Activity, RefreshCw, Filter, Search, Clock, Globe, Database, AlertCircle, CheckCircle, XCircle, Info, Trash2 } from 'lucide-react';
-import { apiGet, apiDelete } from '../utils/apiClient';
+import { Activity, RefreshCw, Filter, Search, Clock, Globe, Database, AlertCircle, CheckCircle, XCircle, Info } from 'lucide-react';
+import { apiGet } from '../utils/apiClient';
 
 interface ApiLog {
   id: string;
@@ -25,10 +25,24 @@ const ApiLogs: React.FC = () => {
   const [totalLogs, setTotalLogs] = useState(0);
   const [currentPage, setCurrentPage] = useState(0);
   const [pageSize] = useState(50);
+  const [autoRefresh, setAutoRefresh] = useState(true);
 
   useEffect(() => {
     fetchLogs();
   }, [currentPage, methodFilter, statusFilter, searchTerm]);
+
+  // Auto-refresh every 5 seconds
+  useEffect(() => {
+    if (!autoRefresh) return;
+
+    const interval = setInterval(() => {
+      if (!isRefreshing) {
+        fetchLogs();
+      }
+    }, 5000); // 5 seconds
+
+    return () => clearInterval(interval);
+  }, [autoRefresh, isRefreshing]);
 
   const fetchLogs = async () => {
     setLoading(true);
@@ -58,18 +72,6 @@ const ApiLogs: React.FC = () => {
     setIsRefreshing(false);
   };
 
-  const handleClearLogs = async () => {
-    if (window.confirm('Er du sikker på at du vil slette alle logger? Dette kan ikke angres.')) {
-      try {
-        await apiDelete('/api/logs');
-        setLogs([]);
-        setTotalLogs(0);
-        setCurrentPage(0);
-      } catch (error) {
-        console.error('Error clearing logs:', error);
-      }
-    }
-  };
 
   const getStatusIcon = (status: number) => {
     if (status >= 200 && status < 300) {
@@ -128,20 +130,31 @@ const ApiLogs: React.FC = () => {
           <h2 className="text-2xl font-bold text-gray-900">API Logs</h2>
         </div>
         <div className="flex items-center space-x-3">
-          <button
-            onClick={handleClearLogs}
-            className="flex items-center space-x-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
-          >
-            <Trash2 className="h-4 w-4" />
-            <span>Slett alle</span>
-          </button>
+          <div className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              id="autoRefresh"
+              checked={autoRefresh}
+              onChange={(e) => setAutoRefresh(e.target.checked)}
+              className="h-4 w-4 text-eok-600 focus:ring-eok-500 border-gray-300 rounded"
+            />
+            <label htmlFor="autoRefresh" className="text-sm font-medium text-gray-700">
+              Auto-oppdater (5s)
+              {autoRefresh && (
+                <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse mr-1"></div>
+                  Aktiv
+                </span>
+              )}
+            </label>
+          </div>
           <button
             onClick={handleRefresh}
             disabled={isRefreshing}
             className="flex items-center space-x-2 px-4 py-2 bg-eok-500 text-white rounded-lg hover:bg-eok-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-            <span>Oppdater</span>
+            <span>Oppdater nå</span>
           </button>
         </div>
       </div>
