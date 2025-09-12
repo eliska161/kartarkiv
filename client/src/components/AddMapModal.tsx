@@ -4,6 +4,8 @@ import { MapContainer, TileLayer, Polygon, Polyline, CircleMarker, useMap as use
 import { useMap } from '../contexts/MapContext';
 import axios from 'axios';
 import { handleApiError, showErrorToast, showSuccessToast, validateFile, validateMapForm } from '../utils/errorHandler';
+import { useConfirmation } from '../hooks/useConfirmation';
+import ConfirmationModal from './ConfirmationModal';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
@@ -47,6 +49,7 @@ const AddMapModal: React.FC<AddMapModalProps> = ({ isOpen, onClose, mapToEdit, o
   const [editMode, setEditMode] = useState<'info' | 'polygon' | 'files' | null>(null);
   const [isDeletingFile, setIsDeletingFile] = useState<number | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
+  const confirmation = useConfirmation();
   
   // Map data
   const [mapData, setMapData] = useState({
@@ -743,7 +746,15 @@ const AddMapModal: React.FC<AddMapModalProps> = ({ isOpen, onClose, mapToEdit, o
                         <button
                           type="button"
                           onClick={async () => {
-                            if (window.confirm(`Er du sikker på at du vil slette filen "${file.original_filename || file.filename}"?`)) {
+                            const confirmed = await confirmation.confirm({
+                              title: 'Slett fil',
+                              message: `Er du sikker på at du vil slette filen "${file.original_filename || file.filename}"?\n\nDette kan ikke angres.`,
+                              confirmText: 'Slett',
+                              cancelText: 'Avbryt',
+                              type: 'danger'
+                            });
+
+                            if (!confirmed) return;
                               setIsDeletingFile(file.id);
                               try {
                                 const response = await axios.delete(`${API_BASE_URL}/api/maps/files/${file.id}`);
@@ -871,6 +882,18 @@ const AddMapModal: React.FC<AddMapModalProps> = ({ isOpen, onClose, mapToEdit, o
           </div>
         </form>
       </div>
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={confirmation.isOpen}
+        onClose={confirmation.onClose}
+        onConfirm={confirmation.onConfirm}
+        title={confirmation.options.title}
+        message={confirmation.options.message}
+        confirmText={confirmation.options.confirmText}
+        cancelText={confirmation.options.cancelText}
+        type={confirmation.options.type}
+      />
     </div>
   );
 };

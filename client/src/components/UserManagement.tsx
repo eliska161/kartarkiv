@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { User, Mail, Shield, Trash2, Edit, Plus, Search, Filter, UserPlus, X, RefreshCw } from 'lucide-react';
 import { showErrorToast, showSuccessToast } from '../utils/errorHandler';
 import { apiGet, apiPut, apiDelete, apiPost } from '../utils/apiClient';
+import { useConfirmation } from '../hooks/useConfirmation';
+import ConfirmationModal from './ConfirmationModal';
 import axios from 'axios';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
@@ -31,6 +33,7 @@ const UserManagement: React.FC = () => {
   const [inviteRole, setInviteRole] = useState<'user' | 'admin'>('user');
   const [isInviting, setIsInviting] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const confirmation = useConfirmation();
 
   useEffect(() => {
     // Only fetch users on component mount
@@ -118,9 +121,15 @@ const UserManagement: React.FC = () => {
   };
 
   const handleDeleteUser = async (user: ClerkUser) => {
-    if (!window.confirm(`Er du sikker på at du vil slette brukeren "${user.firstName || user.emailAddresses?.[0]?.emailAddress || 'bruker'}"?`)) {
-      return;
-    }
+    const confirmed = await confirmation.confirm({
+      title: 'Slett bruker',
+      message: `Er du sikker på at du vil slette brukeren "${user.firstName || user.emailAddresses?.[0]?.emailAddress || 'bruker'}"?\n\nDette kan ikke angres.`,
+      confirmText: 'Slett',
+      cancelText: 'Avbryt',
+      type: 'danger'
+    });
+
+    if (!confirmed) return;
 
     try {
       await apiDelete(`/api/admin/users/${user.id}`);
@@ -399,7 +408,7 @@ const UserManagement: React.FC = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex space-x-2">
                       <span className="text-gray-400 text-sm">
-                        Vent på at brukeren accepterer invitasjonen
+                        Vente på at brukeren aksepterer invitasjonen
                       </span>
                     </div>
                   </td>
@@ -531,6 +540,18 @@ const UserManagement: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={confirmation.isOpen}
+        onClose={confirmation.onClose}
+        onConfirm={confirmation.onConfirm}
+        title={confirmation.options.title}
+        message={confirmation.options.message}
+        confirmText={confirmation.options.confirmText}
+        cancelText={confirmation.options.cancelText}
+        type={confirmation.options.type}
+      />
     </div>
   );
 };
