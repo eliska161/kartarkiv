@@ -1106,70 +1106,8 @@ router.post('/:id/files', authenticateUser, uploadLimiter, upload.array('files',
       return res.status(404).json({ message: 'Map not found' });
     }
 
-    // Ensure user exists in database with Clerk ID
-    const userEmail = req.user.email || 'user@example.com';
-    const userUsername = req.user.username || 'Unknown';
-    const passwordHash = 'clerk_user_no_password'; // Clerk handles auth, we don't need password
-    
-    // Check if user exists by clerk_id first
-    const existingUser = await pool.query(`
-      SELECT id, clerk_id, email FROM users WHERE clerk_id = $1
-    `, [req.user.id]);
-    
-    console.log('🔍 Existing user query result:', existingUser.rows);
-    
-    let userId;
-    if (existingUser.rows.length === 0) {
-      // User doesn't exist, create new one
-      // Handle potential username conflicts by adding a suffix
-      let finalUsername = userUsername;
-      let counter = 1;
-      
-      while (true) {
-        try {
-          const newUser = await pool.query(`
-            INSERT INTO users (clerk_id, email, username, password_hash, is_admin) 
-            VALUES ($1, $2, $3, $4, $5) RETURNING id
-          `, [req.user.id, userEmail, finalUsername, passwordHash, req.user.isAdmin]);
-          userId = newUser.rows[0].id;
-          console.log('✅ Created new user for file upload:', req.user.id, 'with username:', finalUsername, 'database ID:', userId);
-          break;
-        } catch (error) {
-          if (error.code === '23505' && error.constraint === 'users_username_key') {
-            // Username already exists, try with a number suffix
-            finalUsername = `${userUsername}${counter}`;
-            counter++;
-            console.log('⚠️ Username conflict, trying:', finalUsername);
-          } else {
-            throw error; // Re-throw if it's a different error
-          }
-        }
-      }
-    } else {
-      // User exists, update if needed (but don't change username to avoid conflicts)
-      await pool.query(`
-        UPDATE users SET 
-          email = COALESCE($2, email),
-          is_admin = COALESCE($3, is_admin)
-        WHERE clerk_id = $1
-      `, [req.user.id, userEmail, req.user.isAdmin]);
-      userId = existingUser.rows[0].id;
-      console.log('✅ Updated existing user for file upload:', req.user.id, 'database ID:', userId, 'keeping existing username');
-    }
-
-    if (!userId) {
-      console.error('❌ No userId found for file upload');
-      return res.status(500).json({ message: 'User not found in database' });
-    }
-
-    // Verify the userId actually exists in the database
-    const userVerification = await pool.query('SELECT id FROM users WHERE id = $1', [userId]);
-    if (userVerification.rows.length === 0) {
-      console.error('❌ userId', userId, 'does not exist in users table!');
-      return res.status(500).json({ message: 'User ID not found in database' });
-    }
-
-    console.log('🔍 Using userId for file upload:', userId, 'verified in database');
+    // Use clerk_id directly for created_by (VARCHAR field)
+    console.log('🔍 Using clerk_id for file upload:', req.user.id);
     const uploadedFiles = [];
 
     for (const file of req.files) {
@@ -1195,7 +1133,7 @@ router.post('/:id/files', authenticateUser, uploadLimiter, upload.array('files',
         console.log('⚠️ Wasabi not configured, using local storage');
       }
       
-      console.log('🔍 Inserting file with created_by:', userId, 'for map:', mapId);
+      console.log('🔍 Inserting file with created_by:', req.user.id, 'for map:', mapId);
       
       const result = await pool.query(`
         INSERT INTO map_files (
@@ -1210,7 +1148,7 @@ router.post('/:id/files', authenticateUser, uploadLimiter, upload.array('files',
         fileType,
         file.size,
         file.mimetype || 'application/octet-stream', // mime_type
-        userId // created_by
+        req.user.id // created_by - use clerk_id directly (VARCHAR)
       ]);
 
       uploadedFiles.push(result.rows[0]);
