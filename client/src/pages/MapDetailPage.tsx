@@ -208,7 +208,7 @@ const MapDetailPage: React.FC = () => {
                       <div className="flex items-center space-x-3">
                         {getFileIcon(file.file_type)}
                         <div>
-                          <div className="font-medium text-gray-900">{file.file_name}</div>
+                          <div className="font-medium text-gray-900">{file.original_filename || file.filename}</div>
                           <div className="text-sm text-gray-500">
                             {file.file_type} • {formatFileSize(file.file_size)} • v{file.version}
                             {file.is_primary && (
