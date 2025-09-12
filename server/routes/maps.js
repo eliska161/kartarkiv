@@ -1089,6 +1089,38 @@ router.post('/:id/files', authenticateUser, uploadLimiter, upload.array('files',
       return res.status(404).json({ message: 'Map not found' });
     }
 
+    // Ensure user exists in database with Clerk ID
+    const userEmail = req.user.email || 'user@example.com';
+    const userUsername = req.user.username || 'Unknown';
+    const passwordHash = 'clerk_user_no_password'; // Clerk handles auth, we don't need password
+    
+    // Check if user exists by clerk_id first
+    const existingUser = await pool.query(`
+      SELECT id, clerk_id, email FROM users WHERE clerk_id = $1
+    `, [req.user.id]);
+    
+    let userId;
+    if (existingUser.rows.length === 0) {
+      // User doesn't exist, create new one
+      const newUser = await pool.query(`
+        INSERT INTO users (clerk_id, email, username, password_hash, is_admin) 
+        VALUES ($1, $2, $3, $4, $5) RETURNING id
+      `, [req.user.id, userEmail, userUsername, passwordHash, req.user.isAdmin]);
+      userId = newUser.rows[0].id;
+      console.log('✅ Created new user for file upload:', req.user.id);
+    } else {
+      // User exists, update if needed
+      await pool.query(`
+        UPDATE users SET 
+          email = COALESCE($2, email),
+          username = COALESCE($3, username),
+          is_admin = COALESCE($4, is_admin)
+        WHERE clerk_id = $1
+      `, [req.user.id, userEmail, userUsername, req.user.isAdmin]);
+      userId = existingUser.rows[0].id;
+      console.log('✅ Updated existing user for file upload:', req.user.id);
+    }
+
     const uploadedFiles = [];
 
     for (const file of req.files) {
@@ -1127,7 +1159,7 @@ router.post('/:id/files', authenticateUser, uploadLimiter, upload.array('files',
         fileType,
         file.size,
         file.mimetype || 'application/octet-stream', // mime_type
-        req.user.id // created_by
+        userId // created_by
       ]);
 
       uploadedFiles.push(result.rows[0]);
