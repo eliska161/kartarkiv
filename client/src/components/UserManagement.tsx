@@ -51,9 +51,9 @@ const UserManagement: React.FC = () => {
       console.log('🔄 UserManagement: API response received:', response);
       
       // Handle both array and object with users property
-      let usersData = response;
-      if (response && typeof response === 'object' && response.users) {
-        usersData = response.users;
+      let usersData = response.data;
+      if (response.data && typeof response.data === 'object' && response.data.users) {
+        usersData = response.data.users;
       }
       
       if (usersData && Array.isArray(usersData)) {
