@@ -991,16 +991,15 @@ router.post('/', authenticateUser, [
         }
       }
     } else {
-      // User exists, update if needed
+      // User exists, update if needed (but don't change username to avoid conflicts)
       await pool.query(`
         UPDATE users SET 
           email = COALESCE($2, email),
-          username = COALESCE($3, username),
-          password_hash = COALESCE($4, password_hash),
-          is_admin = $5
+          password_hash = COALESCE($3, password_hash),
+          is_admin = $4
         WHERE clerk_id = $1
-      `, [req.user.id, userEmail, userUsername, passwordHash, req.user.isAdmin]);
-      console.log('✅ Updated existing user:', req.user.id);
+      `, [req.user.id, userEmail, passwordHash, req.user.isAdmin]);
+      console.log('✅ Updated existing user:', req.user.id, 'keeping existing username');
     }
 
     const result = await pool.query(`
@@ -1145,16 +1144,15 @@ router.post('/:id/files', authenticateUser, uploadLimiter, upload.array('files',
         }
       }
     } else {
-      // User exists, update if needed
+      // User exists, update if needed (but don't change username to avoid conflicts)
       await pool.query(`
         UPDATE users SET 
           email = COALESCE($2, email),
-          username = COALESCE($3, username),
-          is_admin = COALESCE($4, is_admin)
+          is_admin = COALESCE($3, is_admin)
         WHERE clerk_id = $1
-      `, [req.user.id, userEmail, userUsername, req.user.isAdmin]);
+      `, [req.user.id, userEmail, req.user.isAdmin]);
       userId = existingUser.rows[0].id;
-      console.log('✅ Updated existing user for file upload:', req.user.id, 'database ID:', userId);
+      console.log('✅ Updated existing user for file upload:', req.user.id, 'database ID:', userId, 'keeping existing username');
     }
 
     if (!userId) {
