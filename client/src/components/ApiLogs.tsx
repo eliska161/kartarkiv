@@ -42,8 +42,8 @@ const ApiLogs: React.FC = () => {
       });
 
       const response = await apiGet(`/api/logs?${params}`);
-      setLogs(response.logs || []);
-      setTotalLogs(response.total || 0);
+      setLogs(response.data.logs || []);
+      setTotalLogs(response.data.total || 0);
     } catch (error) {
       console.error('Error fetching logs:', error);
       setLogs([]);
