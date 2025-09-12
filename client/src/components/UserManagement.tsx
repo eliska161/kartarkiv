@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useClerk } from '@clerk/clerk-react';
-import { User, Mail, Shield, Trash2, Edit, Plus, Search, Filter } from 'lucide-react';
+import { User, Mail, Shield, Trash2, Edit, Plus, Search, Filter, UserPlus, X } from 'lucide-react';
 import { showErrorToast, showSuccessToast } from '../utils/errorHandler';
+import axios from 'axios';
+
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 interface ClerkUser {
   id: string;
@@ -16,13 +18,15 @@ interface ClerkUser {
 }
 
 const UserManagement: React.FC = () => {
-  const clerk = useClerk();
   const [users, setUsers] = useState<ClerkUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState<'all' | 'admin' | 'user'>('all');
   const [editingUser, setEditingUser] = useState<ClerkUser | null>(null);
   const [showAddUser, setShowAddUser] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState<'user' | 'admin'>('user');
+  const [isInviting, setIsInviting] = useState(false);
 
   useEffect(() => {
     fetchUsers();
@@ -31,8 +35,8 @@ const UserManagement: React.FC = () => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await clerk.users.getUserList();
-      if (response) {
+      const response = await axios.get(`${API_BASE_URL}/api/admin/users`);
+      if (response.data) {
         setUsers(response.data);
       }
     } catch (error) {
@@ -46,11 +50,8 @@ const UserManagement: React.FC = () => {
   const handleToggleAdmin = async (user: ClerkUser) => {
     try {
       const newAdminStatus = !user.publicMetadata.isAdmin;
-      await clerk.users.updateUser(user.id, {
-        publicMetadata: {
-          ...user.publicMetadata,
-          isAdmin: newAdminStatus
-        }
+      await axios.put(`${API_BASE_URL}/api/admin/users/${user.id}/role`, {
+        isAdmin: newAdminStatus
       });
       
       setUsers(prev => prev.map(u => 
@@ -72,12 +73,36 @@ const UserManagement: React.FC = () => {
     }
 
     try {
-      await clerk.users.deleteUser(user.id);
+      await axios.delete(`${API_BASE_URL}/api/admin/users/${user.id}`);
       setUsers(prev => prev.filter(u => u.id !== user.id));
       showSuccessToast('Brukeren ble slettet');
     } catch (error) {
       console.error('Error deleting user:', error);
       showErrorToast('Kunne ikke slette bruker');
+    }
+  };
+
+  const handleInviteUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inviteEmail.trim()) return;
+
+    try {
+      setIsInviting(true);
+      await axios.post(`${API_BASE_URL}/api/admin/users/invite`, {
+        email: inviteEmail,
+        role: inviteRole
+      });
+      
+      showSuccessToast(`Invitasjon sendt til ${inviteEmail}`);
+      setInviteEmail('');
+      setInviteRole('user');
+      setShowAddUser(false);
+      fetchUsers(); // Refresh user list
+    } catch (error) {
+      console.error('Error inviting user:', error);
+      showErrorToast('Kunne ikke sende invitasjon');
+    } finally {
+      setIsInviting(false);
     }
   };
 
@@ -115,8 +140,8 @@ const UserManagement: React.FC = () => {
           onClick={() => setShowAddUser(true)}
           className="btn-primary flex items-center"
         >
-          <Plus className="h-4 w-4 mr-2" />
-          Legg til bruker
+          <UserPlus className="h-4 w-4 mr-2" />
+          Inviter bruker
         </button>
       </div>
 
@@ -290,6 +315,80 @@ const UserManagement: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Invite User Modal */}
+      {showAddUser && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">Inviter ny bruker</h3>
+              <button
+                onClick={() => setShowAddUser(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+
+            <form onSubmit={handleInviteUser} className="p-6">
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  E-postadresse
+                </label>
+                <input
+                  type="email"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-eok-500 focus:border-eok-500"
+                  placeholder="bruker@example.com"
+                  required
+                />
+              </div>
+
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Rolle
+                </label>
+                <select
+                  value={inviteRole}
+                  onChange={(e) => setInviteRole(e.target.value as 'user' | 'admin')}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-eok-500 focus:border-eok-500"
+                >
+                  <option value="user">Bruker</option>
+                  <option value="admin">Administrator</option>
+                </select>
+              </div>
+
+              <div className="flex justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={() => setShowAddUser(false)}
+                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+                >
+                  Avbryt
+                </button>
+                <button
+                  type="submit"
+                  disabled={isInviting || !inviteEmail.trim()}
+                  className="btn-primary flex items-center"
+                >
+                  {isInviting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Sender...
+                    </>
+                  ) : (
+                    <>
+                      <UserPlus className="h-4 w-4 mr-2" />
+                      Send invitasjon
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

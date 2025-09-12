@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@clerk/backend": "^2.12.1",
+    "@clerk/clerk-sdk-node": "^4.13.23",
     "@mapbox/togeojson": "^0.16.2",
     "@supabase/supabase-js": "^2.38.0",
     "@xmldom/xmldom": "^0.8.11",

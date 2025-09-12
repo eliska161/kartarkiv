@@ -9,6 +9,7 @@ const authRoutes = require('./routes/auth-jwt'); // Use JWT auth
 const mapRoutes = require('./routes/maps');
 const settingsRoutes = require('./routes/settings');
 const adminRoutes = require('./routes/admin');
+const adminUsersRoutes = require('./routes/admin-users');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -111,6 +112,8 @@ app.use('/api/settings', settingsRoutes);
 console.log('✅ Settings routes registered at /api/settings');
 app.use('/api/admin', adminRoutes);
 console.log('✅ Admin routes registered at /api/admin');
+app.use('/api/admin', adminUsersRoutes);
+console.log('✅ Admin users routes registered at /api/admin');
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
