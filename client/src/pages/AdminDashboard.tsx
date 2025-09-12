@@ -101,7 +101,7 @@ const AdminDashboard: React.FC = () => {
     <div className="min-h-screen bg-gray-50">
       <Header />
       
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-4 lg:py-8">
         {/* Page header */}
         <div className="mb-8">
           <div className="flex items-center justify-between">
@@ -338,7 +338,7 @@ const AdminDashboard: React.FC = () => {
           )}
 
           {activeTab === 'users' && (
-            <UserManagement />
+            <UserManagement key="user-management" />
           )}
 
           {activeTab === 'profile' && (

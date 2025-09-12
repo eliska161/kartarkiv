@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, Mail, Shield, Trash2, Edit, Plus, Search, Filter, UserPlus, X, RefreshCw } from 'lucide-react';
 import { showErrorToast, showSuccessToast } from '../utils/errorHandler';
-import axios from 'axios';
-
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+import { apiGet, apiPut, apiDelete, apiPost } from '../utils/apiClient';
 
 interface ClerkUser {
   id: string;
@@ -30,27 +28,59 @@ const UserManagement: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
+    // Always fetch users on component mount/refresh
+    console.log('🔄 UserManagement: Fetching users on mount');
     fetchUsers();
     
     // Refresh users every 30 seconds to catch new invitations
     const interval = setInterval(() => {
-      fetchUsers();
+      console.log('🔄 UserManagement: Auto-refreshing users');
+      fetchUsers(true); // Silent refresh
     }, 30000);
     
-    return () => clearInterval(interval);
+    return () => {
+      console.log('🔄 UserManagement: Cleaning up interval');
+      clearInterval(interval);
+    };
+  }, []);
+
+  // Also fetch users when component becomes visible (handles browser refresh)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        fetchUsers(true);
+      }
+    };
+
+    const handleFocus = () => {
+      fetchUsers(true);
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
   }, []);
 
   const fetchUsers = async (showRefreshSpinner = false) => {
     try {
+      console.log('🔄 UserManagement: Starting fetchUsers, showRefreshSpinner:', showRefreshSpinner);
+      
       if (showRefreshSpinner) {
         setIsRefreshing(true);
       } else {
         setLoading(true);
       }
       
-      const response = await axios.get(`${API_BASE_URL}/api/admin/users`);
+      const response = await apiGet('/api/admin/users');
+      console.log('🔄 UserManagement: API response received:', response.data?.length, 'users');
+      
       if (response.data && Array.isArray(response.data)) {
         setUsers(response.data);
+        console.log('🔄 UserManagement: Users updated successfully');
         if (showRefreshSpinner) {
           showSuccessToast('Brukerliste oppdatert');
         }
@@ -65,13 +95,14 @@ const UserManagement: React.FC = () => {
     } finally {
       setLoading(false);
       setIsRefreshing(false);
+      console.log('🔄 UserManagement: fetchUsers completed');
     }
   };
 
   const handleToggleAdmin = async (user: ClerkUser) => {
     try {
       const newAdminStatus = !user.publicMetadata.isAdmin;
-      await axios.put(`${API_BASE_URL}/api/admin/users/${user.id}/role`, {
+      await apiPut(`/api/admin/users/${user.id}/role`, {
         isAdmin: newAdminStatus
       });
       
@@ -94,7 +125,7 @@ const UserManagement: React.FC = () => {
     }
 
     try {
-      await axios.delete(`${API_BASE_URL}/api/admin/users/${user.id}`);
+      await apiDelete(`/api/admin/users/${user.id}`);
       setUsers(prev => prev.filter(u => u.id !== user.id));
       showSuccessToast('Brukeren ble slettet');
     } catch (error) {
@@ -109,7 +140,7 @@ const UserManagement: React.FC = () => {
 
     try {
       setIsInviting(true);
-      await axios.post(`${API_BASE_URL}/api/admin/users/invite`, {
+      await apiPost('/api/admin/users/invite', {
         email: inviteEmail,
         role: inviteRole
       });

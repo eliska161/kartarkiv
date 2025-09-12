@@ -100,12 +100,17 @@ const MapComponent: React.FC<MapComponentProps> = ({ maps, selectedMap, onSelect
   });
 
   return (
-    <div className="h-screen relative">
+    <div className="h-screen lg:h-screen relative">
       <MapContainer
         center={mapCenter}
         zoom={mapZoom}
         style={{ height: '100%', width: '100%' }}
         key={`${mapCenter[0]}-${mapCenter[1]}-${mapZoom}`} // Force re-render when center changes
+        zoomControl={true}
+        touchZoom={true}
+        doubleClickZoom={true}
+        scrollWheelZoom={true}
+        dragging={true}
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -198,7 +203,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ maps, selectedMap, onSelect
       </MapContainer>
       
       {/* Map info overlay */}
-      <div className="absolute top-4 left-4 bg-white rounded-lg shadow-lg p-4 z-[1000] max-w-sm">
+      <div className="absolute top-2 left-2 right-2 lg:top-4 lg:left-4 lg:right-auto bg-white rounded-lg shadow-lg p-3 lg:p-4 z-[1000] max-w-sm lg:max-w-sm">
         <div className="flex items-center mb-2">
           <MapPin className="h-4 w-4 text-eok-600 mr-2" />
           <h3 className="font-semibold text-gray-900">Kartarkiv</h3>

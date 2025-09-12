@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Upload, File } from 'lucide-react';
+import { X, Upload, File, HelpCircle } from 'lucide-react';
 import { MapContainer, TileLayer, Polygon, Polyline, CircleMarker, useMap as useLeafletMap } from 'react-leaflet';
 import { useMap } from '../contexts/MapContext';
 import axios from 'axios';
@@ -272,8 +272,8 @@ const AddMapModal: React.FC<AddMapModalProps> = ({ isOpen, onClose, mapToEdit, o
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2">
+      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-2 lg:mx-4 max-h-[95vh] overflow-y-auto">
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div>
             <h2 className="text-xl font-semibold text-gray-900">
@@ -402,14 +402,22 @@ const AddMapModal: React.FC<AddMapModalProps> = ({ isOpen, onClose, mapToEdit, o
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Kartnavn *
-                  </label>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Kartnavn *
+                    </label>
+                    <div className="group relative">
+                      <HelpCircle className="h-3 w-3 text-gray-400 hover:text-gray-600 cursor-help" />
+                      <div className="absolute bottom-full right-0 mb-2 px-3 py-2 bg-gray-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-10">
+                        Gi kartet et beskrivende navn
+                      </div>
+                    </div>
+                  </div>
                   <input
                     type="text"
                     value={mapData.name}
                     onChange={(e) => setMapData(prev => ({ ...prev, name: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-eok-500 focus:border-eok-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-eok-500 focus:border-eok-500 text-base"
                     placeholder="F.eks. Elverum Sentrum"
                     required
                   />

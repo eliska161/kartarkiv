@@ -4,7 +4,7 @@ import { useMap } from '../contexts/MapContext';
 import MapComponent from '../components/MapComponent';
 import MapList from '../components/MapList';
 import Header from '../components/Header';
-import { MapPin, List, Search, Filter } from 'lucide-react';
+import { MapPin, List, Search, Filter, HelpCircle } from 'lucide-react';
 
 const MapPage: React.FC = () => {
   useUser(); // Get Clerk user data
@@ -40,12 +40,20 @@ const MapPage: React.FC = () => {
     <div className="min-h-screen bg-gray-50">
       <Header />
       
-      <div className="flex">
+      <div className="flex flex-col lg:flex-row">
         {/* Sidebar */}
-        <div className="w-80 bg-white shadow-lg h-screen overflow-y-auto">
+        <div className="w-full lg:w-80 bg-white shadow-lg h-auto lg:h-screen overflow-y-auto">
           <div className="p-4 border-b border-gray-200">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">Kartarkiv</h2>
+              <div className="flex items-center">
+                <h2 className="text-lg font-semibold text-gray-900">Kartarkiv</h2>
+                <div className="ml-2 group relative">
+                  <HelpCircle className="h-4 w-4 text-gray-400 hover:text-gray-600 cursor-help" />
+                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-10">
+                    Velg visning: kart eller liste
+                  </div>
+                </div>
+              </div>
               <div className="flex space-x-1">
                 <button
                   onClick={() => setViewMode('map')}
@@ -72,25 +80,44 @@ const MapPage: React.FC = () => {
 
             {/* Search */}
             <div className="relative mb-4">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Søk i kart..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-eok-500 focus:border-transparent"
-              />
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-sm font-medium text-gray-700">Søk i kart</label>
+                <div className="group relative">
+                  <HelpCircle className="h-3 w-3 text-gray-400 hover:text-gray-600 cursor-help" />
+                  <div className="absolute bottom-full right-0 mb-2 px-3 py-2 bg-gray-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-10">
+                    Søk etter kartnavn eller beskrivelse
+                  </div>
+                </div>
+              </div>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Søk i kart..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-eok-500 focus:border-transparent text-base"
+                />
+              </div>
             </div>
 
             {/* Filters */}
             <div className="mb-4">
-              <button
-                onClick={() => setShowFilters(!showFilters)}
-                className="flex items-center text-sm text-gray-600 hover:text-gray-800"
-              >
-                <Filter className="h-4 w-4 mr-1" />
-                Filtrer
-              </button>
+              <div className="flex items-center justify-between">
+                <button
+                  onClick={() => setShowFilters(!showFilters)}
+                  className="flex items-center text-sm text-gray-600 hover:text-gray-800"
+                >
+                  <Filter className="h-4 w-4 mr-1" />
+                  Filtrer
+                </button>
+                <div className="group relative">
+                  <HelpCircle className="h-3 w-3 text-gray-400 hover:text-gray-600 cursor-help" />
+                  <div className="absolute bottom-full right-0 mb-2 px-3 py-2 bg-gray-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-10">
+                    Filtrer etter målestokk og ekvidistanse
+                  </div>
+                </div>
+              </div>
               
               {showFilters && (
                 <div className="mt-2 space-y-2">
@@ -143,7 +170,7 @@ const MapPage: React.FC = () => {
         </div>
 
         {/* Main content */}
-        <div className="flex-1">
+        <div className="flex-1 min-h-screen">
           {viewMode === 'map' ? (
             <MapComponent 
               maps={filteredMaps}
