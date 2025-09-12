@@ -1116,6 +1116,8 @@ router.post('/:id/files', authenticateUser, uploadLimiter, upload.array('files',
       SELECT id, clerk_id, email FROM users WHERE clerk_id = $1
     `, [req.user.id]);
     
+    console.log('🔍 Existing user query result:', existingUser.rows);
+    
     let userId;
     if (existingUser.rows.length === 0) {
       // User doesn't exist, create new one
@@ -1160,7 +1162,14 @@ router.post('/:id/files', authenticateUser, uploadLimiter, upload.array('files',
       return res.status(500).json({ message: 'User not found in database' });
     }
 
-    console.log('🔍 Using userId for file upload:', userId);
+    // Verify the userId actually exists in the database
+    const userVerification = await pool.query('SELECT id FROM users WHERE id = $1', [userId]);
+    if (userVerification.rows.length === 0) {
+      console.error('❌ userId', userId, 'does not exist in users table!');
+      return res.status(500).json({ message: 'User ID not found in database' });
+    }
+
+    console.log('🔍 Using userId for file upload:', userId, 'verified in database');
     const uploadedFiles = [];
 
     for (const file of req.files) {
