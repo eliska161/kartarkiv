@@ -737,12 +737,6 @@ const AddMapModal: React.FC<AddMapModalProps> = ({ isOpen, onClose, mapToEdit, o
                                 if (response.status === 200) {
                                   // File deleted successfully - refresh the map data
                                   showSuccessToast('Filen ble slettet!');
-                                  // Update local state
-                                  setMapToEdit(prev => ({
-                                    ...prev,
-                                    files: prev.files.filter(f => f.id !== file.id),
-                                    file_count: prev.file_count - 1
-                                  }));
                                   // Notify parent component to refresh
                                   onSuccess?.();
                                 }
