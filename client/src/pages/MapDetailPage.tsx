@@ -4,10 +4,48 @@ import { useMap } from '../contexts/MapContext';
 import { useToast } from '../contexts/ToastContext';
 import axios from 'axios';
 import { ArrowLeft, Download, MapPin, Scale, Ruler, Calendar, User, FileText, Image, File, History, Maximize2 } from 'lucide-react';
-import { MapContainer, TileLayer, Polygon } from 'react-leaflet';
+import { MapContainer, TileLayer, Polygon, useMap as useLeafletMap } from 'react-leaflet';
+import L from 'leaflet';
 import VersionHistory from '../components/VersionHistory';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
+// Component to handle map bounds fitting for polygon
+const MapBoundsFitter: React.FC<{ coords: [number, number][] }> = ({ coords }) => {
+  const map = useLeafletMap();
+
+  useEffect(() => {
+    if (coords && coords.length > 0) {
+      // Convert GeoJSON coordinates [lng, lat] to Leaflet format [lat, lng]
+      const leafletCoords = coords.map(([lng, lat]) => [lat, lng] as [number, number]);
+      
+      // Calculate bounds
+      let minLat = leafletCoords[0][0];
+      let maxLat = leafletCoords[0][0];
+      let minLng = leafletCoords[0][1];
+      let maxLng = leafletCoords[0][1];
+      
+      leafletCoords.forEach(([lat, lng]) => {
+        minLat = Math.min(minLat, lat);
+        maxLat = Math.max(maxLat, lat);
+        minLng = Math.min(minLng, lng);
+        maxLng = Math.max(maxLng, lng);
+      });
+      
+      // Create bounds with padding
+      const padding = 0.001;
+      const bounds = L.latLngBounds(
+        [minLat - padding, minLng - padding],
+        [maxLat + padding, maxLng + padding]
+      );
+      
+      // Fit the map to the bounds
+      map.fitBounds(bounds, { padding: [20, 20] });
+    }
+  }, [coords, map]);
+
+  return null;
+};
 
 const MapDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -309,12 +347,13 @@ const MapDetailPage: React.FC = () => {
                     zoomControl={false}
                     attributionControl={false}
                   >
+                    <MapBoundsFitter coords={map.area_bounds.coordinates[0]} />
                     <TileLayer
                       url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                       attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                     />
                     <Polygon
-                      positions={map.area_bounds.coordinates[0]}
+                      positions={map.area_bounds.coordinates[0].map((coord: [number, number]) => [coord[1], coord[0]])}
                       color="#059669"
                       fillColor="#10b981"
                       fillOpacity={0.3}
