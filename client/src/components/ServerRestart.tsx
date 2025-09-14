@@ -59,28 +59,28 @@ const ServerRestart: React.FC = () => {
     try {
       const response = await apiPost('/api/restart/restart');
       
-      showSuccess('Server redeployment initiated! Railway vil bygge og starte serveren på nytt.');
+      showSuccess('Server restart initiated! Railway CLI vil prøve å redeploye serveren.');
       
       // Show countdown and then check if restart worked
-      let countdown = 10;
+      let countdown = 8;
       const countdownInterval = setInterval(() => {
         if (countdown > 0) {
-          showSuccess(`Redeploying in ${countdown} seconds... (This may take 1-2 minutes)`);
+          showSuccess(`Restarting in ${countdown} seconds... (May take 1-2 minutes)`);
           countdown--;
         } else {
           clearInterval(countdownInterval);
           setIsRestarting(false);
           
-          // Try to check if server is back online (longer wait for redeploy)
+          // Try to check if server is back online
           setTimeout(() => {
             fetchServerStatus();
-            showSuccess('Checking if redeployment completed successfully...');
-          }, 15000); // Longer wait for redeploy
+            showSuccess('Checking if restart completed successfully...');
+          }, 10000);
           
           // If server doesn't respond, show manual restart instructions
           setTimeout(() => {
-            showError('If redeployment did not complete, please check Railway dashboard for deployment status.');
-          }, 30000); // Longer timeout for redeploy
+            showError('If restart did not complete, please check Railway dashboard for deployment status.');
+          }, 20000);
         }
       }, 1000);
 

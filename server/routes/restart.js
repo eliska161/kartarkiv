@@ -32,15 +32,16 @@ router.post('/restart', async (req, res) => {
       timestamp: new Date().toISOString()
     });
     
-    // Use Railway CLI to trigger redeployment (most reliable method)
+    // Try Railway CLI first, fallback to process.exit
     console.log('🔄 RESTART: Attempting Railway CLI redeploy...');
     
-    exec('railway up', (error, stdout, stderr) => {
+    exec('npx @railway/cli up', (error, stdout, stderr) => {
       if (error) {
-        console.log('🔄 RESTART: Railway CLI not available, falling back to process.exit');
+        console.log('🔄 RESTART: Railway CLI failed, using process.exit fallback');
         console.log('Error:', error.message);
         // Fallback to process.exit if Railway CLI fails
         setTimeout(() => {
+          console.log('🔄 RESTART: Executing process.exit(1) to trigger restart...');
           process.exit(1);
         }, 2000);
       } else {
