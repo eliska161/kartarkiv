@@ -3,6 +3,7 @@ import { Plus, Edit, Trash2, Eye, EyeOff, Calendar, AlertCircle, Info, CheckCirc
 import apiClient from '../utils/apiClient';
 import { useToast } from '../contexts/ToastContext';
 import { useConfirmation } from '../hooks/useConfirmation';
+import ConfirmationModal from './ConfirmationModal';
 
 interface Announcement {
   id: number;
@@ -23,7 +24,7 @@ const AnnouncementManagement: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);
   const { showSuccess, showError } = useToast();
-  const { showConfirmation } = useConfirmation();
+  const { confirm, isOpen, options, onClose, onConfirm } = useConfirmation();
 
   const [formData, setFormData] = useState({
     title: '',
@@ -87,10 +88,10 @@ const AnnouncementManagement: React.FC = () => {
   };
 
   const handleDelete = async (id: number) => {
-    const confirmed = await showConfirmation(
-      'Slett kunngjøring',
-      'Er du sikker på at du vil slette denne kunngjøringen?'
-    );
+    const confirmed = await confirm({
+      title: 'Slett kunngjøring',
+      message: 'Er du sikker på at du vil slette denne kunngjøringen?'
+    });
     
     if (confirmed) {
       try {
@@ -365,6 +366,14 @@ const AnnouncementManagement: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={isOpen}
+        onClose={onClose}
+        onConfirm={onConfirm}
+        options={options}
+      />
     </div>
   );
 };
