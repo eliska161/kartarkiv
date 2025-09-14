@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { RefreshCw, Server, Activity, Clock, AlertTriangle } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
-import { useConfirmation } from '../contexts/ConfirmationContext';
 import { apiPost, apiGet } from '../utils/apiClient';
 
 interface ServerStatus {
@@ -21,7 +20,6 @@ const ServerRestart: React.FC = () => {
   const [serverStatus, setServerStatus] = useState<ServerStatus | null>(null);
   const [lastRestart, setLastRestart] = useState<string | null>(null);
   const { showSuccess, showError } = useToast();
-  const { confirm } = useConfirmation();
 
   const formatUptime = (seconds: number): string => {
     const days = Math.floor(seconds / 86400);
@@ -48,13 +46,9 @@ const ServerRestart: React.FC = () => {
   };
 
   const handleRestart = async () => {
-    const confirmed = await confirm({
-      title: 'Restart Server',
-      message: 'Er du sikker på at du vil restarte serveren? Dette vil midlertidig stoppe tjenesten.',
-      confirmText: 'Restart',
-      cancelText: 'Avbryt',
-      type: 'warning'
-    });
+    const confirmed = window.confirm(
+      'Er du sikker på at du vil restarte serveren? Dette vil midlertidig stoppe tjenesten.'
+    );
 
     if (!confirmed) return;
 
