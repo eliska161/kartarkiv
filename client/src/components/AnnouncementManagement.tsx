@@ -372,7 +372,12 @@ const AnnouncementManagement: React.FC = () => {
         isOpen={isOpen}
         onClose={onClose}
         onConfirm={onConfirm}
-        options={options}
+        title={options.title}
+        message={options.message}
+        confirmText={options.confirmText}
+        cancelText={options.cancelText}
+        type={options.type}
+        autoClose={options.autoClose}
       />
     </div>
   );
