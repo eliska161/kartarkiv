@@ -59,28 +59,28 @@ const ServerRestart: React.FC = () => {
     try {
       const response = await apiPost('/api/restart/restart');
       
-      showSuccess('Server restart initiated! Serveren vil starte på nytt om et øyeblikk.');
+      showSuccess('Server redeployment initiated! Railway vil bygge og starte serveren på nytt.');
       
       // Show countdown and then check if restart worked
-      let countdown = 5;
+      let countdown = 10;
       const countdownInterval = setInterval(() => {
         if (countdown > 0) {
-          showSuccess(`Server restarting in ${countdown} seconds...`);
+          showSuccess(`Redeploying in ${countdown} seconds... (This may take 1-2 minutes)`);
           countdown--;
         } else {
           clearInterval(countdownInterval);
           setIsRestarting(false);
           
-          // Try to check if server is back online
+          // Try to check if server is back online (longer wait for redeploy)
           setTimeout(() => {
             fetchServerStatus();
-            showSuccess('Checking if server restarted successfully...');
-          }, 3000);
+            showSuccess('Checking if redeployment completed successfully...');
+          }, 15000); // Longer wait for redeploy
           
           // If server doesn't respond, show manual restart instructions
           setTimeout(() => {
-            showError('If server did not restart automatically, please restart manually from Railway dashboard.');
-          }, 10000);
+            showError('If redeployment did not complete, please check Railway dashboard for deployment status.');
+          }, 30000); // Longer timeout for redeploy
         }
       }, 1000);
 
@@ -148,12 +148,12 @@ const ServerRestart: React.FC = () => {
       <div className="border-t pt-6">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-lg font-medium text-gray-900">Restart Server</h3>
+            <h3 className="text-lg font-medium text-gray-900">Redeploy Server</h3>
             <p className="text-sm text-gray-600 mt-1">
-              Restart serveren for å oppdatere kode eller løse problemer
+              Trigger en ny deployment av serveren via Railway CLI
             </p>
             <p className="text-xs text-amber-600 mt-1">
-              💡 Hvis automatisk restart ikke fungerer, gå til Railway dashboard for manuell restart
+              💡 Dette vil bygge og starte serveren på nytt (kan ta 1-2 minutter)
             </p>
             {lastRestart && (
               <p className="text-xs text-gray-500 mt-1">
@@ -173,12 +173,12 @@ const ServerRestart: React.FC = () => {
             {isRestarting ? (
               <>
                 <RefreshCw className="h-4 w-4 animate-spin" />
-                <span>Restarting...</span>
+                <span>Redeploying...</span>
               </>
             ) : (
               <>
                 <AlertTriangle className="h-4 w-4" />
-                <span>Restart Server</span>
+                <span>Redeploy Server</span>
               </>
             )}
           </button>

@@ -32,24 +32,25 @@ router.post('/restart', async (req, res) => {
       timestamp: new Date().toISOString()
     });
     
-    // Use different restart methods based on environment
-    setTimeout(() => {
-      console.log('🔄 RESTART: Executing restart command...');
-      
-      // Method 1: Force exit with error code (more likely to trigger restart)
-      process.exit(1);
-      
-    }, 1000);
+    // Use Railway CLI to trigger redeployment (most reliable method)
+    console.log('🔄 RESTART: Attempting Railway CLI redeploy...');
     
-    // Alternative method: Try Railway CLI restart (if available)
-    // exec('railway restart', (error, stdout, stderr) => {
-    //   if (error) {
-    //     console.log('🔄 RESTART: Railway CLI not available, using process.exit');
-    //     process.exit(1);
-    //   } else {
-    //     console.log('🔄 RESTART: Railway CLI restart successful');
-    //   }
-    // });
+    exec('railway up', (error, stdout, stderr) => {
+      if (error) {
+        console.log('🔄 RESTART: Railway CLI not available, falling back to process.exit');
+        console.log('Error:', error.message);
+        // Fallback to process.exit if Railway CLI fails
+        setTimeout(() => {
+          process.exit(1);
+        }, 2000);
+      } else {
+        console.log('🔄 RESTART: Railway CLI redeploy initiated successfully');
+        console.log('Output:', stdout);
+        if (stderr) {
+          console.log('Stderr:', stderr);
+        }
+      }
+    });
     
   } catch (error) {
     console.error('❌ RESTART ERROR:', error);
