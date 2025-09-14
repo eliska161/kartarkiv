@@ -32,6 +32,11 @@ const MapPage: React.FC = () => {
                           map.contour_interval?.toString() === filters.contourInterval;
 
     return matchesSearch && matchesScale && matchesContour;
+  }).sort((a, b) => {
+    // Sort selected map to the top
+    if (selectedMap === a.id) return -1;
+    if (selectedMap === b.id) return 1;
+    return 0;
   });
 
   const uniqueScales = Array.from(new Set(maps.map(map => map.scale).filter(Boolean)));

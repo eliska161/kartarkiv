@@ -45,7 +45,7 @@ const MapList: React.FC<MapListProps> = ({ maps, selectedMap, onSelectMap, viewM
           key={map.id}
           className={`p-4 rounded-lg border cursor-pointer transition-all duration-200 ${
             selectedMap === map.id
-              ? 'border-eok-500 bg-eok-50 shadow-md'
+              ? 'border-eok-500 bg-eok-50 shadow-md ring-2 ring-eok-200'
               : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm'
           }`}
           onClick={() => onSelectMap(map.id)}

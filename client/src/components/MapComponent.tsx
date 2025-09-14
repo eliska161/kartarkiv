@@ -47,25 +47,48 @@ const MapComponent: React.FC<MapComponentProps> = ({ maps, selectedMap, onSelect
     if (selectedMap) {
       const selectedMapData = maps.find(map => map.id === selectedMap);
       if (selectedMapData) {
-        // If area_bounds exists, calculate center from polygon
+        // If area_bounds exists, calculate center and optimal zoom from polygon
         if (selectedMapData.area_bounds && selectedMapData.area_bounds.coordinates && selectedMapData.area_bounds.coordinates[0]) {
           const coords = selectedMapData.area_bounds.coordinates[0];
           let sumLat = 0;
           let sumLng = 0;
+          let minLat = coords[0][0];
+          let maxLat = coords[0][0];
+          let minLng = coords[0][1];
+          let maxLng = coords[0][1];
           
           coords.forEach((coord: [number, number]) => {
             sumLat += coord[0];
             sumLng += coord[1];
+            minLat = Math.min(minLat, coord[0]);
+            maxLat = Math.max(maxLat, coord[0]);
+            minLng = Math.min(minLng, coord[1]);
+            maxLng = Math.max(maxLng, coord[1]);
           });
           
           const centerLat = sumLat / coords.length;
           const centerLng = sumLng / coords.length;
           setMapCenter([centerLat, centerLng]);
+          
+          // Calculate optimal zoom level based on polygon bounds
+          const latDiff = maxLat - minLat;
+          const lngDiff = maxLng - minLng;
+          const maxDiff = Math.max(latDiff, lngDiff);
+          
+          // Adjust zoom based on polygon size
+          let optimalZoom = 15;
+          if (maxDiff > 0.1) optimalZoom = 10;
+          else if (maxDiff > 0.05) optimalZoom = 12;
+          else if (maxDiff > 0.01) optimalZoom = 14;
+          else if (maxDiff > 0.005) optimalZoom = 16;
+          else optimalZoom = 18;
+          
+          setMapZoom(optimalZoom);
         } else {
           // Fallback to stored center
           setMapCenter([selectedMapData.center_lat, selectedMapData.center_lng]);
+          setMapZoom(selectedMapData.zoom_level || 13);
         }
-        setMapZoom(selectedMapData.zoom_level || 13);
       }
     }
   }, [selectedMap, maps]);
@@ -101,6 +124,22 @@ const MapComponent: React.FC<MapComponentProps> = ({ maps, selectedMap, onSelect
 
   return (
     <div className="h-screen lg:h-screen relative">
+      <style>{`
+        .leaflet-interactive {
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+        .leaflet-interactive:hover {
+          filter: brightness(1.1);
+        }
+        .animate-pulse {
+          animation: pulse 1s ease-in-out;
+        }
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+      `}</style>
       <MapContainer
         center={mapCenter}
         zoom={mapZoom}
@@ -115,6 +154,9 @@ const MapComponent: React.FC<MapComponentProps> = ({ maps, selectedMap, onSelect
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          maxZoom={19}
+          tileSize={256}
+          zoomOffset={0}
         />
         
         {maps.map(map => {
@@ -188,13 +230,41 @@ const MapComponent: React.FC<MapComponentProps> = ({ maps, selectedMap, onSelect
               <Polygon
                 positions={map.area_bounds.coordinates[0]}
                 color={selectedMap === map.id ? "#16a34a" : "#dc2626"}
-                weight={2}
-                opacity={0.8}
+                weight={selectedMap === map.id ? 3 : 2}
+                opacity={selectedMap === map.id ? 1.0 : 0.8}
                 fillColor={selectedMap === map.id ? "#16a34a" : "#dc2626"}
-                fillOpacity={0.2}
+                fillOpacity={selectedMap === map.id ? 0.3 : 0.2}
+                dashArray={selectedMap === map.id ? "5, 5" : undefined}
                 eventHandlers={{
-                  click: () => onSelectMap(map.id)
+                  click: () => {
+                    onSelectMap(map.id);
+                    // Add visual feedback
+                    const polygon = document.querySelector(`[data-map-id="${map.id}"]`);
+                    if (polygon) {
+                      polygon.classList.add('animate-pulse');
+                      setTimeout(() => {
+                        polygon.classList.remove('animate-pulse');
+                      }, 1000);
+                    }
+                  },
+                  mouseover: (e) => {
+                    const layer = e.target;
+                    layer.setStyle({
+                      weight: 3,
+                      opacity: 1.0,
+                      fillOpacity: 0.4
+                    });
+                  },
+                  mouseout: (e) => {
+                    const layer = e.target;
+                    layer.setStyle({
+                      weight: selectedMap === map.id ? 3 : 2,
+                      opacity: selectedMap === map.id ? 1.0 : 0.8,
+                      fillOpacity: selectedMap === map.id ? 0.3 : 0.2
+                    });
+                  }
                 }}
+                data-map-id={map.id}
               />
             )}
           </React.Fragment>
