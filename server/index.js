@@ -10,6 +10,7 @@ const mapRoutes = require('./routes/maps');
 const adminRoutes = require('./routes/admin');
 const adminUsersRoutes = require('./routes/admin-users');
 const announcementRoutes = require('./routes/announcements');
+const restartRoutes = require('./routes/restart');
 const { requestLogger, getLogs, clearLogs } = require('./middleware/requestLogger');
 
 const app = express();
@@ -170,6 +171,8 @@ app.use('/api/maps', mapRoutes);
 console.log('✅ Maps routes registered at /api/maps');
 app.use('/api/announcements', announcementRoutes);
 console.log('✅ Announcements routes registered at /api/announcements');
+app.use('/api/restart', restartRoutes);
+console.log('✅ Restart routes registered at /api/restart');
 
 // Test route to verify announcements are working
 app.get('/api/announcements/test', (req, res) => {
