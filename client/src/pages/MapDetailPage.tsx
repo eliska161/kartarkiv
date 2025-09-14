@@ -16,16 +16,13 @@ const MapBoundsFitter: React.FC<{ coords: [number, number][] }> = ({ coords }) =
 
   useEffect(() => {
     if (coords && coords.length > 0) {
-      // Convert GeoJSON coordinates [lng, lat] to Leaflet format [lat, lng]
-      const leafletCoords = coords.map(([lng, lat]) => [lat, lng] as [number, number]);
+      // Calculate bounds directly from coordinates
+      let minLat = coords[0][0];
+      let maxLat = coords[0][0];
+      let minLng = coords[0][1];
+      let maxLng = coords[0][1];
       
-      // Calculate bounds
-      let minLat = leafletCoords[0][0];
-      let maxLat = leafletCoords[0][0];
-      let minLng = leafletCoords[0][1];
-      let maxLng = leafletCoords[0][1];
-      
-      leafletCoords.forEach(([lat, lng]) => {
+      coords.forEach(([lat, lng]) => {
         minLat = Math.min(minLat, lat);
         maxLat = Math.max(maxLat, lat);
         minLng = Math.min(minLng, lng);
@@ -353,7 +350,7 @@ const MapDetailPage: React.FC = () => {
                       attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                     />
                     <Polygon
-                      positions={map.area_bounds.coordinates[0].map((coord: [number, number]) => [coord[1], coord[0]])}
+                      positions={map.area_bounds.coordinates[0]}
                       color="#059669"
                       fillColor="#10b981"
                       fillOpacity={0.3}
