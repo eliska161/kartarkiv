@@ -168,12 +168,12 @@ app.use('/api/auth', authRoutes);
 console.log('✅ Auth routes registered at /api/auth');
 app.use('/api/maps', mapRoutes);
 console.log('✅ Maps routes registered at /api/maps');
+app.use('/api/announcements', announcementRoutes);
+console.log('✅ Announcements routes registered at /api/announcements');
 app.use('/api/admin', adminUsersRoutes);
 console.log('✅ Admin users routes registered at /api/admin');
 app.use('/api/admin', adminRoutes);
 console.log('✅ Admin routes registered at /api/admin');
-app.use('/api/announcements', announcementRoutes);
-console.log('✅ Announcements routes registered at /api/announcements');
 
 // API Logs endpoints
 app.get('/api/logs', getLogs);
