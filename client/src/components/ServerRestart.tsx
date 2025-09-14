@@ -6,6 +6,7 @@ import { apiPost, apiGet } from '../utils/apiClient';
 interface ServerStatus {
   status: string;
   uptime: number;
+  startTime: string;
   memory: {
     rss: number;
     heapTotal: number;
@@ -121,6 +122,9 @@ const ServerRestart: React.FC = () => {
               <span className="font-medium text-blue-800">Uptime</span>
             </div>
             <p className="text-blue-700 mt-1">{formatUptime(serverStatus.uptime)}</p>
+            <p className="text-xs text-blue-600 mt-1">
+              Startet: {new Date(serverStatus.startTime).toLocaleString('nb-NO')}
+            </p>
           </div>
 
           <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
