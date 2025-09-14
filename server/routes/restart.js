@@ -32,13 +32,39 @@ router.post('/restart', async (req, res) => {
       timestamp: new Date().toISOString()
     });
     
-    // Try Railway CLI first, fallback to process.exit
+    // Try Railway CLI with proper environment setup
     console.log('🔄 RESTART: Attempting Railway CLI redeploy...');
     
-    exec('npx @railway/cli up', (error, stdout, stderr) => {
+    // Check if Railway CLI environment variables are set
+    if (!process.env.RAILWAY_TOKEN || !process.env.RAILWAY_PROJECT_ID) {
+      console.log('🔄 RESTART: Railway CLI environment variables not set, using process.exit fallback');
+      console.log('Missing: RAILWAY_TOKEN or RAILWAY_PROJECT_ID');
+      setTimeout(() => {
+        console.log('🔄 RESTART: Executing process.exit(1) to trigger restart...');
+        process.exit(1);
+      }, 1000);
+      return;
+    }
+    
+    // Set up environment for Railway CLI
+    const env = {
+      ...process.env,
+      RAILWAY_TOKEN: process.env.RAILWAY_TOKEN,
+      RAILWAY_PROJECT_ID: process.env.RAILWAY_PROJECT_ID
+    };
+    
+    console.log('🔄 RESTART: Using Railway CLI with project ID:', process.env.RAILWAY_PROJECT_ID);
+    
+    exec('npx @railway/cli up --detach', { 
+      env: env,
+      cwd: process.cwd(),
+      timeout: 30000 // 30 second timeout
+    }, (error, stdout, stderr) => {
       if (error) {
         console.log('🔄 RESTART: Railway CLI failed, using process.exit fallback');
         console.log('Error:', error.message);
+        console.log('Stderr:', stderr);
+        
         // Fallback to process.exit if Railway CLI fails
         setTimeout(() => {
           console.log('🔄 RESTART: Executing process.exit(1) to trigger restart...');
