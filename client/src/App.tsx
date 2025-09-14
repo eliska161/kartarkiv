@@ -26,68 +26,46 @@ function App() {
       localization={{
         locale: 'nb-NO',
         unstable__errors: {
-          not_allowed_access: 'Din e-postadresse har ikke tilgang til denne applikasjonen. Kontakt administrator for hjelp.',
-          form_username_exists: 'Brukernavnet er allerede i bruk. Velg et annet brukernavn.',
-          form_password_pwned: 'Dette passordet har blitt kompromittert i en datalekkasje. Velg et tryggere passord.',
-          form_password_not_strong_enough: 'Passordet er ikke sterkt nok. Velg et passord med minst 8 tegn.',
-          form_password_size_in_bytes: 'Passordet må være mellom 1 og 128 tegn.',
-          form_username_invalid: 'Brukernavnet kan kun inneholde bokstaver, tall og understreker.',
-          form_username_max_length: 'Brukernavnet kan ikke være lengre enn 15 tegn.',
-          form_username_min_length: 'Brukernavnet må være minst 2 tegn.',
-          form_email_address_invalid: 'E-postadressen er ikke gyldig.',
-          form_phone_number_invalid: 'Telefonnummeret er ikke gyldig.',
-          form_username_required: 'Brukernavn er påkrevd.',
-          form_email_address_required: 'E-postadresse er påkrevd.',
-          form_password_required: 'Passord er påkrevd.',
-          form_username_placeholder: 'Brukernavn',
-          form_email_address_placeholder: 'E-postadresse',
-          form_password_placeholder: 'Passord',
-          form_username_label: 'Brukernavn',
-          form_email_address_label: 'E-postadresse',
-          form_password_label: 'Passord',
-          signIn: {
-            start: {
-              title: 'Logg inn',
-              subtitle: 'for å få tilgang til {{applicationName}}',
-              actionText: 'Har du ikke en konto?',
-              actionLink: 'Registrer deg'
-            },
-            emailCode: {
-              title: 'Sjekk e-posten din',
-              subtitle: 'for å få tilgang til {{applicationName}}',
-              formTitle: 'Bekreftelseskode',
-              formSubtitle: 'Skriv inn bekreftelseskoden som ble sendt til din e-postadresse',
-              resendButton: 'Send kode på nytt'
-            },
-            phoneCode: {
-              title: 'Sjekk telefonen din',
-              subtitle: 'for å få tilgang til {{applicationName}}',
-              formTitle: 'Bekreftelseskode',
-              formSubtitle: 'Skriv inn bekreftelseskoden som ble sendt til ditt telefonnummer',
-              resendButton: 'Send kode på nytt'
-            }
+          not_allowed_access: 'Din e-postadresse har ikke tilgang til denne applikasjonen. Kontakt administrator for hjelp.'
+        },
+        signIn: {
+          start: {
+            title: 'Logg inn',
+            subtitle: 'for å få tilgang til {{applicationName}}',
+            actionText: 'Har du ikke en konto?',
+            actionLink: 'Registrer deg'
           },
-          signUp: {
-            start: {
-              title: 'Registrer deg',
-              subtitle: 'for å få tilgang til {{applicationName}}',
-              actionText: 'Har du allerede en konto?',
-              actionLink: 'Logg inn'
-            },
-            emailCode: {
-              title: 'Sjekk e-posten din',
-              subtitle: 'for å få tilgang til {{applicationName}}',
-              formTitle: 'Bekreftelseskode',
-              formSubtitle: 'Skriv inn bekreftelseskoden som ble sendt til din e-postadresse',
-              resendButton: 'Send kode på nytt'
-            },
-            phoneCode: {
-              title: 'Sjekk telefonen din',
-              subtitle: 'for å få tilgang til {{applicationName}}',
-              formTitle: 'Bekreftelseskode',
-              formSubtitle: 'Skriv inn bekreftelseskoden som ble sendt til ditt telefonnummer',
-              resendButton: 'Send kode på nytt'
-            }
+          emailCode: {
+            title: 'Sjekk e-posten din',
+            subtitle: 'for å få tilgang til {{applicationName}}',
+            formTitle: 'Bekreftelseskode',
+            resendButton: 'Send kode på nytt'
+          },
+          phoneCode: {
+            title: 'Sjekk telefonen din',
+            subtitle: 'for å få tilgang til {{applicationName}}',
+            formTitle: 'Bekreftelseskode',
+            resendButton: 'Send kode på nytt'
+          }
+        },
+        signUp: {
+          start: {
+            title: 'Registrer deg',
+            subtitle: 'for å få tilgang til {{applicationName}}',
+            actionText: 'Har du allerede en konto?',
+            actionLink: 'Logg inn'
+          },
+          emailCode: {
+            title: 'Sjekk e-posten din',
+            subtitle: 'for å få tilgang til {{applicationName}}',
+            formTitle: 'Bekreftelseskode',
+            resendButton: 'Send kode på nytt'
+          },
+          phoneCode: {
+            title: 'Sjekk telefonen din',
+            subtitle: 'for å få tilgang til {{applicationName}}',
+            formTitle: 'Bekreftelseskode',
+            resendButton: 'Send kode på nytt'
           }
         }
       }}
