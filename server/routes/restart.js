@@ -32,11 +32,24 @@ router.post('/restart', async (req, res) => {
       timestamp: new Date().toISOString()
     });
     
-    // Restart the server after a short delay
+    // Use different restart methods based on environment
     setTimeout(() => {
       console.log('🔄 RESTART: Executing restart command...');
-      process.exit(0); // This will trigger Railway to restart the container
+      
+      // Method 1: Force exit with error code (more likely to trigger restart)
+      process.exit(1);
+      
     }, 1000);
+    
+    // Alternative method: Try Railway CLI restart (if available)
+    // exec('railway restart', (error, stdout, stderr) => {
+    //   if (error) {
+    //     console.log('🔄 RESTART: Railway CLI not available, using process.exit');
+    //     process.exit(1);
+    //   } else {
+    //     console.log('🔄 RESTART: Railway CLI restart successful');
+    //   }
+    // });
     
   } catch (error) {
     console.error('❌ RESTART ERROR:', error);

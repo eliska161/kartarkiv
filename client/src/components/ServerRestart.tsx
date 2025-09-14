@@ -61,8 +61,8 @@ const ServerRestart: React.FC = () => {
       
       showSuccess('Server restart initiated! Serveren vil starte på nytt om et øyeblikk.');
       
-      // Show countdown
-      let countdown = 10;
+      // Show countdown and then check if restart worked
+      let countdown = 5;
       const countdownInterval = setInterval(() => {
         if (countdown > 0) {
           showSuccess(`Server restarting in ${countdown} seconds...`);
@@ -70,10 +70,17 @@ const ServerRestart: React.FC = () => {
         } else {
           clearInterval(countdownInterval);
           setIsRestarting(false);
-          // Refresh status after restart
+          
+          // Try to check if server is back online
           setTimeout(() => {
             fetchServerStatus();
-          }, 5000);
+            showSuccess('Checking if server restarted successfully...');
+          }, 3000);
+          
+          // If server doesn't respond, show manual restart instructions
+          setTimeout(() => {
+            showError('If server did not restart automatically, please restart manually from Railway dashboard.');
+          }, 10000);
         }
       }, 1000);
 
@@ -144,6 +151,9 @@ const ServerRestart: React.FC = () => {
             <h3 className="text-lg font-medium text-gray-900">Restart Server</h3>
             <p className="text-sm text-gray-600 mt-1">
               Restart serveren for å oppdatere kode eller løse problemer
+            </p>
+            <p className="text-xs text-amber-600 mt-1">
+              💡 Hvis automatisk restart ikke fungerer, gå til Railway dashboard for manuell restart
             </p>
             {lastRestart && (
               <p className="text-xs text-gray-500 mt-1">
