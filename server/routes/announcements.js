@@ -5,6 +5,7 @@ const { authenticateUser, requireAdmin } = require('../middleware/auth-clerk-fix
 
 // Get active announcements (public endpoint)
 router.get('/', async (req, res) => {
+  console.log('🔍 ANNOUNCEMENTS: GET / - Fetching active announcements');
   try {
     const query = `
       SELECT id, title, message, type, priority, created_at, expires_at
@@ -14,16 +15,19 @@ router.get('/', async (req, res) => {
       ORDER BY priority DESC, created_at DESC
     `;
     
+    console.log('🔍 ANNOUNCEMENTS: Executing query:', query);
     const result = await db.query(query);
+    console.log('🔍 ANNOUNCEMENTS: Query result:', result.rows.length, 'announcements found');
     res.json(result.rows);
   } catch (error) {
-    console.error('Error fetching announcements:', error);
+    console.error('❌ ANNOUNCEMENTS: Error fetching announcements:', error);
     res.status(500).json({ error: 'Kunne ikke hente kunngjøringer' });
   }
 });
 
 // Get all announcements (admin only)
 router.get('/admin', authenticateUser, requireAdmin, async (req, res) => {
+  console.log('🔍 ANNOUNCEMENTS: GET /admin - Fetching all announcements');
   try {
     const query = `
       SELECT id, title, message, type, is_active, created_by, 
@@ -32,10 +36,12 @@ router.get('/admin', authenticateUser, requireAdmin, async (req, res) => {
       ORDER BY priority DESC, created_at DESC
     `;
     
+    console.log('🔍 ANNOUNCEMENTS: Executing admin query:', query);
     const result = await db.query(query);
+    console.log('🔍 ANNOUNCEMENTS: Admin query result:', result.rows.length, 'announcements found');
     res.json(result.rows);
   } catch (error) {
-    console.error('Error fetching all announcements:', error);
+    console.error('❌ ANNOUNCEMENTS: Error fetching all announcements:', error);
     res.status(500).json({ error: 'Kunne ikke hente alle kunngjøringer' });
   }
 });
