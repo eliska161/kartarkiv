@@ -40,7 +40,7 @@ const AnnouncementManagement: React.FC = () => {
 
   const fetchAnnouncements = async () => {
     try {
-      const response = await apiClient.get('/announcements/admin');
+      const response = await apiClient.get('/api/announcements/admin');
       setAnnouncements(response.data);
     } catch (error) {
       console.error('Error fetching announcements:', error);
@@ -55,13 +55,13 @@ const AnnouncementManagement: React.FC = () => {
     
     try {
       if (editingAnnouncement) {
-        await apiClient.put(`/announcements/${editingAnnouncement.id}`, {
+        await apiClient.put(`/api/announcements/${editingAnnouncement.id}`, {
           ...formData,
           is_active: editingAnnouncement.is_active
         });
         showSuccess('Kunngjøring oppdatert');
       } else {
-        await apiClient.post('/announcements', formData);
+        await apiClient.post('/api/announcements', formData);
         showSuccess('Kunngjøring opprettet');
       }
       
@@ -95,7 +95,7 @@ const AnnouncementManagement: React.FC = () => {
     
     if (confirmed) {
       try {
-        await apiClient.delete(`/announcements/${id}`);
+        await apiClient.delete(`/api/announcements/${id}`);
         showSuccess('Kunngjøring slettet');
         fetchAnnouncements();
       } catch (error) {
@@ -107,7 +107,7 @@ const AnnouncementManagement: React.FC = () => {
 
   const handleToggleStatus = async (id: number, currentStatus: boolean) => {
     try {
-      await apiClient.patch(`/announcements/${id}/toggle`);
+      await apiClient.patch(`/api/announcements/${id}/toggle`);
       showSuccess(`Kunngjøring ${currentStatus ? 'deaktivert' : 'aktivert'}`);
       fetchAnnouncements();
     } catch (error) {

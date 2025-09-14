@@ -23,7 +23,7 @@ const AnnouncementBar: React.FC = () => {
 
   const fetchAnnouncements = async () => {
     try {
-      const response = await apiClient.get('/announcements');
+      const response = await apiClient.get('/api/announcements');
       setAnnouncements(response.data);
     } catch (error) {
       console.error('Error fetching announcements:', error);
