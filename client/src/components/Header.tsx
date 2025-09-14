@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useUser, useClerk } from '@clerk/clerk-react';
 import { useNavigate } from 'react-router-dom';
-import { Settings, LogOut, User } from 'lucide-react';
+import { Settings, LogOut, User, UserCircle } from 'lucide-react';
 import EOKLogo from './EOKLogo';
 
 const Header: React.FC = () => {
@@ -73,6 +73,14 @@ const Header: React.FC = () => {
                   className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
                 >
                   Kart
+                </button>
+                
+                <button
+                  onClick={() => navigate('/profile')}
+                  className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium flex items-center"
+                >
+                  <UserCircle className="h-4 w-4 mr-1" />
+                  Min Profil
                 </button>
                 
                 {user?.publicMetadata?.isAdmin && (

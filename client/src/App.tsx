@@ -12,6 +12,7 @@ import LoginPage from './pages/LoginPage';
 import MapPage from './pages/MapPage';
 import AdminDashboard from './pages/AdminDashboard';
 import MapDetailPage from './pages/MapDetailPage';
+import ProfilePage from './pages/ProfilePage';
 
 const clerkPubKey = process.env.REACT_APP_CLERK_PUBLISHABLE_KEY;
 
@@ -24,50 +25,7 @@ function App() {
     <ClerkProvider 
       publishableKey={clerkPubKey}
       localization={{
-        locale: 'nb-NO',
-        unstable__errors: {
-          not_allowed_access: 'Din e-postadresse har ikke tilgang til denne applikasjonen. Kontakt administrator for hjelp.'
-        },
-        signIn: {
-          start: {
-            title: 'Logg inn',
-            subtitle: 'for å få tilgang til {{applicationName}}',
-            actionText: 'Har du ikke en konto?',
-            actionLink: 'Registrer deg'
-          },
-          emailCode: {
-            title: 'Sjekk e-posten din',
-            subtitle: 'for å få tilgang til {{applicationName}}',
-            formTitle: 'Bekreftelseskode',
-            resendButton: 'Send kode på nytt'
-          },
-          phoneCode: {
-            title: 'Sjekk telefonen din',
-            subtitle: 'for å få tilgang til {{applicationName}}',
-            formTitle: 'Bekreftelseskode',
-            resendButton: 'Send kode på nytt'
-          }
-        },
-        signUp: {
-          start: {
-            title: 'Registrer deg',
-            subtitle: 'for å få tilgang til {{applicationName}}',
-            actionText: 'Har du allerede en konto?',
-            actionLink: 'Logg inn'
-          },
-          emailCode: {
-            title: 'Sjekk e-posten din',
-            subtitle: 'for å få tilgang til {{applicationName}}',
-            formTitle: 'Bekreftelseskode',
-            resendButton: 'Send kode på nytt'
-          },
-          phoneCode: {
-            title: 'Sjekk telefonen din',
-            subtitle: 'for å få tilgang til {{applicationName}}',
-            formTitle: 'Bekreftelseskode',
-            resendButton: 'Send kode på nytt'
-          }
-        }
+        locale: 'nb-NO'
       }}
     >
       <AuthProvider>
@@ -89,6 +47,12 @@ function App() {
               <Route path="/map/:id" element={
                 <ProtectedRoute>
                   <MapDetailPage />
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/profile" element={
+                <ProtectedRoute>
+                  <ProfilePage />
                 </ProtectedRoute>
               } />
               
