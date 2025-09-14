@@ -206,7 +206,6 @@ const UptimeStatus: React.FC<UptimeStatusProps> = ({ className = '', showDetails
               </span>
               {showDetails && (
                 <span className="text-xs text-gray-500">
-                  {monitor.uptime}% nedetid
                 </span>
               )}
             </div>
