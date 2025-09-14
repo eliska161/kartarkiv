@@ -170,6 +170,12 @@ app.use('/api/maps', mapRoutes);
 console.log('✅ Maps routes registered at /api/maps');
 app.use('/api/announcements', announcementRoutes);
 console.log('✅ Announcements routes registered at /api/announcements');
+
+// Test route to verify announcements are working
+app.get('/api/announcements/test', (req, res) => {
+  console.log('🔍 TEST: Announcements test route called');
+  res.json({ message: 'Announcements routes are working!' });
+});
 app.use('/api/admin', adminUsersRoutes);
 console.log('✅ Admin users routes registered at /api/admin');
 app.use('/api/admin', adminRoutes);
