@@ -76,7 +76,7 @@ const retryRequest = async (config: AxiosRequestConfig, retryCount = 0): Promise
     // If it's rate limiting after all retries
     if (isRateLimited && retryCount >= MAX_RETRIES) {
       console.error('🚫 API: Rate limited after all retries');
-      throw new Error('API er midlertidig utilgjengelig på grunn av for mange forespørsler. Vennligst vent et minutt og prøv igjen.');
+      throw new Error('API er midlertidig utilgjengelig. Vennligst vent et minutt og prøv igjen.');
     }
     
     throw error;

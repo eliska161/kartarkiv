@@ -39,7 +39,7 @@ const strictLimiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minute (reduced from 15 minutes)
   max: 30, // limit each IP to 30 requests per minute (increased from 20)
   message: {
-    error: 'API er midlertidig utilgjengelig på grunn av for mange forespørsler. Vennligst vent et minutt og prøv igjen.',
+    error: 'API er midlertidig utilgjengelig. Vennligst vent et minutt og prøv igjen.',
     retryAfter: '1 minutt',
     statusCode: 429
   },
