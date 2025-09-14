@@ -55,11 +55,26 @@ CREATE TABLE map_metadata (
     UNIQUE(map_id, key)
 );
 
+-- Announcements table for system-wide notifications
+CREATE TABLE announcements (
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    type VARCHAR(50) DEFAULT 'info', -- info, warning, success, error
+    is_active BOOLEAN DEFAULT true,
+    created_by VARCHAR(255) NOT NULL, -- Clerk user ID
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP NULL, -- Optional expiration date
+    priority INTEGER DEFAULT 0 -- Higher number = higher priority
+);
+
 -- Create indexes for better performance
 CREATE INDEX idx_maps_center ON maps(center_lat, center_lng);
 CREATE INDEX idx_maps_created_by ON maps(created_by);
 CREATE INDEX idx_map_files_map_id ON map_files(map_id);
 CREATE INDEX idx_map_metadata_map_id ON map_metadata(map_id);
+CREATE INDEX idx_announcements_active ON announcements(is_active, priority DESC, created_at DESC);
 
 -- Create updated_at trigger function
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -75,4 +90,7 @@ CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_maps_updated_at BEFORE UPDATE ON maps
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_announcements_updated_at BEFORE UPDATE ON announcements
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

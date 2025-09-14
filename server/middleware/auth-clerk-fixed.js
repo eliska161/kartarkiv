@@ -118,8 +118,19 @@ const authenticateUser = async (req, res, next) => {
 };
 
 const requireAdmin = (req, res, next) => {
-  if (!req.user.isAdmin) {
-    return res.status(403).json({ error: 'Admin access required' });
+  // Check if user is the specific admin user for announcements
+  const ALLOWED_ADMIN_USER_ID = 'user_32bpgM3LWUuJhy36OgSS09F2fcy';
+  
+  if (req.url.includes('/announcements')) {
+    // For announcements, only allow the specific user
+    if (req.user.id !== ALLOWED_ADMIN_USER_ID) {
+      return res.status(403).json({ error: 'Access denied. Only specific admin can manage announcements.' });
+    }
+  } else {
+    // For other admin functions, use the regular admin check
+    if (!req.user.isAdmin) {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
   }
   next();
 };

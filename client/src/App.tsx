@@ -7,6 +7,7 @@ import { MapProvider } from './contexts/MapContext';
 import { ToastProvider } from './contexts/ToastContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminRoute from './components/AdminRoute';
+import AnnouncementBar from './components/AnnouncementBar';
 
 // Pages
 import LoginPage from './pages/LoginPage';
@@ -32,6 +33,7 @@ function App() {
           <ToastProvider>
             <Router>
             <div className="min-h-screen bg-gray-50">
+              <AnnouncementBar />
               <Routes>
               {/* Public routes */}
               <Route path="/login" element={<LoginPage />} />

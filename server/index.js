@@ -9,6 +9,7 @@ const authRoutes = require('./routes/auth-jwt'); // Use JWT auth
 const mapRoutes = require('./routes/maps');
 const adminRoutes = require('./routes/admin');
 const adminUsersRoutes = require('./routes/admin-users');
+const announcementRoutes = require('./routes/announcements');
 const { requestLogger, getLogs, clearLogs } = require('./middleware/requestLogger');
 
 const app = express();
@@ -171,6 +172,8 @@ app.use('/api/admin', adminUsersRoutes);
 console.log('✅ Admin users routes registered at /api/admin');
 app.use('/api/admin', adminRoutes);
 console.log('✅ Admin routes registered at /api/admin');
+app.use('/api/announcements', announcementRoutes);
+console.log('✅ Announcements routes registered at /api/announcements');
 
 // API Logs endpoints
 app.get('/api/logs', getLogs);
