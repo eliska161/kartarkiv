@@ -278,8 +278,6 @@ const MapComponent: React.FC<MapComponentProps> = ({ maps, selectedMap, onSelect
           <MapPin className="h-4 w-4 text-eok-600 mr-2" />
           <h3 className="font-semibold text-gray-900">Instruksjoner</h3>
         </div>
-        <p className="text-sm text-gray-600 mb-3">
-          Klikk på markører eller områder for å se kartdetaljer. Bruk zoom og pan for å navigere.
         </p>
         <div className="text-xs text-gray-500 space-y-1">
           <div className="flex items-center">
