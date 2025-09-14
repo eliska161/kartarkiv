@@ -121,7 +121,7 @@ Dette starter både backend (port 5000) og frontend (port 3000).
 1. Se oversikt over alle kart på hovedsiden
 2. Bruk søkefunksjonen for å finne spesifikke kart
 3. Filtrer på målestokk eller ekvidistanse
-4. Klikk på kartmarkører for å se detaljer
+4.  kartmarkører for å se detaljer
 5. Last ned filer i ønsket format
 
 ## Database-schema
