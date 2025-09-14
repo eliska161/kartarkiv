@@ -61,7 +61,7 @@ router.post('/', authenticateUser, requireAdmin, async (req, res) => {
       RETURNING *
     `;
     
-    const values = [title, message, type, req.user.id, expires_at || null, priority];
+    const values = [title, message, type, req.user.id, expires_at && expires_at.trim() !== '' ? expires_at : null, priority];
     const result = await db.query(query, values);
     
     res.status(201).json(result.rows[0]);
@@ -85,7 +85,7 @@ router.put('/:id', authenticateUser, requireAdmin, async (req, res) => {
       RETURNING *
     `;
     
-    const values = [title, message, type, is_active, expires_at, priority, id];
+    const values = [title, message, type, is_active, expires_at && expires_at.trim() !== '' ? expires_at : null, priority, id];
     const result = await db.query(query, values);
     
     if (result.rows.length === 0) {
