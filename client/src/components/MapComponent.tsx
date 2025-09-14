@@ -278,7 +278,6 @@ const MapComponent: React.FC<MapComponentProps> = ({ maps, selectedMap, onSelect
           <MapPin className="h-4 w-4 text-eok-600 mr-2" />
           <h3 className="font-semibold text-gray-900">Instruksjoner</h3>
         </div>
-        </p>
         <div className="text-xs text-gray-500 space-y-1">
           <div className="flex items-center">
             <div className="w-3 h-3 bg-red-600 rounded-full mr-2"></div>
