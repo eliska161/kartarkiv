@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ClerkProvider } from '@clerk/clerk-react';
+import { nbNO } from '@clerk/localizations';
 import { AuthProvider } from './contexts/AuthContext';
 import { MapProvider } from './contexts/MapContext';
 import { ToastProvider } from './contexts/ToastContext';
@@ -24,9 +25,7 @@ function App() {
   return (
     <ClerkProvider 
       publishableKey={clerkPubKey}
-      localization={{
-        locale: 'nb-NO'
-      }}
+      localization={nbNO}
     >
       <AuthProvider>
         <MapProvider>
