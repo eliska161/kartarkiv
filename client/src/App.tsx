@@ -8,6 +8,7 @@ import { ToastProvider } from './contexts/ToastContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminRoute from './components/AdminRoute';
 import AnnouncementBar from './components/AnnouncementBar';
+import Footer from './components/Footer';
 
 // Pages
 import LoginPage from './pages/LoginPage';
@@ -32,9 +33,10 @@ function App() {
         <MapProvider>
           <ToastProvider>
             <Router>
-            <div className="min-h-screen bg-gray-50">
+            <div className="min-h-screen bg-gray-50 flex flex-col">
               <AnnouncementBar />
-              <Routes>
+              <main className="flex-1">
+                <Routes>
               {/* Public routes */}
               <Route path="/login" element={<LoginPage />} />
               
@@ -66,8 +68,10 @@ function App() {
               
               {/* Redirect unknown routes to home */}
               <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </div>
+                </Routes>
+              </main>
+              <Footer />
+            </div>
         </Router>
           </ToastProvider>
         </MapProvider>
