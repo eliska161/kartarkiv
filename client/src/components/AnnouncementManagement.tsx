@@ -98,8 +98,12 @@ const AnnouncementManagement: React.FC = () => {
       const expiresAt = new Date();
       expiresAt.setHours(expiresAt.getHours() + 1); // 1 time fra nå
       
+      const baseMessage = editingAnnouncement 
+        ? `Problem løst: ${editingAnnouncement.title}`
+        : 'Problem løst';
+      
       const announcementData = {
-        title: 'Problem løst',
+        title: baseMessage,
         message: problemResolvedMessage || 'Problemet er nå løst og alt fungerer normalt igjen.',
         type: 'success',
         expires_at: expiresAt.toISOString().slice(0, 19).replace('T', ' '),
@@ -110,6 +114,7 @@ const AnnouncementManagement: React.FC = () => {
       showSuccess('"Problem løst" kunngjøring opprettet og vil slettes automatisk om 1 time');
       setShowProblemResolvedModal(false);
       setProblemResolvedMessage('');
+      setEditingAnnouncement(null);
       fetchAnnouncements();
     } catch (error) {
       console.error('Error creating problem resolved announcement:', error);
@@ -225,27 +230,17 @@ const AnnouncementManagement: React.FC = () => {
           <h2 className="text-2xl font-bold text-gray-900">Kunngjøringer</h2>
           <p className="text-gray-600 mt-1">Administrer systemvise kunngjøringer</p>
         </div>
-        <div className="flex space-x-3">
-          <button
-            onClick={() => {
-              setEditingAnnouncement(null);
-              setFormData({ title: '', message: '', type: 'info', expires_at: '', priority: 0 });
-              setShowModal(true);
-            }}
-            className="bg-eok-600 hover:bg-eok-700 text-white px-4 py-2 rounded-md flex items-center"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Ny kunngjøring
-          </button>
-          
-          <button
-            onClick={() => setShowProblemResolvedModal(true)}
-            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md flex items-center"
-          >
-            <CheckCircle className="h-4 w-4 mr-2" />
-            Problem løst
-          </button>
-        </div>
+        <button
+          onClick={() => {
+            setEditingAnnouncement(null);
+            setFormData({ title: '', message: '', type: 'info', expires_at: '', priority: 0 });
+            setShowModal(true);
+          }}
+          className="bg-eok-600 hover:bg-eok-700 text-white px-4 py-2 rounded-md flex items-center"
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Ny kunngjøring
+        </button>
       </div>
 
       {/* Announcements List */}
@@ -346,6 +341,16 @@ const AnnouncementManagement: React.FC = () => {
                           title="Versjonshistorikk"
                         >
                           <History className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            setShowProblemResolvedModal(true);
+                            setEditingAnnouncement(announcement);
+                          }}
+                          className="text-green-600 hover:text-green-900"
+                          title="Problem løst"
+                        >
+                          <CheckCircle className="h-4 w-4" />
                         </button>
                         <button
                           onClick={() => handleDelete(announcement.id)}
@@ -544,11 +549,19 @@ const AnnouncementManagement: React.FC = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-green-600">Problem løst</h3>
+              <h3 className="text-lg font-semibold text-green-600">
+                Problem løst
+                {editingAnnouncement && (
+                  <span className="text-sm font-normal text-gray-600 ml-2">
+                    - {editingAnnouncement.title}
+                  </span>
+                )}
+              </h3>
               <button
                 onClick={() => {
                   setShowProblemResolvedModal(false);
                   setProblemResolvedMessage('');
+                  setEditingAnnouncement(null);
                 }}
                 className="text-gray-400 hover:text-gray-600"
               >
