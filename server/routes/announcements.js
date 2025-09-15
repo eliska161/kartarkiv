@@ -8,11 +8,13 @@ router.get('/', async (req, res) => {
   console.log('🔍 ANNOUNCEMENTS: GET / - Fetching active announcements');
   try {
     const query = `
-      SELECT id, title, message, type, priority, created_at, expires_at
-      FROM announcements 
-      WHERE is_active = true 
-        AND (expires_at IS NULL OR expires_at > NOW())
-      ORDER BY priority DESC, created_at DESC
+      SELECT a.id, a.title, a.message, a.type, a.priority, a.created_at, a.updated_at, a.expires_at,
+             av.version_number, av.created_at as version_created_at
+      FROM announcements a
+      LEFT JOIN announcement_versions av ON a.id = av.announcement_id AND av.is_current_version = true
+      WHERE a.is_active = true 
+        AND (a.expires_at IS NULL OR a.expires_at > NOW())
+      ORDER BY a.priority DESC, a.created_at DESC
     `;
     
     console.log('🔍 ANNOUNCEMENTS: Executing query:', query);
@@ -140,6 +142,75 @@ router.patch('/:id/toggle', authenticateUser, requireAdmin, async (req, res) => 
   } catch (error) {
     console.error('Error toggling announcement:', error);
     res.status(500).json({ error: 'Kunne ikke endre kunngjøring' });
+  }
+});
+
+// Get announcement version history (admin only)
+router.get('/:id/versions', authenticateUser, requireAdmin, async (req, res) => {
+  console.log('🔍 ANNOUNCEMENTS: GET /:id/versions - Fetching version history for announcement', req.params.id);
+  try {
+    const query = `
+      SELECT av.id, av.version_number, av.title, av.message, av.type, av.is_active, 
+             av.expires_at, av.priority, av.created_by, av.created_at, av.change_reason,
+             av.is_current_version
+      FROM announcement_versions av
+      WHERE av.announcement_id = $1
+      ORDER BY av.version_number DESC
+    `;
+    
+    const result = await db.query(query, [req.params.id]);
+    console.log('🔍 ANNOUNCEMENTS: Version history result:', result.rows.length, 'versions found');
+    res.json(result.rows);
+  } catch (error) {
+    console.error('❌ ANNOUNCEMENTS: Error fetching version history:', error);
+    res.status(500).json({ error: 'Kunne ikke hente versjonshistorikk' });
+  }
+});
+
+// Restore announcement to previous version (admin only)
+router.post('/:id/restore/:versionId', authenticateUser, requireAdmin, async (req, res) => {
+  console.log('🔍 ANNOUNCEMENTS: POST /:id/restore/:versionId - Restoring to version', req.params.versionId);
+  try {
+    const { reason } = req.body;
+    
+    // Get the version to restore
+    const versionQuery = `
+      SELECT title, message, type, is_active, expires_at, priority
+      FROM announcement_versions
+      WHERE id = $1 AND announcement_id = $2
+    `;
+    const versionResult = await db.query(versionQuery, [req.params.versionId, req.params.id]);
+    
+    if (versionResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Versjon ikke funnet' });
+    }
+    
+    const version = versionResult.rows[0];
+    
+    // Update the announcement
+    const updateQuery = `
+      UPDATE announcements 
+      SET title = $1, message = $2, type = $3, is_active = $4, 
+          expires_at = $5, priority = $6, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $7
+      RETURNING *
+    `;
+    
+    const updateResult = await db.query(updateQuery, [
+      version.title,
+      version.message,
+      version.type,
+      version.is_active,
+      version.expires_at,
+      version.priority,
+      req.params.id
+    ]);
+    
+    console.log('🔍 ANNOUNCEMENTS: Announcement restored to version', req.params.versionId);
+    res.json(updateResult.rows[0]);
+  } catch (error) {
+    console.error('❌ ANNOUNCEMENTS: Error restoring version:', error);
+    res.status(500).json({ error: 'Kunne ikke gjenopprette versjon' });
   }
 });
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Eye, EyeOff, Calendar, AlertCircle, Info, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, EyeOff, Calendar, AlertCircle, Info, CheckCircle, AlertTriangle, History, RotateCcw, X } from 'lucide-react';
 import apiClient from '../utils/apiClient';
 import { useToast } from '../contexts/ToastContext';
 import { useConfirmation } from '../hooks/useConfirmation';
@@ -18,11 +18,28 @@ interface Announcement {
   priority: number;
 }
 
+interface AnnouncementVersion {
+  id: number;
+  version_number: number;
+  title: string;
+  message: string;
+  type: string;
+  is_active: boolean;
+  expires_at?: string;
+  priority: number;
+  created_by: string;
+  created_at: string;
+  change_reason?: string;
+  is_current_version: boolean;
+}
+
 const AnnouncementManagement: React.FC = () => {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);
+  const [showVersionHistory, setShowVersionHistory] = useState<number | null>(null);
+  const [versions, setVersions] = useState<AnnouncementVersion[]>([]);
   const { showSuccess, showError } = useToast();
   const { confirm, isOpen, options, onClose, onConfirm } = useConfirmation();
 
@@ -47,6 +64,30 @@ const AnnouncementManagement: React.FC = () => {
       showError('Kunne ikke hente kunngjøringer');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchVersionHistory = async (announcementId: number) => {
+    try {
+      const response = await apiClient.get(`/api/announcements/${announcementId}/versions`);
+      setVersions(response.data);
+    } catch (error) {
+      console.error('Error fetching version history:', error);
+      showError('Kunne ikke hente versjonshistorikk');
+    }
+  };
+
+  const restoreVersion = async (announcementId: number, versionId: number) => {
+    try {
+      await apiClient.post(`/api/announcements/${announcementId}/restore/${versionId}`, {
+        reason: 'Gjenopprettet fra admin-dashboard'
+      });
+      showSuccess('Versjon gjenopprettet');
+      fetchAnnouncements();
+      setShowVersionHistory(null);
+    } catch (error) {
+      console.error('Error restoring version:', error);
+      showError('Kunne ikke gjenopprette versjon');
     }
   };
 
@@ -261,6 +302,16 @@ const AnnouncementManagement: React.FC = () => {
                           <Edit className="h-4 w-4" />
                         </button>
                         <button
+                          onClick={() => {
+                            setShowVersionHistory(announcement.id);
+                            fetchVersionHistory(announcement.id);
+                          }}
+                          className="text-blue-600 hover:text-blue-900"
+                          title="Versjonshistorikk"
+                        >
+                          <History className="h-4 w-4" />
+                        </button>
+                        <button
                           onClick={() => handleDelete(announcement.id)}
                           className="text-red-600 hover:text-red-900"
                           title="Slett"
@@ -379,6 +430,78 @@ const AnnouncementManagement: React.FC = () => {
         type={options.type}
         autoClose={options.autoClose}
       />
+
+      {/* Version History Modal */}
+      {showVersionHistory && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">Versjonshistorikk</h3>
+              <button
+                onClick={() => setShowVersionHistory(null)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              {versions.map((version) => (
+                <div
+                  key={version.id}
+                  className={`border rounded-lg p-4 ${
+                    version.is_current_version 
+                      ? 'border-green-200 bg-green-50' 
+                      : 'border-gray-200 bg-white'
+                  }`}
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-sm font-medium text-gray-600">
+                        Versjon {version.version_number}
+                      </span>
+                      {version.is_current_version && (
+                        <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                          Nåværende
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-sm text-gray-500">
+                      {new Date(version.created_at).toLocaleString('nb-NO')}
+                    </div>
+                  </div>
+                  
+                  <h4 className="font-medium text-gray-900 mb-1">{version.title}</h4>
+                  <p className="text-sm text-gray-600 mb-2">{version.message}</p>
+                  
+                  <div className="flex items-center justify-between text-xs text-gray-500">
+                    <div className="flex items-center space-x-4">
+                      <span>Type: {version.type}</span>
+                      <span>Prioritet: {version.priority}</span>
+                      <span>Status: {version.is_active ? 'Aktiv' : 'Inaktiv'}</span>
+                    </div>
+                    {!version.is_current_version && (
+                      <button
+                        onClick={() => restoreVersion(showVersionHistory, version.id)}
+                        className="text-blue-600 hover:text-blue-800 flex items-center space-x-1"
+                      >
+                        <RotateCcw className="h-3 w-3" />
+                        <span>Gjenopprett</span>
+                      </button>
+                    )}
+                  </div>
+                  
+                  {version.change_reason && (
+                    <div className="mt-2 text-xs text-gray-500">
+                      <strong>Endringsårsak:</strong> {version.change_reason}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

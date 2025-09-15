@@ -9,7 +9,10 @@ interface Announcement {
   type: 'info' | 'warning' | 'success' | 'error';
   priority: number;
   created_at: string;
+  updated_at: string;
   expires_at?: string;
+  version_number?: number;
+  version_created_at?: string;
 }
 
 const AnnouncementBar: React.FC = () => {
@@ -95,6 +98,21 @@ const AnnouncementBar: React.FC = () => {
               <p className="text-sm mt-1">
                 {announcement.message}
               </p>
+              <div className="text-xs text-gray-500 mt-2 flex items-center space-x-4">
+                <span>
+                  Opprettet: {new Date(announcement.created_at).toLocaleString('nb-NO')}
+                </span>
+                {announcement.updated_at !== announcement.created_at && (
+                  <span>
+                    Oppdatert: {new Date(announcement.updated_at).toLocaleString('nb-NO')}
+                  </span>
+                )}
+                {announcement.version_number && (
+                  <span>
+                    Versjon: {announcement.version_number}
+                  </span>
+                )}
+              </div>
             </div>
             <div className="flex-shrink-0 ml-3">
               <button
