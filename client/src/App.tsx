@@ -26,7 +26,7 @@ const AppContent: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <AnnouncementBar />
-      <main className={`flex-1 ${isLoginPage ? '' : 'pb-16'}`}>
+      <main className="flex-1">
         <Routes>
           {/* Public routes */}
           <Route path="/login" element={<LoginPage />} />
@@ -61,7 +61,6 @@ const AppContent: React.FC = () => {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
-      {!isLoginPage && <Footer />}
     </div>
   );
 };

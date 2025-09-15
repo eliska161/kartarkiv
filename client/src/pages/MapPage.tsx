@@ -4,6 +4,7 @@ import { useMap } from '../contexts/MapContext';
 import MapComponent from '../components/MapComponent';
 import MapList from '../components/MapList';
 import Header from '../components/Header';
+import Footer from '../components/Footer';
 import UptimeStatus from '../components/UptimeStatus';
 import { MapPin, List, Search, Filter, HelpCircle } from 'lucide-react';
 
@@ -45,7 +46,7 @@ const MapPage: React.FC = () => {
   // Show loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 pb-16">
+      <div className="min-h-screen bg-gray-50">
         <Header />
         <div className="flex items-center justify-center h-96">
           <div className="text-center">
@@ -60,7 +61,7 @@ const MapPage: React.FC = () => {
   // Show error state
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 pb-16">
+      <div className="min-h-screen bg-gray-50">
         <Header />
         <div className="flex items-center justify-center min-h-96 p-4">
           <div className="text-center max-w-2xl w-full">
@@ -96,7 +97,7 @@ const MapPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-24">
+    <div className="min-h-screen bg-gray-50">
       <Header />
       
       <div className="flex flex-col lg:flex-row">
@@ -287,6 +288,7 @@ const MapPage: React.FC = () => {
           )}
         </div>
       </div>
+      <Footer />
     </div>
   );
 };
