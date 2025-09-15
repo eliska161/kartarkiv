@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { ClerkProvider } from '@clerk/clerk-react';
 import { nbNO } from '@clerk/localizations';
 import { AuthProvider } from './contexts/AuthContext';
@@ -19,6 +19,53 @@ import ProfilePage from './pages/ProfilePage';
 
 const clerkPubKey = process.env.REACT_APP_CLERK_PUBLISHABLE_KEY;
 
+const AppContent: React.FC = () => {
+  const location = useLocation();
+  const isLoginPage = location.pathname === '/login';
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      <AnnouncementBar />
+      <main className={`flex-1 ${isLoginPage ? '' : 'pb-16'}`}>
+        <Routes>
+          {/* Public routes */}
+          <Route path="/login" element={<LoginPage />} />
+          
+          {/* Protected routes */}
+          <Route path="/" element={
+            <ProtectedRoute>
+              <MapPage />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/map/:id" element={
+            <ProtectedRoute>
+              <MapDetailPage />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/profile" element={
+            <ProtectedRoute>
+              <ProfilePage />
+            </ProtectedRoute>
+          } />
+          
+          {/* Admin routes */}
+          <Route path="/admin" element={
+            <AdminRoute>
+              <AdminDashboard />
+            </AdminRoute>
+          } />
+          
+          {/* Redirect unknown routes to home */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </main>
+      {!isLoginPage && <Footer />}
+    </div>
+  );
+};
+
 function App() {
   if (!clerkPubKey) {
     throw new Error("Missing Publishable Key")
@@ -33,46 +80,8 @@ function App() {
         <MapProvider>
           <ToastProvider>
             <Router>
-            <div className="min-h-screen bg-gray-50 flex flex-col">
-              <AnnouncementBar />
-              <main className="flex-1 pb-16">
-                <Routes>
-              {/* Public routes */}
-              <Route path="/login" element={<LoginPage />} />
-              
-              {/* Protected routes */}
-              <Route path="/" element={
-                <ProtectedRoute>
-                  <MapPage />
-                </ProtectedRoute>
-              } />
-              
-              <Route path="/map/:id" element={
-                <ProtectedRoute>
-                  <MapDetailPage />
-                </ProtectedRoute>
-              } />
-              
-              <Route path="/profile" element={
-                <ProtectedRoute>
-                  <ProfilePage />
-                </ProtectedRoute>
-              } />
-              
-              {/* Admin routes */}
-              <Route path="/admin" element={
-                <AdminRoute>
-                  <AdminDashboard />
-                </AdminRoute>
-              } />
-              
-              {/* Redirect unknown routes to home */}
-              <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
-              </main>
-              <Footer />
-            </div>
-        </Router>
+              <AppContent />
+            </Router>
           </ToastProvider>
         </MapProvider>
       </AuthProvider>
