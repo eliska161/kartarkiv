@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, AlertCircle, Info, CheckCircle, AlertTriangle } from 'lucide-react';
+import { X, AlertCircle, Info, CheckCircle, AlertTriangle, ChevronDown, ChevronUp, History } from 'lucide-react';
 import apiClient from '../utils/apiClient';
 
 interface Announcement {
@@ -15,10 +15,27 @@ interface Announcement {
   version_created_at?: string;
 }
 
+interface AnnouncementVersion {
+  id: number;
+  version_number: number;
+  title: string;
+  message: string;
+  type: string;
+  is_active: boolean;
+  expires_at?: string;
+  priority: number;
+  created_by: string;
+  created_at: string;
+  change_reason?: string;
+  is_current_version: boolean;
+}
+
 const AnnouncementBar: React.FC = () => {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [dismissedAnnouncements, setDismissedAnnouncements] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [expandedVersions, setExpandedVersions] = useState<Set<number>>(new Set());
+  const [versions, setVersions] = useState<Map<number, AnnouncementVersion[]>>(new Map());
 
   useEffect(() => {
     fetchAnnouncements();
@@ -37,6 +54,30 @@ const AnnouncementBar: React.FC = () => {
 
   const dismissAnnouncement = (id: number) => {
     setDismissedAnnouncements(prev => new Set([...prev, id]));
+  };
+
+  const fetchVersionHistory = async (announcementId: number) => {
+    try {
+      const response = await apiClient.get(`/api/announcements/${announcementId}/versions`);
+      setVersions(prev => new Map(prev.set(announcementId, response.data)));
+    } catch (error) {
+      console.error('Error fetching version history:', error);
+    }
+  };
+
+  const toggleVersions = (announcementId: number) => {
+    if (expandedVersions.has(announcementId)) {
+      setExpandedVersions(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(announcementId);
+        return newSet;
+      });
+    } else {
+      setExpandedVersions(prev => new Set([...prev, announcementId]));
+      if (!versions.has(announcementId)) {
+        fetchVersionHistory(announcementId);
+      }
+    }
   };
 
   const getIcon = (type: string) => {
@@ -107,10 +148,19 @@ const AnnouncementBar: React.FC = () => {
                     Oppdatert: {new Date(announcement.updated_at).toLocaleString('nb-NO')}
                   </span>
                 )}
-                {announcement.version_number && (
-                  <span>
-                    Versjon: {announcement.version_number}
-                  </span>
+                {announcement.version_number && announcement.version_number > 1 && (
+                  <button
+                    onClick={() => toggleVersions(announcement.id)}
+                    className="flex items-center space-x-1 text-blue-600 hover:text-blue-800 transition-colors"
+                  >
+                    <History className="h-3 w-3" />
+                    <span>Se versjoner ({announcement.version_number})</span>
+                    {expandedVersions.has(announcement.id) ? (
+                      <ChevronUp className="h-3 w-3" />
+                    ) : (
+                      <ChevronDown className="h-3 w-3" />
+                    )}
+                  </button>
                 )}
               </div>
             </div>
@@ -124,6 +174,45 @@ const AnnouncementBar: React.FC = () => {
               </button>
             </div>
           </div>
+          
+          {/* Version History Dropdown */}
+          {expandedVersions.has(announcement.id) && versions.has(announcement.id) && (
+            <div className="mt-3 border-t border-gray-200 pt-3">
+              <h4 className="text-xs font-medium text-gray-700 mb-2">Versjonshistorikk:</h4>
+              <div className="space-y-2">
+                {versions.get(announcement.id)?.map((version) => (
+                  <div
+                    key={version.id}
+                    className={`text-xs p-2 rounded border ${
+                      version.is_current_version 
+                        ? 'bg-green-50 border-green-200' 
+                        : 'bg-gray-50 border-gray-200'
+                    }`}
+                  >
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <div className="flex items-center space-x-2">
+                          <span className="font-medium">Versjon {version.version_number}</span>
+                          {version.is_current_version && (
+                            <span className="text-green-600 text-xs">(Nåværende)</span>
+                          )}
+                        </div>
+                        <p className="text-gray-600 mt-1">{version.message}</p>
+                        {version.change_reason && (
+                          <p className="text-gray-500 mt-1 italic">
+                            Årsak: {version.change_reason}
+                          </p>
+                        )}
+                      </div>
+                      <div className="text-gray-500 text-right">
+                        {new Date(version.created_at).toLocaleString('nb-NO')}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       ))}
     </div>
