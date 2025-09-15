@@ -40,6 +40,8 @@ const AnnouncementManagement: React.FC = () => {
   const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);
   const [showVersionHistory, setShowVersionHistory] = useState<number | null>(null);
   const [versions, setVersions] = useState<AnnouncementVersion[]>([]);
+  const [showProblemResolvedModal, setShowProblemResolvedModal] = useState(false);
+  const [problemResolvedMessage, setProblemResolvedMessage] = useState('');
   const { showSuccess, showError } = useToast();
   const { confirm, isOpen, options, onClose, onConfirm } = useConfirmation();
 
@@ -88,6 +90,30 @@ const AnnouncementManagement: React.FC = () => {
     } catch (error) {
       console.error('Error restoring version:', error);
       showError('Kunne ikke gjenopprette versjon');
+    }
+  };
+
+  const createProblemResolvedAnnouncement = async () => {
+    try {
+      const expiresAt = new Date();
+      expiresAt.setHours(expiresAt.getHours() + 1); // 1 time fra nå
+      
+      const announcementData = {
+        title: 'Problem løst',
+        message: problemResolvedMessage || 'Problemet er nå løst og alt fungerer normalt igjen.',
+        type: 'success',
+        expires_at: expiresAt.toISOString().slice(0, 19).replace('T', ' '),
+        priority: 5
+      };
+
+      await apiClient.post('/api/announcements', announcementData);
+      showSuccess('"Problem løst" kunngjøring opprettet og vil slettes automatisk om 1 time');
+      setShowProblemResolvedModal(false);
+      setProblemResolvedMessage('');
+      fetchAnnouncements();
+    } catch (error) {
+      console.error('Error creating problem resolved announcement:', error);
+      showError('Kunne ikke opprette "Problem løst" kunngjøring');
     }
   };
 
@@ -199,17 +225,27 @@ const AnnouncementManagement: React.FC = () => {
           <h2 className="text-2xl font-bold text-gray-900">Kunngjøringer</h2>
           <p className="text-gray-600 mt-1">Administrer systemvise kunngjøringer</p>
         </div>
-        <button
-          onClick={() => {
-            setEditingAnnouncement(null);
-            setFormData({ title: '', message: '', type: 'info', expires_at: '', priority: 0 });
-            setShowModal(true);
-          }}
-          className="bg-eok-600 hover:bg-eok-700 text-white px-4 py-2 rounded-md flex items-center"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Ny kunngjøring
-        </button>
+        <div className="flex space-x-3">
+          <button
+            onClick={() => {
+              setEditingAnnouncement(null);
+              setFormData({ title: '', message: '', type: 'info', expires_at: '', priority: 0 });
+              setShowModal(true);
+            }}
+            className="bg-eok-600 hover:bg-eok-700 text-white px-4 py-2 rounded-md flex items-center"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Ny kunngjøring
+          </button>
+          
+          <button
+            onClick={() => setShowProblemResolvedModal(true)}
+            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md flex items-center"
+          >
+            <CheckCircle className="h-4 w-4 mr-2" />
+            Problem løst
+          </button>
+        </div>
       </div>
 
       {/* Announcements List */}
@@ -498,6 +534,60 @@ const AnnouncementManagement: React.FC = () => {
                   )}
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Problem Resolved Modal */}
+      {showProblemResolvedModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-green-600">Problem løst</h3>
+              <button
+                onClick={() => {
+                  setShowProblemResolvedModal(false);
+                  setProblemResolvedMessage('');
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+            
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Beskriv hva som ble løst (valgfritt)
+              </label>
+              <textarea
+                value={problemResolvedMessage}
+                onChange={(e) => setProblemResolvedMessage(e.target.value)}
+                placeholder="Problemet er nå løst og alt fungerer normalt igjen."
+                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-green-500 focus:border-green-500"
+                rows={3}
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Kunngjøringen vil automatisk slettes om 1 time
+              </p>
+            </div>
+            
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  setShowProblemResolvedModal(false);
+                  setProblemResolvedMessage('');
+                }}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+              >
+                Avbryt
+              </button>
+              <button
+                onClick={createProblemResolvedAnnouncement}
+                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+              >
+                Opprett kunngjøring
+              </button>
             </div>
           </div>
         </div>
