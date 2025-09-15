@@ -10,7 +10,7 @@ const Footer: React.FC = () => {
             <img 
               src="/uploads/logo/kartarkiv.png" 
               alt="Kartarkiv Logo" 
-              className="h-20 w-auto"
+              className="h-7 w-auto"
             />
           </div>
           
