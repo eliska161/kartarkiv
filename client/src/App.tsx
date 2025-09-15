@@ -35,7 +35,7 @@ function App() {
             <Router>
             <div className="min-h-screen bg-gray-50 flex flex-col">
               <AnnouncementBar />
-              <main className="flex-1">
+              <main className="flex-1 pb-24">
                 <Routes>
               {/* Public routes */}
               <Route path="/login" element={<LoginPage />} />

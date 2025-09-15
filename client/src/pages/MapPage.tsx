@@ -45,7 +45,7 @@ const MapPage: React.FC = () => {
   // Show loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 pb-24">
         <Header />
         <div className="flex items-center justify-center h-96">
           <div className="text-center">
@@ -60,7 +60,7 @@ const MapPage: React.FC = () => {
   // Show error state
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 pb-24">
         <Header />
         <div className="flex items-center justify-center min-h-96 p-4">
           <div className="text-center max-w-2xl w-full">
@@ -96,7 +96,7 @@ const MapPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 pb-24">
       <Header />
       
       <div className="flex flex-col lg:flex-row">

@@ -2,7 +2,7 @@ import React from 'react';
 
 const Footer: React.FC = () => {
   return (
-    <footer className="bg-white border-t border-gray-200 py-4 mt-auto">
+    <footer className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 py-4 z-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col sm:flex-row items-center justify-between">
           {/* Logo */}
@@ -10,7 +10,7 @@ const Footer: React.FC = () => {
             <img 
               src="/uploads/logo/kartarkiv.png" 
               alt="Kartarkiv Logo" 
-              className="h-16 w-auto"
+              className="h-32 w-auto"
             />
           </div>
           
