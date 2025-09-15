@@ -79,6 +79,9 @@ router.put('/:id', authenticateUser, requireAdmin, async (req, res) => {
     const { id } = req.params;
     const { title, message, type, is_active, expires_at, priority } = req.body;
     
+    console.log('🔍 ANNOUNCEMENTS: PUT /:id - Updating announcement', id);
+    console.log('🔍 ANNOUNCEMENTS: Request body:', req.body);
+    
     const query = `
       UPDATE announcements 
       SET title = $1, message = $2, type = $3, is_active = $4, 
@@ -88,15 +91,20 @@ router.put('/:id', authenticateUser, requireAdmin, async (req, res) => {
     `;
     
     const values = [title, message, type, is_active, expires_at && expires_at.trim() !== '' ? expires_at : null, priority, id];
+    console.log('🔍 ANNOUNCEMENTS: Query values:', values);
+    
     const result = await db.query(query, values);
+    console.log('🔍 ANNOUNCEMENTS: Update result:', result.rows.length, 'rows affected');
     
     if (result.rows.length === 0) {
+      console.log('❌ ANNOUNCEMENTS: Announcement not found:', id);
       return res.status(404).json({ error: 'Kunngjøring ikke funnet' });
     }
     
+    console.log('✅ ANNOUNCEMENTS: Announcement updated successfully');
     res.json(result.rows[0]);
   } catch (error) {
-    console.error('Error updating announcement:', error);
+    console.error('❌ ANNOUNCEMENTS: Error updating announcement:', error);
     res.status(500).json({ error: 'Kunne ikke oppdatere kunngjøring' });
   }
 });

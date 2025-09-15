@@ -107,11 +107,15 @@ const AnnouncementManagement: React.FC = () => {
         title: editingAnnouncement.title,
         message: problemResolvedMessage || `${editingAnnouncement.message}\n\n✅ PROBLEM LØST: Problemet er nå løst og alt fungerer normalt igjen.`,
         type: 'success',
-        expires_at: expiresAt.toISOString().slice(0, 19).replace('T', ' '),
+        is_active: editingAnnouncement.is_active,
+        expires_at: expiresAt.toISOString().slice(0, 16) + ':00', // Format: YYYY-MM-DDTHH:mm:ss
         priority: editingAnnouncement.priority
       };
 
-      await apiClient.put(`/api/announcements/${editingAnnouncement.id}`, updateData);
+      console.log('Updating announcement with data:', updateData);
+      const response = await apiClient.put(`/api/announcements/${editingAnnouncement.id}`, updateData);
+      console.log('Update response:', response.data);
+      
       showSuccess('Kunngjøring oppdatert til "Problem løst" og vil slettes automatisk om 1 time');
       setShowProblemResolvedModal(false);
       setProblemResolvedMessage('');
@@ -119,7 +123,8 @@ const AnnouncementManagement: React.FC = () => {
       fetchAnnouncements();
     } catch (error) {
       console.error('Error updating announcement to resolved:', error);
-      showError('Kunne ikke oppdatere kunngjøring til "Problem løst"');
+      console.error('Error details:', error.response?.data);
+      showError(`Kunne ikke oppdatere kunngjøring til "Problem løst": ${error.response?.data?.error || error.message}`);
     }
   };
 
