@@ -61,7 +61,7 @@ const AnnouncementManagement: React.FC = () => {
     try {
       const response = await apiClient.get('/api/announcements/admin');
       setAnnouncements(response.data);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching announcements:', error);
       showError('Kunne ikke hente kunngjøringer');
     } finally {
@@ -73,7 +73,7 @@ const AnnouncementManagement: React.FC = () => {
     try {
       const response = await apiClient.get(`/api/announcements/${announcementId}/versions`);
       setVersions(response.data);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching version history:', error);
       showError('Kunne ikke hente versjonshistorikk');
     }
@@ -87,7 +87,7 @@ const AnnouncementManagement: React.FC = () => {
       showSuccess('Versjon gjenopprettet');
       fetchAnnouncements();
       setShowVersionHistory(null);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error restoring version:', error);
       showError('Kunne ikke gjenopprette versjon');
     }
@@ -121,7 +121,7 @@ const AnnouncementManagement: React.FC = () => {
       setProblemResolvedMessage('');
       setEditingAnnouncement(null);
       fetchAnnouncements();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating announcement to resolved:', error);
       console.error('Error details:', error.response?.data);
       showError(`Kunne ikke oppdatere kunngjøring til "Problem løst": ${error.response?.data?.error || error.message}`);
@@ -147,7 +147,7 @@ const AnnouncementManagement: React.FC = () => {
       setEditingAnnouncement(null);
       setFormData({ title: '', message: '', type: 'info', expires_at: '', priority: 0 });
       fetchAnnouncements();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving announcement:', error);
       showError('Kunne ikke lagre kunngjøring');
     }
@@ -176,7 +176,7 @@ const AnnouncementManagement: React.FC = () => {
         await apiClient.delete(`/api/announcements/${id}`);
         showSuccess('Kunngjøring slettet');
         fetchAnnouncements();
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error deleting announcement:', error);
         showError('Kunne ikke slette kunngjøring');
       }
@@ -188,7 +188,7 @@ const AnnouncementManagement: React.FC = () => {
       await apiClient.patch(`/api/announcements/${id}/toggle`);
       showSuccess(`Kunngjøring ${currentStatus ? 'deaktivert' : 'aktivert'}`);
       fetchAnnouncements();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error toggling announcement:', error);
       showError('Kunne ikke endre kunngjøring');
     }
