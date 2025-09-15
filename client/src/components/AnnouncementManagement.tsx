@@ -95,30 +95,31 @@ const AnnouncementManagement: React.FC = () => {
 
   const createProblemResolvedAnnouncement = async () => {
     try {
+      if (!editingAnnouncement) {
+        showError('Ingen kunngjøring valgt');
+        return;
+      }
+
       const expiresAt = new Date();
       expiresAt.setHours(expiresAt.getHours() + 1); // 1 time fra nå
       
-      const baseMessage = editingAnnouncement 
-        ? `Problem løst: ${editingAnnouncement.title}`
-        : 'Problem løst';
-      
-      const announcementData = {
-        title: baseMessage,
-        message: problemResolvedMessage || 'Problemet er nå løst og alt fungerer normalt igjen.',
+      const updateData = {
+        title: editingAnnouncement.title,
+        message: problemResolvedMessage || `${editingAnnouncement.message}\n\n✅ PROBLEM LØST: Problemet er nå løst og alt fungerer normalt igjen.`,
         type: 'success',
         expires_at: expiresAt.toISOString().slice(0, 19).replace('T', ' '),
-        priority: 5
+        priority: editingAnnouncement.priority
       };
 
-      await apiClient.post('/api/announcements', announcementData);
-      showSuccess('"Problem løst" kunngjøring opprettet og vil slettes automatisk om 1 time');
+      await apiClient.put(`/api/announcements/${editingAnnouncement.id}`, updateData);
+      showSuccess('Kunngjøring oppdatert til "Problem løst" og vil slettes automatisk om 1 time');
       setShowProblemResolvedModal(false);
       setProblemResolvedMessage('');
       setEditingAnnouncement(null);
       fetchAnnouncements();
     } catch (error) {
-      console.error('Error creating problem resolved announcement:', error);
-      showError('Kunne ikke opprette "Problem løst" kunngjøring');
+      console.error('Error updating announcement to resolved:', error);
+      showError('Kunne ikke oppdatere kunngjøring til "Problem løst"');
     }
   };
 
@@ -581,7 +582,7 @@ const AnnouncementManagement: React.FC = () => {
                 rows={3}
               />
               <p className="text-xs text-gray-500 mt-1">
-                Kunngjøringen vil automatisk slettes om 1 time
+                Kunngjøringen vil bli oppdatert til grønn (success) og slettes automatisk om 1 time
               </p>
             </div>
             
@@ -599,7 +600,7 @@ const AnnouncementManagement: React.FC = () => {
                 onClick={createProblemResolvedAnnouncement}
                 className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
               >
-                Opprett kunngjøring
+                Oppdater til løst
               </button>
             </div>
           </div>
