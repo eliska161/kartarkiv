@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ClerkProvider } from '@clerk/clerk-react';
 import { nbNO } from '@clerk/localizations';
 import { AuthProvider } from './contexts/AuthContext';
@@ -8,7 +8,6 @@ import { ToastProvider } from './contexts/ToastContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminRoute from './components/AdminRoute';
 import AnnouncementBar from './components/AnnouncementBar';
-import Footer from './components/Footer';
 
 // Pages
 import LoginPage from './pages/LoginPage';
@@ -20,47 +19,43 @@ import ProfilePage from './pages/ProfilePage';
 const clerkPubKey = process.env.REACT_APP_CLERK_PUBLISHABLE_KEY;
 
 const AppContent: React.FC = () => {
-  const location = useLocation();
-  const isLoginPage = location.pathname === '/login';
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-gray-50">
       <AnnouncementBar />
-      <main className="flex-1">
-        <Routes>
-          {/* Public routes */}
-          <Route path="/login" element={<LoginPage />} />
-          
-          {/* Protected routes */}
-          <Route path="/" element={
-            <ProtectedRoute>
-              <MapPage />
-            </ProtectedRoute>
-          } />
-          
-          <Route path="/map/:id" element={
-            <ProtectedRoute>
-              <MapDetailPage />
-            </ProtectedRoute>
-          } />
-          
-          <Route path="/profile" element={
-            <ProtectedRoute>
-              <ProfilePage />
-            </ProtectedRoute>
-          } />
-          
-          {/* Admin routes */}
-          <Route path="/admin" element={
-            <AdminRoute>
-              <AdminDashboard />
-            </AdminRoute>
-          } />
-          
-          {/* Redirect unknown routes to home */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </main>
+      <Routes>
+        {/* Public routes */}
+        <Route path="/login" element={<LoginPage />} />
+        
+        {/* Protected routes */}
+        <Route path="/" element={
+          <ProtectedRoute>
+            <MapPage />
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/map/:id" element={
+          <ProtectedRoute>
+            <MapDetailPage />
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/profile" element={
+          <ProtectedRoute>
+            <ProfilePage />
+          </ProtectedRoute>
+        } />
+        
+        {/* Admin routes */}
+        <Route path="/admin" element={
+          <AdminRoute>
+            <AdminDashboard />
+          </AdminRoute>
+        } />
+        
+        {/* Redirect unknown routes to home */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
     </div>
   );
 };
