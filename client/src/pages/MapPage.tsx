@@ -4,7 +4,6 @@ import { useMap } from '../contexts/MapContext';
 import MapComponent from '../components/MapComponent';
 import MapList from '../components/MapList';
 import Header from '../components/Header';
-import Footer from '../components/Footer';
 import UptimeStatus from '../components/UptimeStatus';
 import { MapPin, List, Search, Filter, HelpCircle } from 'lucide-react';
 
@@ -288,7 +287,6 @@ const MapPage: React.FC = () => {
           )}
         </div>
       </div>
-      <Footer />
     </div>
   );
 };
