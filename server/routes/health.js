@@ -96,14 +96,9 @@ router.get('/', async (req, res) => {
       throw new Error('CLERK_SECRET_KEY not configured');
     }
     
+    // Publishable key is optional on server-side (it's on frontend)
     if (!clerkPublishableKey) {
-      console.log('❌ CLERK_PUBLISHABLE_KEY not found in environment variables');
-      console.log('Available Clerk env vars:', {
-        CLERK_PUBLISHABLE_KEY: !!process.env.CLERK_PUBLISHABLE_KEY,
-        REACT_APP_CLERK_PUBLISHABLE_KEY: !!process.env.REACT_APP_CLERK_PUBLISHABLE_KEY,
-        CLERK_SECRET_KEY: !!process.env.CLERK_SECRET_KEY
-      });
-      throw new Error('CLERK_PUBLISHABLE_KEY not configured');
+      console.log('ℹ️ CLERK_PUBLISHABLE_KEY not found on server (expected - it should be on frontend)');
     }
     
     // Try to make a simple request to Clerk API
@@ -119,8 +114,9 @@ router.get('/', async (req, res) => {
     healthChecks.services.clerkAuth = {
       status: 'healthy',
       responseTime: `${authResponseTime}ms`,
-      details: 'Clerk authentication service accessible',
-      clerkStatus: response.status
+      details: 'Clerk authentication service accessible (server-side)',
+      clerkStatus: response.status,
+      publishableKeyAvailable: !!clerkPublishableKey
     };
   } catch (error) {
     healthChecks.services.clerkAuth = {
@@ -261,8 +257,9 @@ router.get('/auth', async (req, res) => {
       throw new Error('CLERK_SECRET_KEY not configured');
     }
     
+    // Publishable key is optional on server-side (it's on frontend)
     if (!clerkPublishableKey) {
-      throw new Error('CLERK_PUBLISHABLE_KEY not configured');
+      console.log('ℹ️ CLERK_PUBLISHABLE_KEY not found on server (expected - it should be on frontend)');
     }
     
     // Test Clerk API connectivity
@@ -279,7 +276,9 @@ router.get('/auth', async (req, res) => {
       status: 'healthy',
       responseTime: `${responseTime}ms`,
       service: 'Clerk Authentication',
-      clerkStatus: response.status
+      clerkStatus: response.status,
+      publishableKeyAvailable: !!clerkPublishableKey,
+      note: 'Publishable key is on frontend (Vercel), secret key is on server (Railway)'
     });
   } catch (error) {
     res.status(503).json({
