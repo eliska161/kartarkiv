@@ -1,8 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../database/connection');
-const fs = require('fs').promises;
-const path = require('path');
+const AWS = require('aws-sdk');
 
 // Health check endpoint for all services
 router.get('/', async (req, res) => {
@@ -35,30 +34,51 @@ router.get('/', async (req, res) => {
   }
 
   try {
-    // File storage health check
+    // File storage health check (Wasabi S3)
     const filesStart = Date.now();
-    const uploadsDir = path.join(__dirname, '../../client/public/uploads');
     
-    // Check if uploads directory exists and is writable
-    await fs.access(uploadsDir, fs.constants.F_OK | fs.constants.W_OK);
+    // Check if Wasabi environment variables are set
+    const wasabiEndpoint = process.env.WASABI_ENDPOINT;
+    const wasabiAccessKey = process.env.WASABI_ACCESS_KEY;
+    const wasabiSecretKey = process.env.WASABI_SECRET_KEY;
+    const wasabiBucket = process.env.WASABI_BUCKET;
+    const wasabiRegion = process.env.WASABI_REGION;
     
-    // Try to create a test file
-    const testFile = path.join(uploadsDir, '.health-check-test');
-    await fs.writeFile(testFile, 'health check test');
-    await fs.unlink(testFile);
+    if (!wasabiEndpoint || !wasabiAccessKey || !wasabiSecretKey || !wasabiBucket) {
+      throw new Error('Wasabi environment variables not configured');
+    }
+    
+    // Configure AWS SDK for Wasabi
+    const s3 = new AWS.S3({
+      endpoint: wasabiEndpoint,
+      accessKeyId: wasabiAccessKey,
+      secretAccessKey: wasabiSecretKey,
+      region: wasabiRegion || 'us-east-1',
+      s3ForcePathStyle: true
+    });
+    
+    // Test Wasabi connection by listing objects
+    const listParams = {
+      Bucket: wasabiBucket,
+      MaxKeys: 1
+    };
+    
+    await s3.listObjectsV2(listParams).promise();
     
     const filesResponseTime = Date.now() - filesStart;
     
     healthChecks.services.fileStorage = {
       status: 'healthy',
       responseTime: `${filesResponseTime}ms`,
-      details: 'File storage accessible and writable'
+      details: `Wasabi S3 storage accessible (${wasabiBucket})`,
+      endpoint: wasabiEndpoint,
+      region: wasabiRegion || 'us-east-1'
     };
   } catch (error) {
     healthChecks.services.fileStorage = {
       status: 'unhealthy',
       error: error.message,
-      details: 'File storage not accessible or not writable'
+      details: 'Wasabi S3 storage not accessible or not configured'
     };
     overallHealthy = false;
   }
@@ -165,29 +185,50 @@ router.get('/database', async (req, res) => {
 router.get('/files', async (req, res) => {
   try {
     const start = Date.now();
-    const uploadsDir = path.join(__dirname, '../../client/public/uploads');
     
-    // Check directory exists and is writable
-    await fs.access(uploadsDir, fs.constants.F_OK | fs.constants.W_OK);
+    // Check if Wasabi environment variables are set
+    const wasabiEndpoint = process.env.WASABI_ENDPOINT;
+    const wasabiAccessKey = process.env.WASABI_ACCESS_KEY;
+    const wasabiSecretKey = process.env.WASABI_SECRET_KEY;
+    const wasabiBucket = process.env.WASABI_BUCKET;
+    const wasabiRegion = process.env.WASABI_REGION;
     
-    // Test write/delete
-    const testFile = path.join(uploadsDir, '.health-check-test');
-    await fs.writeFile(testFile, 'health check test');
-    await fs.unlink(testFile);
+    if (!wasabiEndpoint || !wasabiAccessKey || !wasabiSecretKey || !wasabiBucket) {
+      throw new Error('Wasabi environment variables not configured');
+    }
     
+    // Configure AWS SDK for Wasabi
+    const s3 = new AWS.S3({
+      endpoint: wasabiEndpoint,
+      accessKeyId: wasabiAccessKey,
+      secretAccessKey: wasabiSecretKey,
+      region: wasabiRegion || 'us-east-1',
+      s3ForcePathStyle: true
+    });
+    
+    // Test Wasabi connection by listing objects
+    const listParams = {
+      Bucket: wasabiBucket,
+      MaxKeys: 1
+    };
+    
+    const result = await s3.listObjectsV2(listParams).promise();
     const responseTime = Date.now() - start;
     
     res.json({
       status: 'healthy',
       responseTime: `${responseTime}ms`,
-      storage: 'Local file system',
-      path: uploadsDir
+      storage: 'Wasabi S3',
+      bucket: wasabiBucket,
+      endpoint: wasabiEndpoint,
+      region: wasabiRegion || 'us-east-1',
+      objectCount: result.KeyCount || 0
     });
   } catch (error) {
     res.status(503).json({
       status: 'unhealthy',
       error: error.message,
-      storage: 'Local file system'
+      storage: 'Wasabi S3'
     });
   }
 });
