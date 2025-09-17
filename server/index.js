@@ -11,6 +11,7 @@ const adminRoutes = require('./routes/admin');
 const adminUsersRoutes = require('./routes/admin-users');
 const announcementRoutes = require('./routes/announcements');
 const restartRoutes = require('./routes/restart');
+const healthRoutes = require('./routes/health');
 const { requestLogger, getLogs, clearLogs } = require('./middleware/requestLogger');
 
 const app = express();
@@ -173,6 +174,8 @@ app.use('/api/announcements', announcementRoutes);
 console.log('✅ Announcements routes registered at /api/announcements');
 app.use('/api/restart', restartRoutes);
 console.log('✅ Restart routes registered at /api/restart');
+app.use('/api/health', healthRoutes);
+console.log('✅ Health check routes registered at /api/health');
 
 // Test route to verify announcements are working
 app.get('/api/announcements/test', (req, res) => {
