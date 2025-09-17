@@ -137,10 +137,14 @@ router.get('/', async (req, res) => {
     
     // Check if we can query maps from database
     const mapsResult = await db.query(`
-      SELECT COUNT(*) as map_count, 
-             COUNT(CASE WHEN area_bounds IS NOT NULL THEN 1 END) as maps_with_bounds
-      FROM maps 
-      WHERE is_active = true
+      SELECT 
+        COUNT(m.id) as map_count, 
+        COUNT(CASE WHEN m.area_bounds IS NOT NULL THEN 1 END) as maps_with_bounds,
+        COUNT(mf.id) as total_files,
+        COUNT(CASE WHEN mf.id IS NOT NULL THEN 1 END) as maps_with_files
+      FROM maps m
+      LEFT JOIN map_files mf ON m.id = mf.map_id
+      WHERE m.is_active = true
     `);
     
     const mapsResponseTime = Date.now() - mapsStart;
@@ -151,7 +155,9 @@ router.get('/', async (req, res) => {
       responseTime: `${mapsResponseTime}ms`,
       details: 'Map data accessible and renderable',
       totalMaps: parseInt(mapData.map_count),
-      mapsWithBounds: parseInt(mapData.maps_with_bounds)
+      mapsWithBounds: parseInt(mapData.maps_with_bounds),
+      totalFiles: parseInt(mapData.total_files),
+      mapsWithFiles: parseInt(mapData.maps_with_files)
     };
   } catch (error) {
     healthChecks.services.mapRendering = {
@@ -291,12 +297,17 @@ router.get('/maps', async (req, res) => {
     // Query maps and check if they have proper data for rendering
     const result = await db.query(`
       SELECT 
-        COUNT(*) as total_maps,
-        COUNT(CASE WHEN area_bounds IS NOT NULL THEN 1 END) as maps_with_bounds,
-        COUNT(CASE WHEN file_count > 0 THEN 1 END) as maps_with_files,
-        AVG(file_count) as avg_files_per_map
-      FROM maps 
-      WHERE is_active = true
+        COUNT(m.id) as total_maps,
+        COUNT(CASE WHEN m.area_bounds IS NOT NULL THEN 1 END) as maps_with_bounds,
+        COUNT(mf.id) as total_files,
+        COUNT(CASE WHEN mf.id IS NOT NULL THEN 1 END) as maps_with_files,
+        CASE 
+          WHEN COUNT(m.id) > 0 THEN ROUND(COUNT(mf.id)::DECIMAL / COUNT(m.id), 1)
+          ELSE 0 
+        END as avg_files_per_map
+      FROM maps m
+      LEFT JOIN map_files mf ON m.id = mf.map_id
+      WHERE m.is_active = true
     `);
     
     const responseTime = Date.now() - start;
@@ -308,6 +319,7 @@ router.get('/maps', async (req, res) => {
       service: 'Map Rendering',
       totalMaps: parseInt(data.total_maps),
       mapsWithBounds: parseInt(data.maps_with_bounds),
+      totalFiles: parseInt(data.total_files),
       mapsWithFiles: parseInt(data.maps_with_files),
       avgFilesPerMap: parseFloat(data.avg_files_per_map || 0).toFixed(1)
     });
