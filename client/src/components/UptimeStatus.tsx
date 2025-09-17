@@ -55,7 +55,7 @@ const UptimeStatus: React.FC<UptimeStatusProps> = ({ className = '', showDetails
         setLoading(true);
         
         // Fetch health check data from our API
-        const healthResponse = await fetch('/api/health');
+        const healthResponse = await fetch('https://kartarkiv-production.up.railway.app/api/health');
         if (healthResponse.ok) {
           const healthData: HealthCheckData = await healthResponse.json();
           setHealthData(healthData);
