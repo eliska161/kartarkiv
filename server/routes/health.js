@@ -140,7 +140,6 @@ router.get('/', async (req, res) => {
         COUNT(CASE WHEN mf.id IS NOT NULL THEN 1 END) as maps_with_files
       FROM maps m
       LEFT JOIN map_files mf ON m.id = mf.map_id
-      WHERE m.is_active = true
     `);
     
     const mapsResponseTime = Date.now() - mapsStart;
@@ -306,7 +305,6 @@ router.get('/maps', async (req, res) => {
         END as avg_files_per_map
       FROM maps m
       LEFT JOIN map_files mf ON m.id = mf.map_id
-      WHERE m.is_active = true
     `);
     
     const responseTime = Date.now() - start;
