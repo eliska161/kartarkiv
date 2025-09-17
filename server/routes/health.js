@@ -88,11 +88,22 @@ router.get('/', async (req, res) => {
     const authStart = Date.now();
     
     // Check if Clerk environment variables are set
-    const clerkPublishableKey = process.env.REACT_APP_CLERK_PUBLISHABLE_KEY;
+    const clerkPublishableKey = process.env.CLERK_PUBLISHABLE_KEY || process.env.REACT_APP_CLERK_PUBLISHABLE_KEY;
     const clerkSecretKey = process.env.CLERK_SECRET_KEY;
     
-    if (!clerkPublishableKey || !clerkSecretKey) {
-      throw new Error('Clerk environment variables not configured');
+    if (!clerkSecretKey) {
+      console.log('❌ CLERK_SECRET_KEY not found in environment variables');
+      throw new Error('CLERK_SECRET_KEY not configured');
+    }
+    
+    if (!clerkPublishableKey) {
+      console.log('❌ CLERK_PUBLISHABLE_KEY not found in environment variables');
+      console.log('Available Clerk env vars:', {
+        CLERK_PUBLISHABLE_KEY: !!process.env.CLERK_PUBLISHABLE_KEY,
+        REACT_APP_CLERK_PUBLISHABLE_KEY: !!process.env.REACT_APP_CLERK_PUBLISHABLE_KEY,
+        CLERK_SECRET_KEY: !!process.env.CLERK_SECRET_KEY
+      });
+      throw new Error('CLERK_PUBLISHABLE_KEY not configured');
     }
     
     // Try to make a simple request to Clerk API
@@ -237,11 +248,15 @@ router.get('/auth', async (req, res) => {
   try {
     const start = Date.now();
     
-    const clerkPublishableKey = process.env.REACT_APP_CLERK_PUBLISHABLE_KEY;
+    const clerkPublishableKey = process.env.CLERK_PUBLISHABLE_KEY || process.env.REACT_APP_CLERK_PUBLISHABLE_KEY;
     const clerkSecretKey = process.env.CLERK_SECRET_KEY;
     
-    if (!clerkPublishableKey || !clerkSecretKey) {
-      throw new Error('Clerk environment variables not configured');
+    if (!clerkSecretKey) {
+      throw new Error('CLERK_SECRET_KEY not configured');
+    }
+    
+    if (!clerkPublishableKey) {
+      throw new Error('CLERK_PUBLISHABLE_KEY not configured');
     }
     
     // Test Clerk API connectivity
