@@ -45,7 +45,6 @@ interface HealthCheckData {
 
 const UptimeStatus: React.FC<UptimeStatusProps> = ({ className = '', showDetails = true }) => {
   const [status, setStatus] = useState<MonitorStatus[]>([]);
-  const [healthData, setHealthData] = useState<HealthCheckData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -54,113 +53,72 @@ const UptimeStatus: React.FC<UptimeStatusProps> = ({ className = '', showDetails
       try {
         setLoading(true);
         
-        // Fetch health check data from our API
-        const healthResponse = await fetch('https://kartarkiv-production.up.railway.app/api/health');
-        if (healthResponse.ok) {
-          const healthData: HealthCheckData = await healthResponse.json();
-          setHealthData(healthData);
-          
-          // Convert health data to monitor status format
-          const monitors: MonitorStatus[] = [];
-          
-          if (healthData.services.database) {
-            monitors.push({
-              id: 'database',
-              name: 'Database',
-              status: healthData.services.database.status === 'healthy' ? 'up' : 'down',
-              uptime: healthData.services.database.status === 'healthy' ? 99.9 : 0,
-              lastCheck: healthData.timestamp,
-              responseTime: healthData.services.database.responseTime,
-              details: healthData.services.database.details
-            });
-          }
-          
-          if (healthData.services.fileStorage) {
-            monitors.push({
-              id: 'files',
-              name: 'Fil-lagring',
-              status: healthData.services.fileStorage.status === 'healthy' ? 'up' : 'down',
-              uptime: healthData.services.fileStorage.status === 'healthy' ? 99.9 : 0,
-              lastCheck: healthData.timestamp,
-              responseTime: healthData.services.fileStorage.responseTime,
-              details: healthData.services.fileStorage.details
-            });
-          }
-          
-          if (healthData.services.clerkAuth) {
-            monitors.push({
-              id: 'auth',
-              name: 'Autentisering',
-              status: healthData.services.clerkAuth.status === 'healthy' ? 'up' : 'down',
-              uptime: healthData.services.clerkAuth.status === 'healthy' ? 99.9 : 0,
-              lastCheck: healthData.timestamp,
-              responseTime: healthData.services.clerkAuth.responseTime,
-              details: healthData.services.clerkAuth.details
-            });
-          }
-          
-          if (healthData.services.mapRendering) {
-            monitors.push({
-              id: 'maps',
-              name: 'Kart-rendering',
-              status: healthData.services.mapRendering.status === 'healthy' ? 'up' : 'down',
-              uptime: healthData.services.mapRendering.status === 'healthy' ? 99.9 : 0,
-              lastCheck: healthData.timestamp,
-              responseTime: healthData.services.mapRendering.responseTime,
-              details: healthData.services.mapRendering.details
-            });
-          }
+        const apiKey = process.env.REACT_APP_UPTIMEROBOT_API_KEY;
+        if (!apiKey) {
+          console.warn('UptimeRobot API key not found, using mock data');
+          // Fallback to mock data if API key is not available
+          const mockStatus: MonitorStatus[] = [
+            {
+              id: '1',
+              name: 'Kartarkiv API',
+              status: 'up',
+              uptime: 99.9,
+              lastCheck: new Date().toISOString()
+            },
+            {
+              id: '2', 
+              name: 'Kartarkiv Frontend',
+              status: 'up',
+              uptime: 99.8,
+              lastCheck: new Date().toISOString()
+            }
+          ];
+          setStatus(mockStatus);
+          setError(null);
+          return;
+        }
+
+        // Fetch real data from UptimeRobot API
+        const response = await fetch('https://api.uptimerobot.com/v2/getMonitors', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: new URLSearchParams({
+            api_key: apiKey,
+            format: 'json'
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        
+        if (data.stat === 'ok') {
+          const monitors: MonitorStatus[] = data.monitors.map((monitor: any) => {
+            let lastCheck = new Date().toISOString(); // Default to current time
+            if (monitor.datetime && !isNaN(monitor.datetime)) {
+              const date = new Date(monitor.datetime * 1000);
+              if (!isNaN(date.getTime())) {
+                lastCheck = date.toISOString();
+              }
+            }
+            
+            return {
+              id: monitor.id,
+              name: monitor.friendly_name,
+              status: monitor.status === 2 ? 'up' : monitor.status === 9 ? 'down' : 'paused',
+              uptime: parseFloat(monitor.custom_uptime_ratio) || 0,
+              lastCheck: lastCheck
+            };
+          });
           
           setStatus(monitors);
           setError(null);
         } else {
-          throw new Error(`Health check failed: ${healthResponse.status}`);
-        }
-        
-        // Also try to fetch UptimeRobot data if API key is available
-        const apiKey = process.env.REACT_APP_UPTIMEROBOT_API_KEY;
-        if (apiKey) {
-          try {
-            const uptimeResponse = await fetch('https://api.uptimerobot.com/v2/getMonitors', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-              },
-              body: new URLSearchParams({
-                api_key: apiKey,
-                format: 'json'
-              })
-            });
-
-            if (uptimeResponse.ok) {
-              const uptimeData = await uptimeResponse.json();
-              
-              if (uptimeData.stat === 'ok') {
-                const uptimeMonitors: MonitorStatus[] = uptimeData.monitors.map((monitor: any) => {
-                  let lastCheck = new Date().toISOString();
-                  if (monitor.datetime && !isNaN(monitor.datetime)) {
-                    const date = new Date(monitor.datetime * 1000);
-                    if (!isNaN(date.getTime())) {
-                      lastCheck = date.toISOString();
-                    }
-                  }
-                  
-                  return {
-                    id: `uptime-${monitor.id}`,
-                    name: monitor.friendly_name,
-                    status: monitor.status === 2 ? 'up' : monitor.status === 9 ? 'down' : 'paused',
-                    uptime: parseFloat(monitor.custom_uptime_ratio) || 0,
-                    lastCheck: lastCheck
-                  };
-                });
-                
-                // Add UptimeRobot monitors to existing status
-                setStatus(prev => [...prev, ...uptimeMonitors]);
-              }
-            }
-          } catch (uptimeErr) {
-            console.warn('UptimeRobot data not available:', uptimeErr);
-          }
+          throw new Error(data.error?.message || 'API error');
         }
       } catch (err) {
         console.error('Failed to fetch status:', err);
@@ -269,22 +227,15 @@ const UptimeStatus: React.FC<UptimeStatusProps> = ({ className = '', showDetails
           <div key={monitor.id} className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               {getStatusIcon(monitor.status)}
-              <div>
-                <span className="text-sm text-gray-700">{monitor.name}</span>
-                {showDetails && monitor.details && (
-                  <div className="text-xs text-gray-500 mt-0.5">
-                    {monitor.details}
-                  </div>
-                )}
-              </div>
+              <span className="text-sm text-gray-700">{monitor.name}</span>
             </div>
             <div className="flex items-center space-x-2">
               <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(monitor.status)}`}>
                 {getStatusText(monitor.status)}
               </span>
-              {showDetails && monitor.responseTime && (
+              {showDetails && (
                 <span className="text-xs text-gray-500">
-                  {monitor.responseTime}
+                  {monitor.uptime}%
                 </span>
               )}
             </div>
