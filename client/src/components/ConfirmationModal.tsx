@@ -81,7 +81,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+    <div className="fixed inset-0 overflow-y-auto" style={{ zIndex: 9999 }}>
       <div className="flex min-h-screen items-center justify-center p-4">
         {/* Backdrop */}
         <div 
