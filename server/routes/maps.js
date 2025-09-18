@@ -978,8 +978,9 @@ router.post('/', authenticateUser, [
     
     if (existingUser.rows.length === 0) {
       // User doesn't exist, create new one
-      // Handle potential username conflicts by adding a suffix
+      // Handle potential username and email conflicts by adding a suffix
       let finalUsername = userUsername;
+      let finalEmail = userEmail;
       let counter = 1;
       
       while (true) {
@@ -987,15 +988,21 @@ router.post('/', authenticateUser, [
           await pool.query(`
             INSERT INTO users (clerk_id, email, username, password_hash, is_admin) 
             VALUES ($1, $2, $3, $4, $5)
-          `, [req.user.id, userEmail, finalUsername, passwordHash, req.user.isAdmin]);
-          console.log('✅ Created new user:', req.user.id, 'with username:', finalUsername);
+          `, [req.user.id, finalEmail, finalUsername, passwordHash, req.user.isAdmin]);
+          console.log('✅ Created new user:', req.user.id, 'with username:', finalUsername, 'and email:', finalEmail);
           break;
         } catch (error) {
-          if (error.code === '23505' && error.constraint === 'users_username_key') {
-            // Username already exists, try with a number suffix
-            finalUsername = `${userUsername}${counter}`;
+          if (error.code === '23505') {
+            if (error.constraint === 'users_username_key') {
+              // Username already exists, try with a number suffix
+              finalUsername = `${userUsername}${counter}`;
+              console.log('⚠️ Username conflict, trying:', finalUsername);
+            } else if (error.constraint === 'users_email_key') {
+              // Email already exists, try with a number suffix
+              finalEmail = `${userEmail.split('@')[0]}+${counter}@${userEmail.split('@')[1]}`;
+              console.log('⚠️ Email conflict, trying:', finalEmail);
+            }
             counter++;
-            console.log('⚠️ Username conflict, trying:', finalUsername);
           } else {
             throw error; // Re-throw if it's a different error
           }
