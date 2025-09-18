@@ -645,7 +645,7 @@ router.get('/:id/versions', authenticateUser, async (req, res) => {
         vh.*,
         CASE 
           WHEN u.first_name IS NOT NULL AND u.last_name IS NOT NULL THEN 
-            CONCAT(u.first_name, ' ', u.last_name)
+            u.first_name || ' ' || u.last_name
           WHEN u.first_name IS NOT NULL THEN 
             u.first_name
           WHEN u.username IS NOT NULL THEN 
@@ -833,7 +833,7 @@ router.get('/', async (req, res) => {
         m.*,
         CASE 
           WHEN u.first_name IS NOT NULL AND u.last_name IS NOT NULL THEN 
-            CONCAT(u.first_name, ' ', u.last_name)
+            u.first_name || ' ' || u.last_name
           WHEN u.first_name IS NOT NULL THEN 
             u.first_name
           WHEN u.username IS NOT NULL THEN 
@@ -903,7 +903,7 @@ router.get('/:id', async (req, res) => {
         m.*,
         CASE 
           WHEN u.first_name IS NOT NULL AND u.last_name IS NOT NULL THEN 
-            CONCAT(u.first_name, ' ', u.last_name)
+            u.first_name || ' ' || u.last_name
           WHEN u.first_name IS NOT NULL THEN 
             u.first_name
           WHEN u.username IS NOT NULL THEN 
