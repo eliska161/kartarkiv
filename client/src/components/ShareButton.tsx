@@ -126,7 +126,7 @@ const ShareButton: React.FC<ShareButtonProps> = ({ mapId, mapName, className = '
               <div className="space-y-2">
                 <div className="flex items-center text-sm text-gray-600">
                   <Clock className="h-4 w-4 mr-2" />
-                  <span>Utløper: {formatExpiryDate(shareLink.expiresAt)}</span>
+                  <span>Utløper: {formatExpiryDate(shareLink.expiresAt)} (5 timer)</span>
                 </div>
                 
                 <div className="flex items-center text-sm text-amber-600">
@@ -138,7 +138,7 @@ const ShareButton: React.FC<ShareButtonProps> = ({ mapId, mapName, className = '
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                 <p className="text-sm text-blue-800">
                   <strong>Tips:</strong> Mottakeren kan laste ned alle filer i kartet uten å logge inn. 
-                  Lenken blir ugyldig etter første bruk.
+                  Lenken utløper om 5 timer og kan kun brukes én gang.
                 </p>
               </div>
             </div>

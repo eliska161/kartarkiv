@@ -650,9 +650,9 @@ router.post('/:id/share', authenticateUser, async (req, res) => {
     const crypto = require('crypto');
     const token = crypto.randomBytes(32).toString('hex');
     
-    // Set expiration to 7 days from now
+    // Set expiration to 5 hours from now
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7);
+    expiresAt.setHours(expiresAt.getHours() + 5);
     
     // Create share link
     const result = await pool.query(`
@@ -678,7 +678,7 @@ router.post('/:id/share', authenticateUser, async (req, res) => {
         token: shareLink.token,
         url: publicUrl,
         expiresAt: shareLink.expires_at,
-        expiresIn: '7 dager'
+        expiresIn: '5 timer'
       }
     });
     
