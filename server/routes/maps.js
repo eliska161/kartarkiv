@@ -635,6 +635,246 @@ const previewUpload = multer({
   }
 });
 
+// Generate share link for a map (one-time download)
+router.post('/:id/share', authenticateUser, async (req, res) => {
+  try {
+    const mapId = parseInt(req.params.id);
+    
+    // Verify map exists
+    const mapResult = await pool.query('SELECT id, name FROM maps WHERE id = $1', [mapId]);
+    if (mapResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Map not found' });
+    }
+    
+    // Generate unique token
+    const crypto = require('crypto');
+    const token = crypto.randomBytes(32).toString('hex');
+    
+    // Set expiration to 7 days from now
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7);
+    
+    // Create share link
+    const result = await pool.query(`
+      INSERT INTO share_links (map_id, token, created_by, expires_at)
+      VALUES ($1, $2, $3, $4)
+      RETURNING id, token, expires_at
+    `, [mapId, token, req.user.id, expiresAt]);
+    
+    const shareLink = result.rows[0];
+    const publicUrl = `${process.env.FRONTEND_URL || 'https://www.kartarkiv.co'}/download/${shareLink.token}`;
+    
+    console.log('✅ Share link created:', {
+      mapId,
+      token: shareLink.token,
+      expiresAt: shareLink.expires_at,
+      createdBy: req.user.id
+    });
+    
+    res.json({
+      message: 'Share link created successfully',
+      shareLink: {
+        id: shareLink.id,
+        token: shareLink.token,
+        url: publicUrl,
+        expiresAt: shareLink.expires_at,
+        expiresIn: '7 dager'
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error creating share link:', error);
+    res.status(500).json({ message: 'Error creating share link' });
+  }
+});
+
+// Public download endpoint for share links (no authentication required)
+router.get('/download/:token', async (req, res) => {
+  try {
+    const token = req.params.token;
+    
+    // Find valid share link
+    const shareResult = await pool.query(`
+      SELECT 
+        sl.*,
+        m.name as map_name,
+        m.description,
+        m.scale,
+        m.contour_interval,
+        m.created_at as map_created_at
+      FROM share_links sl
+      JOIN maps m ON sl.map_id = m.id
+      WHERE sl.token = $1 
+        AND sl.is_used = FALSE 
+        AND sl.expires_at > NOW()
+    `, [token]);
+    
+    if (shareResult.rows.length === 0) {
+      return res.status(404).json({ 
+        message: 'Delings-lenke ikke funnet, utløpt eller allerede brukt',
+        error: 'INVALID_OR_EXPIRED_LINK'
+      });
+    }
+    
+    const shareLink = shareResult.rows[0];
+    
+    // Mark as used and increment download count
+    await pool.query(`
+      UPDATE share_links 
+      SET is_used = TRUE, used_at = NOW(), download_count = download_count + 1
+      WHERE id = $1
+    `, [shareLink.id]);
+    
+    // Get all files for this map
+    const filesResult = await pool.query(`
+      SELECT 
+        mf.id,
+        mf.filename,
+        mf.file_path,
+        mf.file_size,
+        mf.mime_type,
+        mf.created_at
+      FROM map_files mf
+      WHERE mf.map_id = $1
+      ORDER BY mf.created_at ASC
+    `, [shareLink.map_id]);
+    
+    const files = filesResult.rows;
+    
+    console.log('✅ Share link used:', {
+      token,
+      mapId: shareLink.map_id,
+      mapName: shareLink.map_name,
+      downloadCount: shareLink.download_count + 1
+    });
+    
+    // Set CORS headers for public access
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type');
+    
+    res.json({
+      message: 'Kart lastet ned via delings-lenke',
+      map: {
+        id: shareLink.map_id,
+        name: shareLink.map_name,
+        description: shareLink.description,
+        scale: shareLink.scale,
+        contour_interval: shareLink.contour_interval,
+        created_at: shareLink.map_created_at
+      },
+      files: files.map(file => ({
+        id: file.id,
+        filename: file.filename,
+        file_size: file.file_size,
+        mime_type: file.mime_type,
+        download_url: `/api/maps/download/${token}/file/${file.id}`
+      })),
+      shareInfo: {
+        expiresAt: shareLink.expires_at,
+        downloadCount: shareLink.download_count + 1,
+        isOneTime: true
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error processing share link download:', error);
+    res.status(500).json({ message: 'Error processing download' });
+  }
+});
+
+// Download individual file via share link
+router.get('/download/:token/file/:fileId', async (req, res) => {
+  try {
+    const token = req.params.token;
+    const fileId = parseInt(req.params.fileId);
+    
+    // Verify share link is still valid
+    const shareResult = await pool.query(`
+      SELECT sl.*, m.name as map_name
+      FROM share_links sl
+      JOIN maps m ON sl.map_id = m.id
+      WHERE sl.token = $1 AND sl.is_used = TRUE
+    `, [token]);
+    
+    if (shareResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Delings-lenke ikke gyldig' });
+    }
+    
+    // Get file info
+    const fileResult = await pool.query(`
+      SELECT mf.*
+      FROM map_files mf
+      JOIN share_links sl ON mf.map_id = sl.map_id
+      WHERE mf.id = $1 AND sl.token = $2
+    `, [fileId, token]);
+    
+    if (fileResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Fil ikke funnet' });
+    }
+    
+    const file = fileResult.rows[0];
+    
+    // Handle file download (same logic as authenticated download)
+    if (file.file_path.startsWith('maps/')) {
+      // Wasabi file
+      if (process.env.WASABI_ACCESS_KEY && process.env.WASABI_SECRET_KEY) {
+        try {
+          const AWS = require('aws-sdk');
+          const wasabi = new AWS.S3({
+            endpoint: process.env.WASABI_ENDPOINT || 'https://s3.wasabisys.com',
+            accessKeyId: process.env.WASABI_ACCESS_KEY,
+            secretAccessKey: process.env.WASABI_SECRET_KEY,
+            region: process.env.WASABI_REGION || 'us-east-1',
+            s3ForcePathStyle: true,
+            signatureVersion: 'v4'
+          });
+          
+          const bucketName = process.env.WASABI_BUCKET || 'kartarkiv-storage';
+          const params = {
+            Bucket: bucketName,
+            Key: file.file_path
+          };
+          
+          const data = await wasabi.getObject(params).promise();
+          
+          res.setHeader('Content-Type', file.mime_type || 'application/octet-stream');
+          res.setHeader('Content-Disposition', `attachment; filename="${file.filename}"`);
+          res.setHeader('Content-Length', data.ContentLength);
+          
+          res.send(data.Body);
+          return;
+        } catch (error) {
+          console.error('Error downloading from Wasabi:', error);
+          return res.status(500).json({ message: 'Error downloading file' });
+        }
+      }
+    }
+    
+    // Fallback to local file
+    const path = require('path');
+    const fs = require('fs').promises;
+    
+    try {
+      const filePath = path.join(__dirname, '../uploads', file.file_path);
+      const fileBuffer = await fs.readFile(filePath);
+      
+      res.setHeader('Content-Type', file.mime_type || 'application/octet-stream');
+      res.setHeader('Content-Disposition', `attachment; filename="${file.filename}"`);
+      res.setHeader('Content-Length', fileBuffer.length);
+      
+      res.send(fileBuffer);
+    } catch (error) {
+      console.error('Error reading local file:', error);
+      res.status(500).json({ message: 'Error downloading file' });
+    }
+    
+  } catch (error) {
+    console.error('Error downloading file via share link:', error);
+    res.status(500).json({ message: 'Error downloading file' });
+  }
+});
+
 // Get version history for a map
 router.get('/:id/versions', authenticateUser, async (req, res) => {
   try {

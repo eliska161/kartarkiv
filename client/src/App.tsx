@@ -15,6 +15,7 @@ import MapPage from './pages/MapPage';
 import AdminDashboard from './pages/AdminDashboard';
 import MapDetailPage from './pages/MapDetailPage';
 import ProfilePage from './pages/ProfilePage';
+import PublicDownloadPage from './pages/PublicDownloadPage';
 
 const clerkPubKey = process.env.REACT_APP_CLERK_PUBLISHABLE_KEY;
 
@@ -26,6 +27,7 @@ const AppContent: React.FC = () => {
       <Routes>
         {/* Public routes */}
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/download/:token" element={<PublicDownloadPage />} />
         
         {/* Protected routes */}
         <Route path="/" element={

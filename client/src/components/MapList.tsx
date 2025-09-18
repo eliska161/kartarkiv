@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapPin, Download, Eye, Calendar, Scale, Ruler } from 'lucide-react';
+import ShareButton from './ShareButton';
 
 interface Map {
   id: number;
@@ -93,6 +94,11 @@ const MapList: React.FC<MapListProps> = ({ maps, selectedMap, onSelectMap, viewM
               av {map.created_by_username}
             </span>
             <div className="flex space-x-1">
+              <ShareButton 
+                mapId={map.id} 
+                mapName={map.name}
+                className="p-2 text-gray-400 hover:text-eok-600 transition-colors"
+              />
               <button
                 onClick={(e) => {
                   e.stopPropagation();
