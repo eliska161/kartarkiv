@@ -643,7 +643,16 @@ router.get('/:id/versions', authenticateUser, async (req, res) => {
     const result = await pool.query(`
       SELECT 
         vh.*,
-        u.username,
+        CASE 
+          WHEN u.first_name IS NOT NULL AND u.last_name IS NOT NULL THEN 
+            CONCAT(u.first_name, ' ', u.last_name)
+          WHEN u.first_name IS NOT NULL THEN 
+            u.first_name
+          WHEN u.username IS NOT NULL THEN 
+            u.username
+          ELSE 
+            'Ukjent bruker'
+        END as username,
         u.first_name,
         u.last_name
       FROM map_version_history vh
@@ -822,12 +831,21 @@ router.get('/', async (req, res) => {
     const result = await pool.query(`
       SELECT 
         m.*,
-        u.username as created_by_username,
+        CASE 
+          WHEN u.first_name IS NOT NULL AND u.last_name IS NOT NULL THEN 
+            CONCAT(u.first_name, ' ', u.last_name)
+          WHEN u.first_name IS NOT NULL THEN 
+            u.first_name
+          WHEN u.username IS NOT NULL THEN 
+            u.username
+          ELSE 
+            'Ukjent bruker'
+        END as created_by_username,
         COUNT(mf.id) as file_count
       FROM maps m
       LEFT JOIN users u ON m.created_by = u.clerk_id
       LEFT JOIN map_files mf ON m.id = mf.map_id
-      GROUP BY m.id, u.username
+      GROUP BY m.id, u.first_name, u.last_name, u.username
       ORDER BY m.created_at DESC
     `);
 
@@ -883,7 +901,16 @@ router.get('/:id', async (req, res) => {
     const mapResult = await pool.query(`
       SELECT 
         m.*,
-        u.username as created_by_username
+        CASE 
+          WHEN u.first_name IS NOT NULL AND u.last_name IS NOT NULL THEN 
+            CONCAT(u.first_name, ' ', u.last_name)
+          WHEN u.first_name IS NOT NULL THEN 
+            u.first_name
+          WHEN u.username IS NOT NULL THEN 
+            u.username
+          ELSE 
+            'Ukjent bruker'
+        END as created_by_username
       FROM maps m
       LEFT JOIN users u ON m.created_by = u.clerk_id
       WHERE m.id = $1
