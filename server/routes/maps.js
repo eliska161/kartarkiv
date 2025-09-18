@@ -1010,14 +1010,31 @@ router.post('/', authenticateUser, [
       }
     } else {
       // User exists, update if needed (but don't change username to avoid conflicts)
-      await pool.query(`
-        UPDATE users SET 
-          email = COALESCE($2, email),
-          password_hash = COALESCE($3, password_hash),
-          is_admin = $4
-        WHERE clerk_id = $1
-      `, [req.user.id, userEmail, passwordHash, req.user.isAdmin]);
-      console.log('✅ Updated existing user:', req.user.id, 'keeping existing username');
+      // Check if email already exists for another user before updating
+      const emailCheck = await pool.query(`
+        SELECT id FROM users WHERE email = $1 AND clerk_id != $2
+      `, [userEmail, req.user.id]);
+      
+      if (emailCheck.rows.length > 0) {
+        // Email already exists for another user, don't update it
+        console.log('⚠️ Email already exists for another user, keeping existing email for:', req.user.id);
+        await pool.query(`
+          UPDATE users SET 
+            password_hash = COALESCE($2, password_hash),
+            is_admin = $3
+          WHERE clerk_id = $1
+        `, [req.user.id, passwordHash, req.user.isAdmin]);
+      } else {
+        // Email is unique, safe to update
+        await pool.query(`
+          UPDATE users SET 
+            email = COALESCE($2, email),
+            password_hash = COALESCE($3, password_hash),
+            is_admin = $4
+          WHERE clerk_id = $1
+        `, [req.user.id, userEmail, passwordHash, req.user.isAdmin]);
+        console.log('✅ Updated existing user:', req.user.id, 'with new email:', userEmail);
+      }
     }
 
     const result = await pool.query(`
