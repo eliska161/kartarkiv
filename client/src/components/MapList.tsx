@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Download, Eye, Calendar, Scale, Ruler } from 'lucide-react';
+import { MapPin, Download, Eye, Calendar, RulerDimensionLine, Spline } from 'lucide-react';
 import ShareButton from './ShareButton';
 
 interface Map {
@@ -73,13 +73,13 @@ const MapList: React.FC<MapListProps> = ({ maps, selectedMap, onSelectMap, viewM
           <div className="space-y-1 text-xs text-gray-500">
             {map.scale && (
               <div className="flex items-center">
-                <Scale className="h-3 w-3 mr-1" />
+                <RulerDimensionLine className="h-3 w-3 mr-1" />
                 {map.scale}
               </div>
             )}
             {map.contour_interval && (
               <div className="flex items-center">
-                <Ruler className="h-3 w-3 mr-1" />
+                <Spline className="h-3 w-3 mr-1" />
                 {map.contour_interval}m ekvidistanse
               </div>
             )}

@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useMap } from '../contexts/MapContext';
 import { useToast } from '../contexts/ToastContext';
 import axios from 'axios';
-import { ArrowLeft, Download, MapPin, Scale, Ruler, Calendar, User, FileText, Image, File, History, Maximize2 } from 'lucide-react';
+import { ArrowLeft, Download, MapPin, RulerDimensionLine, Spline, Calendar, User, FileText, Image, File, History, Maximize2 } from 'lucide-react';
 import { MapContainer, TileLayer, Polygon, useMap as useLeafletMap } from 'react-leaflet';
 import L from 'leaflet';
 import VersionHistory from '../components/VersionHistory';
@@ -294,7 +294,7 @@ const MapDetailPage: React.FC = () => {
                 
                 {map.contour_interval && (
                   <div className="flex items-center">
-                    <Scale className="h-5 w-5 text-gray-400 mr-3" />
+                    <RulerDimensionLine className="h-5 w-5 text-gray-400 mr-3" />
                     <div>
                       <div className="text-sm font-medium text-gray-900">Ekvidistanse</div>
                       <div className="text-sm text-gray-500">{map.contour_interval} m</div>

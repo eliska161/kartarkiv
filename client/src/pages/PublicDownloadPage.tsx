@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Download, MapPin, Scale, Ruler, Calendar, User, FileText, AlertCircle, CheckCircle } from 'lucide-react';
+import { Download, MapPin, RulerDimensionLine, Spline, Calendar, User, FileText, AlertCircle, CheckCircle } from 'lucide-react';
 
 interface MapFile {
   id: number;
@@ -164,14 +164,14 @@ const PublicDownloadPage: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {data.map.scale && (
               <div className="flex items-center text-gray-600">
-                <Scale className="h-5 w-5 mr-2" />
+                <RulerDimensionLine className="h-5 w-5 mr-2" />
                 <span className="text-sm">Målestokk: {data.map.scale}</span>
               </div>
             )}
             
             {data.map.contour_interval && (
               <div className="flex items-center text-gray-600">
-                <Ruler className="h-5 w-5 mr-2" />
+                <Spline className="h-5 w-5 mr-2" />
                 <span className="text-sm">Ekvidistanse: {data.map.contour_interval}m</span>
               </div>
             )}
