@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Map, Download, Share2, ArrowRight, CheckCircle, Search, Eye, MousePointer, ZoomIn, ZoomOut, Click, FileText, Link, Play, Pause, RotateCcw } from 'lucide-react';
+import { Map, Download, Share2, ArrowRight, CheckCircle, Search, Eye, MousePointer, ZoomIn, ZoomOut, FileText, Link, Play, Pause, RotateCcw } from 'lucide-react';
 
 const OnboardingPage = () => {
   const navigate = useNavigate();
