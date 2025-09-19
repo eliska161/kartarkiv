@@ -1,5 +1,0 @@
-[33m65554b0[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m  Rydd opp i unødvendige filer
-[33m77d683e[m  Bruk offisiell Clerk norsk lokaliseringsinnstilling
-[33m6ef506c[m  Legg til omfattende norske oversettelser for Clerk komponenter
-[33mf8b9d31[m  Fiks JSX syntaksfeil i MapComponent
-[33mee375c5[m 🔧 Fjern Min Profil fra admin og forbedre norsk lokaliseringsinnstilling
