@@ -284,7 +284,7 @@ const MapDetailPage: React.FC = () => {
               <div className="space-y-4">
                 {map.scale && (
                   <div className="flex items-center">
-                    <Maximize2 className="h-5 w-5 text-gray-400 mr-3" />
+                    <RulerDimensionLine className="h-5 w-5 text-gray-400 mr-3" />
                     <div>
                       <div className="text-sm font-medium text-gray-900">Målestokk</div>
                       <div className="text-sm text-gray-500">{map.scale}</div>
@@ -294,7 +294,7 @@ const MapDetailPage: React.FC = () => {
                 
                 {map.contour_interval && (
                   <div className="flex items-center">
-                    <RulerDimensionLine className="h-5 w-5 text-gray-400 mr-3" />
+                    <Spline className="h-5 w-5 text-gray-400 mr-3" />
                     <div>
                       <div className="text-sm font-medium text-gray-900">Ekvidistanse</div>
                       <div className="text-sm text-gray-500">{map.contour_interval} m</div>
