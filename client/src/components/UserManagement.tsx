@@ -12,6 +12,7 @@ interface ClerkUser {
   id: string;
   firstName: string | null;
   lastName: string | null;
+  imageUrl: string | null;
   emailAddresses: Array<{ emailAddress: string }>;
   publicMetadata: {
     isAdmin?: boolean;
@@ -281,9 +282,26 @@ const UserManagement: React.FC = () => {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <div className="flex-shrink-0 h-10 w-10">
-                        <div className="h-10 w-10 rounded-full bg-eok-100 flex items-center justify-center">
-                          <User className="h-5 w-5 text-eok-600" />
-                        </div>
+                        {user.imageUrl ? (
+                          <img
+                            src={user.imageUrl}
+                            alt={`${user.firstName || user.lastName || 'Bruker'} profilbilde`}
+                            className="h-10 w-10 rounded-full object-cover"
+                            onError={(e) => {
+                              // Fallback to default icon if image fails to load
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                              const parent = target.parentElement;
+                              if (parent) {
+                                parent.innerHTML = '<div class="h-10 w-10 rounded-full bg-eok-100 flex items-center justify-center"><svg class="h-5 w-5 text-eok-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg></div>';
+                              }
+                            }}
+                          />
+                        ) : (
+                          <div className="h-10 w-10 rounded-full bg-eok-100 flex items-center justify-center">
+                            <User className="h-5 w-5 text-eok-600" />
+                          </div>
+                        )}
                       </div>
                       <div className="ml-4">
                         <div className="text-sm font-medium text-gray-900">
