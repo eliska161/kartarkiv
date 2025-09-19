@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Map, Download, Share2, ArrowRight, CheckCircle, Search, Eye, MousePointer, ZoomIn, ZoomOut, FileText, Link, Play, Pause, RotateCcw } from 'lucide-react';
+import { MapContainer, TileLayer, Marker, Popup, Polygon } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 
 const OnboardingPage = () => {
   const navigate = useNavigate();
@@ -89,178 +92,475 @@ const OnboardingPage = () => {
   };
 
   // Interactive Demo Components
-  const MapDemo = () => (
-    <div className="relative bg-gray-100 rounded-lg p-6 h-64 border-2 border-dashed border-gray-300">
-      <div className="absolute top-4 left-4 flex space-x-2">
-        <div className="bg-white px-3 py-1 rounded-full text-sm font-medium text-gray-700 shadow-sm">
-          <Search className="h-4 w-4 inline mr-1" />
-          Søk kart...
-        </div>
-      </div>
-      
-      <div className="absolute top-4 right-4 flex space-x-2">
-        <button className={`p-2 rounded-full bg-white shadow-sm transition-all ${isAnimating ? 'bg-eok-100 text-eok-600' : 'text-gray-600'}`}>
-          <ZoomIn className="h-4 w-4" />
-        </button>
-        <button className={`p-2 rounded-full bg-white shadow-sm transition-all ${isAnimating ? 'bg-eok-100 text-eok-600' : 'text-gray-600'}`}>
-          <ZoomOut className="h-4 w-4" />
-        </button>
-      </div>
+  const MapDemo = () => {
+    const [selectedMarker, setSelectedMarker] = useState<number | null>(null);
+    
+    // Sample map data for demo
+    const demoMaps = [
+      {
+        id: 1,
+        name: "Oslo Sentrum",
+        coordinates: [59.9139, 10.7522],
+        type: "bykart",
+        files: ["oslo_sentrum.pdf", "oslo_satellitt.jpg"]
+      },
+      {
+        id: 2,
+        name: "Bergen Havn",
+        coordinates: [60.3913, 5.3221],
+        type: "havnekart",
+        files: ["bergen_havn.pdf", "bergen_topografi.tiff"]
+      },
+      {
+        id: 3,
+        name: "Trondheim Universitet",
+        coordinates: [63.4194, 10.4026],
+        type: "campus",
+        files: ["trondheim_campus.pdf"]
+      }
+    ];
 
-      {/* Simulated map markers */}
-      <div className="absolute top-1/2 left-1/4 transform -translate-x-1/2 -translate-y-1/2">
-        <div className={`w-6 h-6 bg-eok-600 rounded-full border-2 border-white shadow-lg transition-all duration-1000 ${isAnimating ? 'scale-150 bg-eok-500' : ''}`}>
-          <div className="w-2 h-2 bg-white rounded-full absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"></div>
+    const handleMarkerClick = (mapId: number) => {
+      setSelectedMarker(mapId);
+      if (isAnimating) {
+        setTimeout(() => setSelectedMarker(null), 2000);
+      }
+    };
+
+    return (
+      <div className="relative bg-white rounded-lg border border-gray-300 overflow-hidden" style={{ height: '400px' }}>
+        {/* Search bar overlay */}
+        <div className="absolute top-4 left-4 z-[1000]">
+          <div className="bg-white px-3 py-2 rounded-lg shadow-lg flex items-center space-x-2">
+            <Search className="h-4 w-4 text-gray-500" />
+            <input 
+              type="text" 
+              placeholder="Søk kart..." 
+              className="border-none outline-none text-sm"
+              disabled
+            />
+          </div>
         </div>
+
+        {/* Map controls overlay */}
+        <div className="absolute top-4 right-4 z-[1000] flex flex-col space-y-2">
+          <button className={`p-2 rounded-full bg-white shadow-lg transition-all ${isAnimating ? 'bg-eok-100 text-eok-600' : 'text-gray-600'}`}>
+            <ZoomIn className="h-4 w-4" />
+          </button>
+          <button className={`p-2 rounded-full bg-white shadow-lg transition-all ${isAnimating ? 'bg-eok-100 text-eok-600' : 'text-gray-600'}`}>
+            <ZoomOut className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Real Leaflet Map */}
+        <MapContainer
+          center={[59.9139, 10.7522]}
+          zoom={6}
+          style={{ height: '100%', width: '100%' }}
+          zoomControl={false}
+        >
+          <TileLayer
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          />
+          
+          {/* Demo markers */}
+          {demoMaps.map((map) => (
+            <Marker
+              key={map.id}
+              position={[map.coordinates[0], map.coordinates[1]]}
+              eventHandlers={{
+                click: () => handleMarkerClick(map.id)
+              }}
+            >
+              <Popup>
+                <div className="p-2">
+                  <h3 className="font-semibold text-gray-900 mb-2">{map.name}</h3>
+                  <p className="text-sm text-gray-600 mb-2">Type: {map.type}</p>
+                  <div className="space-y-1">
+                    <p className="text-xs text-gray-500">Tilgjengelige filer:</p>
+                    {map.files.map((file, index) => (
+                      <div key={index} className="flex items-center space-x-1 text-xs">
+                        <FileText className="h-3 w-3 text-gray-400" />
+                        <span className="text-gray-600">{file}</span>
+                      </div>
+                    ))}
+                  </div>
+                  {isAnimating && (
+                    <div className="mt-2 p-2 bg-eok-50 rounded text-xs text-eok-700 animate-pulse">
+                      Klikk for å se detaljer og laste ned filer
+                    </div>
+                  )}
+                </div>
+              </Popup>
+            </Marker>
+          ))}
+        </MapContainer>
+
+        {/* Instruction overlay */}
         {isAnimating && (
-          <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-white px-3 py-1 rounded-lg shadow-lg text-sm font-medium text-gray-700 animate-pulse">
-            Klikk for detaljer
+          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-white px-4 py-2 rounded-lg shadow-lg z-[1000]">
+            <div className="flex items-center space-x-2 text-sm text-gray-700">
+              <MousePointer className="h-4 w-4 text-eok-600" />
+              <span>Klikk på markørene for å se kartdetaljer</span>
+            </div>
           </div>
         )}
       </div>
+    );
+  };
 
-      <div className="absolute top-1/3 right-1/3">
-        <div className={`w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-lg transition-all duration-1000 ${isAnimating ? 'scale-125 bg-blue-400' : ''}`}>
-          <div className="w-1 h-1 bg-white rounded-full absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"></div>
-        </div>
-      </div>
+  const DownloadDemo = () => {
+    const [selectedMap, setSelectedMap] = useState<number | null>(null);
+    const [downloadingFiles, setDownloadingFiles] = useState<number[]>([]);
+    
+    const demoMaps = [
+      {
+        id: 1,
+        name: "Oslo Sentrum",
+        coordinates: [59.9139, 10.7522],
+        files: [
+          { name: "oslo_sentrum.pdf", size: "2.4 MB", type: "PDF" },
+          { name: "oslo_satellitt.jpg", size: "1.8 MB", type: "JPG" }
+        ]
+      },
+      {
+        id: 2,
+        name: "Bergen Havn",
+        coordinates: [60.3913, 5.3221],
+        files: [
+          { name: "bergen_havn.pdf", size: "3.1 MB", type: "PDF" },
+          { name: "bergen_topografi.tiff", size: "4.2 MB", type: "TIFF" }
+        ]
+      }
+    ];
 
-      <div className="absolute bottom-1/4 left-1/3">
-        <div className={`w-5 h-5 bg-green-500 rounded-full border-2 border-white shadow-lg transition-all duration-1000 ${isAnimating ? 'scale-125 bg-green-400' : ''}`}>
-          <div className="w-2 h-2 bg-white rounded-full absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"></div>
-        </div>
-      </div>
+    const handleMapClick = (mapId: number) => {
+      setSelectedMap(mapId);
+      if (isAnimating) {
+        setTimeout(() => {
+          setDownloadingFiles([0, 1]);
+          setTimeout(() => setDownloadingFiles([]), 2000);
+        }, 1000);
+      }
+    };
 
-      {/* Cursor animation */}
-      {isAnimating && (
-        <div className="absolute top-1/2 left-1/4 transform -translate-x-1/2 -translate-y-1/2 animate-ping">
-          <MousePointer className="h-6 w-6 text-eok-600" />
-        </div>
-      )}
-    </div>
-  );
+    const handleDownload = (mapId: number, fileIndex: number) => {
+      setDownloadingFiles(prev => [...prev, fileIndex]);
+      if (isAnimating) {
+        setTimeout(() => {
+          setDownloadingFiles(prev => prev.filter(f => f !== fileIndex));
+        }, 2000);
+      }
+    };
 
-  const DownloadDemo = () => (
-    <div className="relative bg-gray-100 rounded-lg p-6 h-64 border-2 border-dashed border-gray-300">
-      <div className="absolute top-4 left-4">
-        <div className="bg-white px-4 py-2 rounded-lg shadow-sm">
-          <div className="flex items-center space-x-2">
-            <FileText className="h-4 w-4 text-gray-600" />
-            <span className="text-sm font-medium text-gray-700">Kartfiler</span>
-          </div>
-        </div>
-      </div>
-
-      {/* File list */}
-      <div className="absolute top-16 left-4 right-4 space-y-2">
-        {['kart_2024.pdf', 'satelitt_bilde.jpg', 'topografi.tiff'].map((file, index) => (
-          <div 
-            key={file}
-            className={`bg-white px-4 py-3 rounded-lg shadow-sm transition-all duration-500 ${
-              isAnimating && index < 2 ? 'bg-eok-50 border-2 border-eok-200' : ''
-            }`}
-            style={{ 
-              transitionDelay: `${index * 200}ms`,
-              transform: isAnimating && index < 2 ? 'translateX(10px)' : 'translateX(0)'
-            }}
+    return (
+      <div className="relative bg-white rounded-lg border border-gray-300 overflow-hidden" style={{ height: '400px' }}>
+        {/* Map view */}
+        <div className="h-1/2">
+          <MapContainer
+            center={[59.9139, 10.7522]}
+            zoom={6}
+            style={{ height: '100%', width: '100%' }}
+            zoomControl={false}
           >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <FileText className="h-4 w-4 text-gray-600" />
-                <span className="text-sm font-medium text-gray-700">{file}</span>
-              </div>
-              <button className={`px-3 py-1 rounded text-xs font-medium transition-all ${
-                isAnimating && index < 2 
-                  ? 'bg-eok-600 text-white' 
-                  : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
-              }`}>
-                {isAnimating && index < 2 ? 'Laster ned...' : 'Last ned'}
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Download progress */}
-      {isAnimating && (
-        <div className="absolute bottom-4 left-4 right-4">
-          <div className="bg-white px-4 py-3 rounded-lg shadow-sm">
-            <div className="flex items-center space-x-2 mb-2">
-              <Download className="h-4 w-4 text-eok-600" />
-              <span className="text-sm font-medium text-gray-700">Laster ned filer...</span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div className="bg-eok-600 h-2 rounded-full animate-pulse" style={{ width: '60%' }}></div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-
-  const ShareDemo = () => (
-    <div className="relative bg-gray-100 rounded-lg p-6 h-64 border-2 border-dashed border-gray-300">
-      <div className="absolute top-4 left-4">
-        <div className="bg-white px-4 py-2 rounded-lg shadow-sm">
-          <div className="flex items-center space-x-2">
-            <Share2 className="h-4 w-4 text-gray-600" />
-            <span className="text-sm font-medium text-gray-700">Del kart</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Share modal simulation */}
-      {isAnimating && (
-        <div className="absolute inset-4 bg-white rounded-lg shadow-xl border-2 border-eok-200 animate-pulse">
-          <div className="p-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Del kart</h3>
-              <button className="text-gray-400 hover:text-gray-600">
-                <Pause className="h-4 w-4" />
-              </button>
-            </div>
+            <TileLayer
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            />
             
-            <div className="space-y-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Engangs-lenke (utløper om 5 timer)
-                </label>
-                <div className="flex space-x-2">
-                  <input 
-                    type="text" 
-                    value="https://kartarkiv.co/download/abc123..." 
-                    readOnly
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm bg-gray-50"
-                  />
-                  <button className="px-4 py-2 bg-eok-600 text-white rounded-md text-sm font-medium hover:bg-eok-700">
-                    Kopier
-                  </button>
+            {demoMaps.map((map) => (
+              <Marker
+                key={map.id}
+                position={[map.coordinates[0], map.coordinates[1]]}
+                eventHandlers={{
+                  click: () => handleMapClick(map.id)
+                }}
+              >
+                <Popup>
+                  <div className="p-2">
+                    <h3 className="font-semibold text-gray-900 mb-2">{map.name}</h3>
+                    <p className="text-sm text-gray-600 mb-2">
+                      {map.files.length} filer tilgjengelig
+                    </p>
+                    {isAnimating && (
+                      <div className="mt-2 p-2 bg-eok-50 rounded text-xs text-eok-700">
+                        Klikk for å se og laste ned filer
+                      </div>
+                    )}
+                  </div>
+                </Popup>
+              </Marker>
+            ))}
+          </MapContainer>
+        </div>
+
+        {/* File list view */}
+        <div className="h-1/2 bg-gray-50 p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold text-gray-900">Kartfiler</h3>
+            {selectedMap && (
+              <span className="text-sm text-gray-600">
+                {demoMaps.find(m => m.id === selectedMap)?.name}
+              </span>
+            )}
+          </div>
+
+          <div className="space-y-2 max-h-32 overflow-y-auto">
+            {selectedMap ? (
+              demoMaps.find(m => m.id === selectedMap)?.files.map((file, index) => (
+                <div 
+                  key={file.name}
+                  className={`bg-white px-3 py-2 rounded-lg shadow-sm transition-all duration-300 ${
+                    downloadingFiles.includes(index) ? 'bg-eok-50 border border-eok-200' : ''
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <FileText className="h-4 w-4 text-gray-600" />
+                      <div>
+                        <div className="text-sm font-medium text-gray-700">{file.name}</div>
+                        <div className="text-xs text-gray-500">{file.size} • {file.type}</div>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => handleDownload(selectedMap, index)}
+                      disabled={downloadingFiles.includes(index)}
+                      className={`px-3 py-1 rounded text-xs font-medium transition-all ${
+                        downloadingFiles.includes(index)
+                          ? 'bg-eok-600 text-white'
+                          : 'bg-eok-600 text-white hover:bg-eok-700'
+                      }`}
+                    >
+                      {downloadingFiles.includes(index) ? 'Laster ned...' : 'Last ned'}
+                    </button>
+                  </div>
                 </div>
+              ))
+            ) : (
+              <div className="text-center text-gray-500 py-4">
+                <FileText className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                <p className="text-sm">Klikk på et kart for å se tilgjengelige filer</p>
+              </div>
+            )}
+          </div>
+
+          {/* Download progress */}
+          {downloadingFiles.length > 0 && (
+            <div className="mt-3 bg-white px-3 py-2 rounded-lg shadow-sm">
+              <div className="flex items-center space-x-2 mb-2">
+                <Download className="h-4 w-4 text-eok-600" />
+                <span className="text-sm font-medium text-gray-700">
+                  Laster ned {downloadingFiles.length} fil(er)...
+                </span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="bg-eok-600 h-2 rounded-full animate-pulse" style={{ width: '60%' }}></div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const ShareDemo = () => {
+    const [selectedMap, setSelectedMap] = useState<number | null>(null);
+    const [showShareModal, setShowShareModal] = useState(false);
+    const [shareLink, setShareLink] = useState('');
+    
+    const demoMaps = [
+      {
+        id: 1,
+        name: "Oslo Sentrum",
+        coordinates: [59.9139, 10.7522],
+        files: ["oslo_sentrum.pdf", "oslo_satellitt.jpg"]
+      },
+      {
+        id: 2,
+        name: "Bergen Havn", 
+        coordinates: [60.3913, 5.3221],
+        files: ["bergen_havn.pdf", "bergen_topografi.tiff"]
+      }
+    ];
+
+    const handleMapClick = (mapId: number) => {
+      setSelectedMap(mapId);
+      if (isAnimating) {
+        setTimeout(() => {
+          setShowShareModal(true);
+          setShareLink(`https://kartarkiv.co/download/demo_${mapId}_${Date.now()}`);
+        }, 1000);
+      }
+    };
+
+    const handleShare = () => {
+      if (isAnimating) {
+        setShowShareModal(true);
+        setShareLink(`https://kartarkiv.co/download/demo_${selectedMap}_${Date.now()}`);
+        setTimeout(() => {
+          setShowShareModal(false);
+        }, 3000);
+      }
+    };
+
+    return (
+      <div className="relative bg-white rounded-lg border border-gray-300 overflow-hidden" style={{ height: '400px' }}>
+        {/* Map view */}
+        <div className="h-1/2">
+          <MapContainer
+            center={[59.9139, 10.7522]}
+            zoom={6}
+            style={{ height: '100%', width: '100%' }}
+            zoomControl={false}
+          >
+            <TileLayer
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            />
+            
+            {demoMaps.map((map) => (
+              <Marker
+                key={map.id}
+                position={[map.coordinates[0], map.coordinates[1]]}
+                eventHandlers={{
+                  click: () => handleMapClick(map.id)
+                }}
+              >
+                <Popup>
+                  <div className="p-2">
+                    <h3 className="font-semibold text-gray-900 mb-2">{map.name}</h3>
+                    <p className="text-sm text-gray-600 mb-2">
+                      {map.files.length} filer tilgjengelig
+                    </p>
+                    <button 
+                      onClick={() => handleShare()}
+                      className="w-full px-3 py-1 bg-eok-600 text-white rounded text-xs font-medium hover:bg-eok-700"
+                    >
+                      Del kart
+                    </button>
+                    {isAnimating && (
+                      <div className="mt-2 p-2 bg-eok-50 rounded text-xs text-eok-700">
+                        Klikk for å dele dette kartet
+                      </div>
+                    )}
+                  </div>
+                </Popup>
+              </Marker>
+            ))}
+          </MapContainer>
+        </div>
+
+        {/* Share interface */}
+        <div className="h-1/2 bg-gray-50 p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold text-gray-900">Del kart</h3>
+            {selectedMap && (
+              <span className="text-sm text-gray-600">
+                {demoMaps.find(m => m.id === selectedMap)?.name}
+              </span>
+            )}
+          </div>
+
+          {selectedMap ? (
+            <div className="space-y-3">
+              <div className="bg-white p-3 rounded-lg shadow-sm">
+                <p className="text-sm text-gray-600 mb-2">
+                  Generer en engangs-lenke for å dele dette kartet
+                </p>
+                <button 
+                  onClick={handleShare}
+                  className={`w-full px-4 py-2 rounded-lg font-medium transition-all ${
+                    isAnimating 
+                      ? 'bg-green-600 text-white' 
+                      : 'bg-eok-600 text-white hover:bg-eok-700'
+                  }`}
+                >
+                  {isAnimating ? 'Genererer lenke...' : 'Generer del-lenke'}
+                </button>
+              </div>
+
+              {shareLink && (
+                <div className="bg-white p-3 rounded-lg shadow-sm border border-eok-200">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Engangs-lenke (utløper om 5 timer)
+                  </label>
+                  <div className="flex space-x-2">
+                    <input 
+                      type="text" 
+                      value={shareLink}
+                      readOnly
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm bg-gray-50"
+                    />
+                    <button className="px-4 py-2 bg-eok-600 text-white rounded-md text-sm font-medium hover:bg-eok-700">
+                      Kopier
+                    </button>
+                  </div>
+                  <div className="flex items-center space-x-2 text-xs text-gray-600 mt-2">
+                    <Link className="h-3 w-3" />
+                    <span>Lenken kan brukes kun én gang</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-center text-gray-500 py-4">
+              <Share2 className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+              <p className="text-sm">Klikk på et kart for å dele det</p>
+            </div>
+          )}
+        </div>
+
+        {/* Share modal overlay */}
+        {showShareModal && (
+          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1000]">
+            <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">Kart delt!</h3>
+                <button 
+                  onClick={() => setShowShareModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <Pause className="h-4 w-4" />
+                </button>
               </div>
               
-              <div className="flex items-center space-x-2 text-sm text-gray-600">
-                <Link className="h-4 w-4" />
-                <span>Lenken kan brukes kun én gang</span>
+              <div className="space-y-3">
+                <div className="p-3 bg-green-50 rounded-lg">
+                  <div className="flex items-center space-x-2 text-green-700">
+                    <CheckCircle className="h-5 w-5" />
+                    <span className="font-medium">Lenke generert!</span>
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Engangs-lenke
+                  </label>
+                  <div className="flex space-x-2">
+                    <input 
+                      type="text" 
+                      value={shareLink}
+                      readOnly
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm bg-gray-50"
+                    />
+                    <button className="px-4 py-2 bg-eok-600 text-white rounded-md text-sm font-medium hover:bg-eok-700">
+                      Kopier
+                    </button>
+                  </div>
+                </div>
+                
+                <div className="flex items-center space-x-2 text-sm text-gray-600">
+                  <Link className="h-4 w-4" />
+                  <span>Lenken utløper om 5 timer</span>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* Share button */}
-      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
-        <button 
-          className={`px-6 py-3 rounded-lg font-medium transition-all ${
-            isAnimating 
-              ? 'bg-green-600 text-white shadow-lg' 
-              : 'bg-eok-600 text-white hover:bg-eok-700'
-          }`}
-        >
-          {isAnimating ? 'Delt!' : 'Del kart'}
-        </button>
+        )}
       </div>
-    </div>
-  );
+    );
+  };
 
   const currentStepData = steps[currentStep];
 
