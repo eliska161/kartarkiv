@@ -18,7 +18,6 @@ import ProfilePage from './pages/ProfilePage';
 import PublicDownloadPage from './pages/PublicDownloadPage';
 import TermsOfService from './pages/TermsOfService';
 import PrivacyPolicy from './pages/PrivacyPolicy';
-import OnboardingPage from './pages/OnboardingPage';
 
 const clerkPubKey = process.env.REACT_APP_CLERK_PUBLISHABLE_KEY;
 
@@ -33,7 +32,6 @@ const AppContent: React.FC = () => {
         <Route path="/download/:token" element={<PublicDownloadPage />} />
         <Route path="/terms-of-service" element={<TermsOfService />} />
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-        <Route path="/onboarding" element={<OnboardingPage />} />
         
         {/* Protected routes */}
         <Route path="/" element={
