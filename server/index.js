@@ -4,6 +4,8 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
 require('dotenv').config();
+const swaggerUi = require('swagger-ui-express');
+const swaggerSpec = require('./swagger');
 
 const authRoutes = require('./routes/auth-jwt'); // Use JWT auth
 const mapRoutes = require('./routes/maps');
@@ -15,7 +17,7 @@ const healthRoutes = require('./routes/health');
 const { requestLogger, getLogs, clearLogs } = require('./middleware/requestLogger');
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 
 // Trust proxy for rate limiting (needed for Railway/Vercel)
 app.set('trust proxy', 1);
@@ -25,6 +27,13 @@ app.use(helmet());
 
 // Request logging middleware
 app.use(requestLogger);
+
+
+// OpenAPI JSON (for Theneo)
+app.get('/docs-json', (req, res) => res.json(swaggerSpec));
+
+// Swagger UI
+app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // Rate limiting configuration
 const generalLimiter = rateLimit({

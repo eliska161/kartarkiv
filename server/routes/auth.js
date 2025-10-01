@@ -249,4 +249,113 @@ router.put('/users/:id/role', async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * tags:
+ *   - name: Auth
+ *     description: Autentisering og brukerhåndtering
+ *
+ * /auth/signup:
+ *   post:
+ *     summary: Registrer ny bruker via Supabase
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *               fullName:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Bruker opprettet
+ *
+ * /auth/login:
+ *   post:
+ *     summary: Logg inn bruker via Supabase
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               username:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Login suksess
+ *
+ * /auth/signin:
+ *   post:
+ *     summary: Logg inn bruker (original, email/pass)
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Login suksess
+ *
+ * /auth/signout:
+ *   post:
+ *     summary: Logg ut bruker via Supabase
+ *     tags: [Auth]
+ *     responses:
+ *       200:
+ *         description: Signout suksess
+ *
+ * /auth/me:
+ *   get:
+ *     summary: Hent nåværende bruker basert på token
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Nåværende bruker
+ *
+ * /auth/users/{id}/role:
+ *   put:
+ *     summary: Oppdater rolle for bruker (admin)
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               role:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Rolle oppdatert
+ */
+
 module.exports = router;

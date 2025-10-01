@@ -105,4 +105,27 @@ router.get('/status', (req, res) => {
   });
 });
 
+/**
+ * @swagger
+ * tags:
+ *   - name: Restart
+ *     description: Server restart og status
+ *
+ * /restart/restart:
+ *   post:
+ *     summary: Restart server (Railway)
+ *     tags: [Restart]
+ *     responses:
+ *       200:
+ *         description: Restart initiert
+ *
+ * /restart/status:
+ *   get:
+ *     summary: Hent server status og oppetid
+ *     tags: [Restart]
+ *     responses:
+ *       200:
+ *         description: Serverstatus og oppetid
+ */
+
 module.exports = router;

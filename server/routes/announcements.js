@@ -222,4 +222,215 @@ router.post('/:id/restore/:versionId', authenticateUser, requireAdmin, async (re
   }
 });
 
+/**
+ * @swagger
+ * /announcements:
+ *   get:
+ *     summary: Hent aktive kunngjøringer (offentlig)
+ *     tags: [Announcements]
+ *     responses:
+ *       200:
+ *         description: Liste over aktive kunngjøringer
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ */
+router.get('/', async (req, res) => { /* ... */ });
+
+/**
+ * @swagger
+ * /announcements/admin:
+ *   get:
+ *     summary: Hent alle kunngjøringer (admin)
+ *     tags: [Announcements]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Liste over alle kunngjøringer
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ */
+router.get('/admin', authenticateUser, requireAdmin, async (req, res) => { /* ... */ });
+
+/**
+ * @swagger
+ * /announcements:
+ *   post:
+ *     summary: Opprett kunngjøring (admin)
+ *     tags: [Announcements]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title:
+ *                 type: string
+ *               message:
+ *                 type: string
+ *               type:
+ *                 type: string
+ *               expires_at:
+ *                 type: string
+ *               priority:
+ *                 type: integer
+ *     responses:
+ *       201:
+ *         description: Kunngjøring opprettet
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ */
+router.post('/', authenticateUser, requireAdmin, async (req, res) => { /* ... */ });
+
+/**
+ * @swagger
+ * /announcements/{id}:
+ *   put:
+ *     summary: Oppdater kunngjøring (admin)
+ *     tags: [Announcements]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *     responses:
+ *       200:
+ *         description: Kunngjøring oppdatert
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ */
+router.put('/:id', authenticateUser, requireAdmin, async (req, res) => { /* ... */ });
+
+/**
+ * @swagger
+ * /announcements/{id}:
+ *   delete:
+ *     summary: Slett kunngjøring (admin)
+ *     tags: [Announcements]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Kunngjøring slettet
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ */
+router.delete('/:id', authenticateUser, requireAdmin, async (req, res) => { /* ... */ });
+
+/**
+ * @swagger
+ * /announcements/{id}/toggle:
+ *   patch:
+ *     summary: Toggle aktiv-status på kunngjøring (admin)
+ *     tags: [Announcements]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Kunngjøring oppdatert
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ */
+router.patch('/:id/toggle', authenticateUser, requireAdmin, async (req, res) => { /* ... */ });
+
+/**
+ * @swagger
+ * /announcements/{id}/versions:
+ *   get:
+ *     summary: Hent versjonshistorikk for kunngjøring (admin)
+ *     tags: [Announcements]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Versjonshistorikk
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ */
+router.get('/:id/versions', authenticateUser, requireAdmin, async (req, res) => { /* ... */ });
+
+/**
+ * @swagger
+ * /announcements/{id}/restore/{versionId}:
+ *   post:
+ *     summary: Gjenopprett kunngjøring til tidligere versjon (admin)
+ *     tags: [Announcements]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: path
+ *         name: versionId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: false
+ *     responses:
+ *       200:
+ *         description: Kunngjøring gjenopprettet
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ */
+router.post('/:id/restore/:versionId', authenticateUser, requireAdmin, async (req, res) => { /* ... */ });
+
 module.exports = router;

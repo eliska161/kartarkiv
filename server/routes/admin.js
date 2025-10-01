@@ -104,4 +104,138 @@ router.patch('/users/:userId/admin', authenticateUser, requireAdmin, async (req,
   }
 });
 
+/**
+ * @swagger
+ * /admin:
+ *   options:
+ *     summary: Preflight CORS-request for admin
+ *     tags: [Admin]
+ *     responses:
+ *       200:
+ *         description: OK
+ */
+router.options('*', (req, res) => { /* ... */ });
+
+/**
+ * @swagger
+ * /admin/users:
+ *   get:
+ *     summary: Hent dummy-brukere (admin, test)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Liste over brukere
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 users:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ */
+router.get('/users', authenticateUser, requireAdmin, async (req, res) => { /* ... */ });
+
+/**
+ * @swagger
+ * /admin/users:
+ *   post:
+ *     summary: Opprett dummy-bruker (admin, test)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *               firstName:
+ *                 type: string
+ *               lastName:
+ *                 type: string
+ *               isAdmin:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: Bruker opprettet
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 user:
+ *                   type: object
+ */
+router.post('/users', authenticateUser, requireAdmin, async (req, res) => { /* ... */ });
+
+/**
+ * @swagger
+ * /admin/users/{userId}:
+ *   delete:
+ *     summary: Slett dummy-bruker (admin, test)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Bruker slettet
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ */
+router.delete('/users/:userId', authenticateUser, requireAdmin, async (req, res) => { /* ... */ });
+
+/**
+ * @swagger
+ * /admin/users/{userId}/admin:
+ *   patch:
+ *     summary: Toggle admin-status (dummy, test)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               isAdmin:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: Bruker oppdatert
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 user:
+ *                   type: object
+ */
+router.patch('/users/:userId/admin', authenticateUser, requireAdmin, async (req, res) => { /* ... */ });
+
 module.exports = router;

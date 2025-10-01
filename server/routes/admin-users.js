@@ -226,4 +226,141 @@ router.get('/invitations', async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /admin-users/users:
+ *   get:
+ *     summary: Hent alle brukere fra Clerk
+ *     tags: [AdminUsers]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Liste over brukere fra Clerk
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ */
+router.get('/users', async (req, res) => { /* ... */ });
+
+/**
+ * @swagger
+ * /admin-users/users/{userId}/role:
+ *   put:
+ *     summary: Oppdater brukerrolle (admin)
+ *     tags: [AdminUsers]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               isAdmin:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: Rolle oppdatert
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ */
+router.put('/users/:userId/role', async (req, res) => { /* ... */ });
+
+/**
+ * @swagger
+ * /admin-users/users/{userId}:
+ *   delete:
+ *     summary: Slett bruker (admin)
+ *     tags: [AdminUsers]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Bruker slettet
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ */
+router.delete('/users/:userId', async (req, res) => { /* ... */ });
+
+/**
+ * @swagger
+ * /admin-users/users/invite:
+ *   post:
+ *     summary: Inviter ny bruker via Clerk
+ *     tags: [AdminUsers]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *               role:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Invitasjon sendt
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 invitationId:
+ *                   type: string
+ */
+router.post('/users/invite', async (req, res) => { /* ... */ });
+
+/**
+ * @swagger
+ * /admin-users/invitations:
+ *   get:
+ *     summary: Hent alle invitasjoner fra Clerk
+ *     tags: [AdminUsers]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Liste over invitasjoner
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ */
+router.get('/invitations', async (req, res) => { /* ... */ });
+
 module.exports = router;

@@ -329,4 +329,51 @@ router.get('/maps', async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * tags:
+ *   - name: Health
+ *     description: Health check for system og tjenester
+ *
+ * /health:
+ *   get:
+ *     summary: Samlet health check for alle tjenester
+ *     tags: [Health]
+ *     responses:
+ *       200:
+ *         description: Helse-status for tjenester
+ *
+ * /health/database:
+ *   get:
+ *     summary: Health check for database
+ *     tags: [Health]
+ *     responses:
+ *       200:
+ *         description: Database-status
+ *
+ * /health/files:
+ *   get:
+ *     summary: Health check for fil-lagring (Wasabi)
+ *     tags: [Health]
+ *     responses:
+ *       200:
+ *         description: Fil-lagringsstatus
+ *
+ * /health/auth:
+ *   get:
+ *     summary: Health check for Clerk authentication
+ *     tags: [Health]
+ *     responses:
+ *       200:
+ *         description: Auth-status
+ *
+ * /health/maps:
+ *   get:
+ *     summary: Health check for map rendering/data
+ *     tags: [Health]
+ *     responses:
+ *       200:
+ *         description: Kartdata-status
+ */
+
 module.exports = router;

@@ -1735,4 +1735,755 @@ router.get('/:id/files/:fileId/ocad-data', authenticateUser, async (req, res) =>
   }
 });
 
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     Map:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: integer
+ *           description: Unique map identifier
+ *         name:
+ *           type: string
+ *           description: Map name
+ *         description:
+ *           type: string
+ *           description: Map description
+ *         scale:
+ *           type: string
+ *           description: Map scale (e.g., "1:10000")
+ *         contour_interval:
+ *           type: number
+ *           description: Contour interval in meters
+ *         area_bounds:
+ *           type: object
+ *           description: Geographic bounds of the map area
+ *         center_lat:
+ *           type: number
+ *           description: Center latitude
+ *         center_lng:
+ *           type: number
+ *           description: Center longitude
+ *         zoom_level:
+ *           type: integer
+ *           description: Default zoom level
+ *         created_by:
+ *           type: string
+ *           description: Clerk ID of creator
+ *         created_by_username:
+ *           type: string
+ *           description: Username of creator
+ *         created_at:
+ *           type: string
+ *           format: date-time
+ *         last_updated_at:
+ *           type: string
+ *           format: date-time
+ *         file_count:
+ *           type: integer
+ *           description: Number of files attached to map
+ *     
+ *     MapFile:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: integer
+ *         map_id:
+ *           type: integer
+ *         filename:
+ *           type: string
+ *         original_filename:
+ *           type: string
+ *         file_path:
+ *           type: string
+ *         file_type:
+ *           type: string
+ *           enum: [OCD, KMZ, PDF, JPG, JPEG, PNG, GIF]
+ *         file_size:
+ *           type: integer
+ *         mime_type:
+ *           type: string
+ *         metadata:
+ *           type: object
+ *         created_by:
+ *           type: string
+ *         created_at:
+ *           type: string
+ *           format: date-time
+ *     
+ *     ShareLink:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: integer
+ *         token:
+ *           type: string
+ *         url:
+ *           type: string
+ *         expiresAt:
+ *           type: string
+ *           format: date-time
+ *         expiresIn:
+ *           type: string
+ *     
+ *     VersionHistory:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: integer
+ *         map_id:
+ *           type: integer
+ *         version_number:
+ *           type: string
+ *         change_description:
+ *           type: string
+ *         changed_by:
+ *           type: string
+ *         username:
+ *           type: string
+ *         changes:
+ *           type: object
+ *         changed_at:
+ *           type: string
+ *           format: date-time
+ *     
+ *     Error:
+ *       type: object
+ *       properties:
+ *         message:
+ *           type: string
+ *         error:
+ *           type: string
+ *         code:
+ *           type: string
+ *   
+ *   securitySchemes:
+ *     ClerkAuth:
+ *       type: apiKey
+ *       in: header
+ *       name: Authorization
+ *       description: Clerk authentication token
+ */
+
+/**
+ * @swagger
+ * /api/maps:
+ *   get:
+ *     summary: Get all maps
+ *     tags: [Maps]
+ *     responses:
+ *       200:
+ *         description: List of all maps
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 maps:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Map'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+
+/**
+ * @swagger
+ * /api/maps/{id}:
+ *   get:
+ *     summary: Get single map with details
+ *     tags: [Maps]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Map ID
+ *     responses:
+ *       200:
+ *         description: Map details with files and metadata
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 map:
+ *                   allOf:
+ *                     - $ref: '#/components/schemas/Map'
+ *                     - type: object
+ *                       properties:
+ *                         files:
+ *                           type: array
+ *                           items:
+ *                             $ref: '#/components/schemas/MapFile'
+ *                         preview_image:
+ *                           type: object
+ *                           nullable: true
+ *                         metadata:
+ *                           type: object
+ *       404:
+ *         description: Map not found
+ *       500:
+ *         description: Server error
+ */
+
+/**
+ * @swagger
+ * /api/maps:
+ *   post:
+ *     summary: Create new map
+ *     tags: [Maps]
+ *     security:
+ *       - ClerkAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - centerLat
+ *               - centerLng
+ *             properties:
+ *               name:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               scale:
+ *                 type: string
+ *               contourInterval:
+ *                 type: number
+ *               areaBounds:
+ *                 type: object
+ *               centerLat:
+ *                 type: number
+ *               centerLng:
+ *                 type: number
+ *               zoomLevel:
+ *                 type: integer
+ *                 default: 13
+ *     responses:
+ *       201:
+ *         description: Map created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 map:
+ *                   $ref: '#/components/schemas/Map'
+ *       400:
+ *         description: Validation error
+ *       500:
+ *         description: Server error
+ */
+
+/**
+ * @swagger
+ * /api/maps/{id}:
+ *   put:
+ *     summary: Update map (Admin only)
+ *     tags: [Maps]
+ *     security:
+ *       - ClerkAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               scale:
+ *                 type: string
+ *               contourInterval:
+ *                 type: number
+ *               areaBounds:
+ *                 type: object
+ *               centerLat:
+ *                 type: number
+ *               centerLng:
+ *                 type: number
+ *               zoomLevel:
+ *                 type: integer
+ *     responses:
+ *       200:
+ *         description: Map updated successfully
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - Admin only
+ *       404:
+ *         description: Map not found
+ *       500:
+ *         description: Server error
+ */
+
+/**
+ * @swagger
+ * /api/maps/{id}:
+ *   delete:
+ *     summary: Delete map (Admin only)
+ *     tags: [Maps]
+ *     security:
+ *       - ClerkAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Map deleted successfully
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - Admin only
+ *       404:
+ *         description: Map not found
+ *       500:
+ *         description: Server error
+ */
+
+/**
+ * @swagger
+ * /api/maps/{id}/files:
+ *   post:
+ *     summary: Upload files for a map
+ *     tags: [Maps, Files]
+ *     security:
+ *       - ClerkAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               files:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: binary
+ *                 maxItems: 10
+ *               version:
+ *                 type: string
+ *               isPrimary:
+ *                 type: boolean
+ *     responses:
+ *       201:
+ *         description: Files uploaded successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 files:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/MapFile'
+ *       400:
+ *         description: Invalid file type or no files
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Map not found
+ *       429:
+ *         description: Rate limit exceeded
+ *       500:
+ *         description: Server error
+ */
+
+/**
+ * @swagger
+ * /api/maps/{id}/preview:
+ *   post:
+ *     summary: Upload preview image for a map (Admin only)
+ *     tags: [Maps, Files]
+ *     security:
+ *       - ClerkAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - previewImage
+ *             properties:
+ *               previewImage:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       201:
+ *         description: Preview image uploaded successfully
+ *       400:
+ *         description: No preview image uploaded
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - Admin only
+ *       404:
+ *         description: Map not found
+ *       500:
+ *         description: Server error
+ */
+
+/**
+ * @swagger
+ * /api/maps/files/{fileId}:
+ *   delete:
+ *     summary: Delete file
+ *     tags: [Files]
+ *     security:
+ *       - ClerkAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: fileId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: File deleted successfully
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: File not found
+ *       500:
+ *         description: Server error
+ */
+
+/**
+ * @swagger
+ * /api/maps/files/{fileId}/download:
+ *   get:
+ *     summary: Download file with signed URL
+ *     tags: [Files]
+ *     security:
+ *       - ClerkAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: fileId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: File content
+ *         content:
+ *           application/octet-stream:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: File not found
+ *       500:
+ *         description: Server error
+ */
+
+/**
+ * @swagger
+ * /api/maps/{id}/share:
+ *   post:
+ *     summary: Generate share link for a map (one-time download)
+ *     tags: [Maps, Sharing]
+ *     security:
+ *       - ClerkAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Share link created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 shareLink:
+ *                   $ref: '#/components/schemas/ShareLink'
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Map not found
+ *       500:
+ *         description: Server error
+ */
+
+/**
+ * @swagger
+ * /api/maps/download/{token}:
+ *   get:
+ *     summary: Public download endpoint for share links (no authentication required)
+ *     tags: [Sharing]
+ *     parameters:
+ *       - in: path
+ *         name: token
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Share link token
+ *     responses:
+ *       200:
+ *         description: Map details and download links
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 map:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                     name:
+ *                       type: string
+ *                     description:
+ *                       type: string
+ *                     scale:
+ *                       type: string
+ *                     contour_interval:
+ *                       type: number
+ *                     created_at:
+ *                       type: string
+ *                       format: date-time
+ *                 files:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                       filename:
+ *                         type: string
+ *                       file_size:
+ *                         type: integer
+ *                       mime_type:
+ *                         type: string
+ *                       download_url:
+ *                         type: string
+ *                 shareInfo:
+ *                   type: object
+ *                   properties:
+ *                     expiresAt:
+ *                       type: string
+ *                       format: date-time
+ *                     downloadCount:
+ *                       type: integer
+ *                     isOneTime:
+ *                       type: boolean
+ *       404:
+ *         description: Share link not found, expired, or already used
+ *       500:
+ *         description: Server error
+ */
+
+/**
+ * @swagger
+ * /api/maps/download/{token}/file/{fileId}:
+ *   get:
+ *     summary: Download individual file via share link
+ *     tags: [Sharing]
+ *     parameters:
+ *       - in: path
+ *         name: token
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: fileId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: File content
+ *         content:
+ *           application/octet-stream:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       404:
+ *         description: Share link or file not found
+ *       500:
+ *         description: Server error
+ */
+
+/**
+ * @swagger
+ * /api/maps/{id}/versions:
+ *   get:
+ *     summary: Get version history for a map
+ *     tags: [Maps, Versions]
+ *     security:
+ *       - ClerkAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Version history
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/VersionHistory'
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
+ */
+
+/**
+ * @swagger
+ * /api/maps/{id}/files/{fileId}/kmz-data:
+ *   get:
+ *     summary: Get KMZ data for a specific file
+ *     tags: [Maps, Files]
+ *     security:
+ *       - ClerkAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Map ID
+ *       - in: path
+ *         name: fileId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: File ID
+ *     responses:
+ *       200:
+ *         description: KMZ metadata
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     georeferencing:
+ *                       type: object
+ *                     polygons:
+ *                       type: array
+ *                     scale:
+ *                       type: string
+ *                     bounds:
+ *                       type: object
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: File or KMZ data not found
+ *       500:
+ *         description: Server error
+ */
+
+/**
+ * @swagger
+ * /api/maps/{id}/files/{fileId}/ocad-data:
+ *   get:
+ *     summary: Get OCAD data for a specific file
+ *     tags: [Maps, Files]
+ *     security:
+ *       - ClerkAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Map ID
+ *       - in: path
+ *         name: fileId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: File ID
+ *     responses:
+ *       200:
+ *         description: OCAD metadata
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     georeferencing:
+ *                       type: object
+ *                     polygons:
+ *                       type: array
+ *                     scale:
+ *                       type: string
+ *                     bounds:
+ *                       type: object
+ *                 message:
+ *                   type: string
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: File not found
+ *       500:
+ *         description: Server error
+ */
+
 module.exports = router;
