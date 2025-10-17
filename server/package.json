@@ -12,8 +12,6 @@
     "@clerk/clerk-sdk-node": "^4.13.23",
     "@mapbox/togeojson": "^0.16.2",
     "@supabase/supabase-js": "^2.38.0",
-    "@xmldom/xmldom": "^0.8.11",
-    "adm-zip": "^0.5.16",
     "aws-sdk": "^2.1692.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
@@ -23,14 +21,11 @@
     "express-validator": "^7.0.1",
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
-    "kml-parser": "^1.0.0",
     "multer": "^1.4.5-lts.1",
-    "ocad2geojson": "^2.1.14",
     "pg": "^8.11.3",
     "sharp": "^0.32.6",
     "swagger-jsdoc": "^6.2.8",
-    "swagger-ui-express": "^5.0.1",
-    "togeojson": "^0.16.0"
+    "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"
