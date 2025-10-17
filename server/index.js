@@ -35,6 +35,171 @@ app.get('/docs-json', (req, res) => res.json(swaggerSpec));
 // Swagger UI
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
+// Lightweight HTML API documentation generated from the Swagger spec
+const escapeHtml = (value = '') =>
+  String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+app.get('/api-doc', (req, res) => {
+  const { info = {}, tags = [], paths = {} } = swaggerSpec;
+
+  const renderedTags = tags
+    .map(tag => `
+        <li><strong>${escapeHtml(tag.name)}</strong><br /><small>${escapeHtml(tag.description || '')}</small></li>
+      `)
+    .join('');
+
+  const renderedPaths = Object.entries(paths)
+    .flatMap(([pathKey, methods]) =>
+      Object.entries(methods).map(([method, details]) => ({
+        method: method.toUpperCase(),
+        path: pathKey,
+        summary: details.summary || details.description || 'No description available',
+        tag: Array.isArray(details.tags) && details.tags.length > 0 ? details.tags[0] : 'General'
+      }))
+    )
+    .sort((a, b) => a.path.localeCompare(b.path) || a.method.localeCompare(b.method))
+    .map(
+      entry => `
+        <tr>
+          <td class="method method-${entry.method.toLowerCase()}">${escapeHtml(entry.method)}</td>
+          <td class="path">${escapeHtml(entry.path)}</td>
+          <td>${escapeHtml(entry.summary)}</td>
+          <td>${escapeHtml(entry.tag)}</td>
+        </tr>
+      `
+    )
+    .join('');
+
+  const html = `<!DOCTYPE html>
+    <html lang="en">
+      <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>${escapeHtml(info.title || 'Kartarkiv API Documentation')}</title>
+        <style>
+          :root {
+            color-scheme: light dark;
+            font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #0d1117;
+            color: #e6edf3;
+          }
+          body {
+            margin: 0 auto;
+            padding: 32px 24px 48px;
+            max-width: 960px;
+            line-height: 1.6;
+          }
+          a {
+            color: #2f81f7;
+          }
+          header {
+            margin-bottom: 32px;
+          }
+          header h1 {
+            margin-bottom: 8px;
+          }
+          .meta {
+            color: #8b949e;
+          }
+          section {
+            margin-bottom: 40px;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            background: rgba(13, 17, 23, 0.6);
+            border: 1px solid rgba(240, 246, 252, 0.1);
+            border-radius: 12px;
+            overflow: hidden;
+          }
+          th, td {
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(240, 246, 252, 0.08);
+            vertical-align: top;
+          }
+          th {
+            background: rgba(36, 41, 47, 0.9);
+            text-align: left;
+            font-weight: 600;
+          }
+          tr:last-child td {
+            border-bottom: none;
+          }
+          .method {
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            white-space: nowrap;
+          }
+          .method-get { color: #2ea043; }
+          .method-post { color: #2f81f7; }
+          .method-put { color: #d29922; }
+          .method-delete { color: #f85149; }
+          .method-patch { color: #8a2be2; }
+          .method-head { color: #a371f7; }
+          .method-options { color: #fb8c00; }
+          .path {
+            font-family: 'Fira Code', 'Source Code Pro', monospace;
+            font-size: 0.95rem;
+            color: #e6edf3;
+          }
+          ul {
+            list-style: disc;
+            padding-left: 24px;
+          }
+          .tag-list li {
+            margin-bottom: 8px;
+          }
+          .empty {
+            color: #8b949e;
+            font-style: italic;
+          }
+        </style>
+      </head>
+      <body>
+        <header>
+          <h1>${escapeHtml(info.title || 'Kartarkiv API')}</h1>
+          <p class="meta">
+            Version ${escapeHtml(info.version || '1.0.0')} · ${escapeHtml(info.description || 'API documentation overview')}<br />
+            Generated ${escapeHtml(new Date().toISOString())}
+          </p>
+          <p>
+            Denne oversikten henter endepunktene direkte fra Swagger-spesifikasjonen og gir en
+            rask referanse for tilgjengelige ruter. For interaktiv prøving, besøk
+            <a href="/docs">/docs</a> eller hent JSON-spesifikasjonen via <a href="/docs-json">/docs-json</a>.
+          </p>
+        </header>
+        <section>
+          <h2>Tagger</h2>
+          ${renderedTags ? `<ul class="tag-list">${renderedTags}</ul>` : '<p class="empty">Ingen tagger definert.</p>'}
+        </section>
+        <section>
+          <h2>Endepunkter</h2>
+          ${renderedPaths ? `<table>
+            <thead>
+              <tr>
+                <th>Metode</th>
+                <th>Rute</th>
+                <th>Beskrivelse</th>
+                <th>Tagg</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${renderedPaths}
+            </tbody>
+          </table>` : '<p class="empty">Ingen endepunkter funnet i Swagger-spesifikasjonen.</p>'}
+        </section>
+      </body>
+    </html>`;
+
+  res.type('html').send(html);
+});
+
 // Rate limiting configuration
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
