@@ -55,7 +55,23 @@ router.post('/restart', async (req, res) => {
     
     console.log('🔄 RESTART: Using Railway CLI with project ID:', process.env.RAILWAY_PROJECT_ID);
     
-    exec('npx @railway/cli up --detach', { 
+    let railwayCliAvailable = false;
+    try {
+      require.resolve('@railway/cli/package.json');
+      railwayCliAvailable = true;
+    } catch (resolveError) {
+      console.log('🔄 RESTART: Railway CLI is not installed locally, skipping CLI redeploy step');
+    }
+
+    if (!railwayCliAvailable) {
+      setTimeout(() => {
+        console.log('🔄 RESTART: Executing process.exit(1) to trigger restart...');
+        process.exit(1);
+      }, 2000);
+      return;
+    }
+
+    exec('npx @railway/cli up --detach', {
       env: env,
       cwd: process.cwd(),
       timeout: 30000 // 30 second timeout
@@ -64,7 +80,7 @@ router.post('/restart', async (req, res) => {
         console.log('🔄 RESTART: Railway CLI failed, using process.exit fallback');
         console.log('Error:', error.message);
         console.log('Stderr:', stderr);
-        
+
         // Fallback to process.exit if Railway CLI fails
         setTimeout(() => {
           console.log('🔄 RESTART: Executing process.exit(1) to trigger restart...');
