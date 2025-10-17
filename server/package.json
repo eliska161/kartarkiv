@@ -10,7 +10,6 @@
   "dependencies": {
     "@clerk/backend": "^2.12.1",
     "@clerk/clerk-sdk-node": "^4.13.23",
-    "@mapbox/togeojson": "^0.16.2",
     "@supabase/supabase-js": "^2.38.0",
     "aws-sdk": "^2.1692.0",
     "bcryptjs": "^2.4.3",

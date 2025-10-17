@@ -25,3 +25,11 @@ This repository contains the Express-based backend under `server/` and a React f
 ## Testing
 
 The root package exposes a placeholder test script that currently echoes `No tests specified`. Add tests under the respective workspace (`server/` or `client/`) and wire them into the root `package.json` when available.
+
+## API documentation
+
+The Express server hosts two auto-generated documentation surfaces:
+
+* `http://localhost:5001/api-doc` – lightweight HTML overview summarising every route, HTTP method, and tag extracted from the Swagger definition.
+* `http://localhost:5001/docs` – interactive Swagger UI for trying requests against a running instance.
+* `http://localhost:5001/docs-json` – raw OpenAPI JSON that can be imported into other tools (e.g. Theneo or Postman).
