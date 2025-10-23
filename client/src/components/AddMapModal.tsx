@@ -838,13 +838,13 @@ const AddMapModal: React.FC<AddMapModalProps> = ({ isOpen, onClose, mapToEdit, o
                     ? 'Slipp filene her...' 
                     : mapToEdit 
                       ? 'Dra filer hit eller klikk for å legge til nye filer' 
-                      : 'Dra filer hit eller klikk for å laste opp PDF eller bildefiler'
+                      : 'Dra filer hit eller klikk for å laste opp Ocad, PDF eller bildefiler'
                   }
                 </p>
                 <input
                   type="file"
                   multiple
-                  accept=".pdf,.jpg,.jpeg,.png,.gif"
+                  accept=".pdf,.jpg,.jpeg,.png,.gif,.ocd"
                   onChange={handleFileChange}
                   className="hidden"
                   id="file-upload"
