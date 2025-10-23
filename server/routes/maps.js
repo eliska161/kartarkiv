@@ -6,7 +6,7 @@ const { body, validationResult } = require('express-validator');
 const rateLimit = require('express-rate-limit');
 const pool = require('../database/connection');
 const { authenticateUser, requireAdmin } = require('../middleware/auth-clerk-fixed');
-const { uploadToWasabi, getWasabiUrl, getSignedUrl } = require('../config/wasabi');
+const { uploadToB2, b2Client, bucketName: b2BucketName } = require('../config/backblaze');
 
 // Function to convert Norwegian characters to ASCII-friendly equivalents
 function sanitizeFilename(filename) {
@@ -277,35 +277,24 @@ router.get('/download/:token/file/:fileId', async (req, res) => {
     
     // Handle file download (same logic as authenticated download)
     if (file.file_path.startsWith('maps/')) {
-      // Wasabi file
-      if (process.env.WASABI_ACCESS_KEY && process.env.WASABI_SECRET_KEY) {
+      // Backblaze B2 file
+      if (process.env.B2_KEY_ID && process.env.B2_APPLICATION_KEY && process.env.B2_BUCKET) {
         try {
-          const AWS = require('aws-sdk');
-          const wasabi = new AWS.S3({
-            endpoint: process.env.WASABI_ENDPOINT || 'https://s3.wasabisys.com',
-            accessKeyId: process.env.WASABI_ACCESS_KEY,
-            secretAccessKey: process.env.WASABI_SECRET_KEY,
-            region: process.env.WASABI_REGION || 'us-east-1',
-            s3ForcePathStyle: true,
-            signatureVersion: 'v4'
-          });
-          
-          const bucketName = process.env.WASABI_BUCKET || 'kartarkiv-storage';
           const params = {
-            Bucket: bucketName,
+            Bucket: b2BucketName,
             Key: file.file_path
           };
-          
-          const data = await wasabi.getObject(params).promise();
-          
+
+          const data = await b2Client.getObject(params).promise();
+
           res.setHeader('Content-Type', file.mime_type || 'application/octet-stream');
           res.setHeader('Content-Disposition', `attachment; filename="${file.filename}"`);
           res.setHeader('Content-Length', data.ContentLength);
-          
+
           res.send(data.Body);
           return;
         } catch (error) {
-          console.error('Error downloading from Wasabi:', error);
+          console.error('Error downloading from Backblaze B2:', error);
           return res.status(500).json({ message: 'Error downloading file' });
         }
       }
@@ -394,31 +383,20 @@ router.delete('/files/:fileId', authenticateUser, async (req, res) => {
     const file = fileResult.rows[0];
     const filePath = file.file_path;
     
-    // Delete from Wasabi if it's a Wasabi file
+    // Delete from Backblaze B2 if it's a remote file
     if (filePath.startsWith('maps/')) {
-      if (process.env.WASABI_ACCESS_KEY && process.env.WASABI_SECRET_KEY) {
+      if (process.env.B2_KEY_ID && process.env.B2_APPLICATION_KEY && process.env.B2_BUCKET) {
         try {
-          const AWS = require('aws-sdk');
-          const wasabi = new AWS.S3({
-            endpoint: process.env.WASABI_ENDPOINT || 'https://s3.wasabisys.com',
-            accessKeyId: process.env.WASABI_ACCESS_KEY,
-            secretAccessKey: process.env.WASABI_SECRET_KEY,
-            region: process.env.WASABI_REGION || 'us-east-1',
-            s3ForcePathStyle: true,
-            signatureVersion: 'v4'
-          });
-          
-          const bucketName = process.env.WASABI_BUCKET || 'kartarkiv-storage';
           const params = {
-            Bucket: bucketName,
+            Bucket: b2BucketName,
             Key: filePath
           };
-          
-          await wasabi.deleteObject(params).promise();
-          console.log('✅ File deleted from Wasabi:', filePath);
+
+          await b2Client.deleteObject(params).promise();
+          console.log('✅ File deleted from Backblaze B2:', filePath);
         } catch (error) {
-          console.error('Error deleting from Wasabi:', error);
-          // Continue with database deletion even if Wasabi deletion fails
+          console.error('Error deleting from Backblaze B2:', error);
+          // Continue with database deletion even if Backblaze deletion fails
         }
       }
     }
@@ -454,61 +432,50 @@ router.get('/files/:fileId/download', authenticateUser, async (req, res) => {
     const file = fileResult.rows[0];
     const filePath = file.file_path;
     
-    // Check if it's a Wasabi key, full Wasabi URL, or local file
+    // Check if it's a Backblaze key, full remote URL, or local file
     if (filePath.startsWith('maps/')) {
-      // It's a Wasabi key, download via server-side proxy
-      if (process.env.WASABI_ACCESS_KEY && process.env.WASABI_SECRET_KEY) {
+      // It's a Backblaze B2 key, download via server-side proxy
+      if (process.env.B2_KEY_ID && process.env.B2_APPLICATION_KEY && process.env.B2_BUCKET) {
         try {
-          const AWS = require('aws-sdk');
-          const wasabi = new AWS.S3({
-            endpoint: process.env.WASABI_ENDPOINT || 'https://s3.wasabisys.com',
-            accessKeyId: process.env.WASABI_ACCESS_KEY,
-            secretAccessKey: process.env.WASABI_SECRET_KEY,
-            region: process.env.WASABI_REGION || 'us-east-1',
-            s3ForcePathStyle: true,
-            signatureVersion: 'v4'
-          });
-          
-          const bucketName = process.env.WASABI_BUCKET || 'kartarkiv-storage';
           const params = {
-            Bucket: bucketName,
+            Bucket: b2BucketName,
             Key: filePath
           };
-          
-          // Get the file from Wasabi
-          const data = await wasabi.getObject(params).promise();
-          
+
+          // Get the file from Backblaze B2
+          const data = await b2Client.getObject(params).promise();
+
           // Set appropriate headers
           res.setHeader('Content-Type', file.mime_type || 'application/octet-stream');
           res.setHeader('Content-Disposition', `attachment; filename="${file.original_filename || file.filename}"`);
           res.setHeader('Content-Length', data.ContentLength);
-          
+
           // Send the file
           res.send(data.Body);
-          
+
         } catch (error) {
-          console.error('Error downloading from Wasabi:', error);
-          return res.status(500).json({ message: 'Error downloading file from Wasabi' });
+          console.error('Error downloading from Backblaze B2:', error);
+          return res.status(500).json({ message: 'Error downloading file from Backblaze B2' });
         }
       } else {
-        return res.status(500).json({ message: 'Wasabi not configured' });
+        return res.status(500).json({ message: 'Backblaze B2 not configured' });
       }
     } else if (filePath.startsWith('https://')) {
-      // It's a full Wasabi URL (old format), download via server-side proxy
+      // It's a full remote URL (legacy Wasabi/B2 format), download via server-side proxy
       try {
         const axios = require('axios');
         const response = await axios.get(filePath, { responseType: 'stream' });
-        
+
         // Set appropriate headers
         res.setHeader('Content-Type', file.mime_type || 'application/octet-stream');
         res.setHeader('Content-Disposition', `attachment; filename="${file.original_filename || file.filename}"`);
-        
+
         // Pipe the response to the client
         response.data.pipe(res);
-        
+
       } catch (error) {
-        console.error('Error downloading from Wasabi URL:', error);
-        return res.status(500).json({ message: 'Error downloading file from Wasabi URL' });
+        console.error('Error downloading from remote storage URL:', error);
+        return res.status(500).json({ message: 'Error downloading file from remote storage URL' });
       }
     } else {
       // It's a local file, redirect to static file
@@ -884,21 +851,21 @@ router.post('/:id/files', authenticateUser, uploadLimiter, upload.array('files',
       const sanitizedBaseName = sanitizeFilename(originalName);
       const fileName = `${sanitizedBaseName}${extension}`;
       
-      // Try to upload to Wasabi if configured, otherwise use local path
+      // Try to upload to Backblaze B2 if configured, otherwise use local path
       let fileUrl = fileName; // Default to local filename
-      
-      if (process.env.WASABI_ACCESS_KEY && process.env.WASABI_SECRET_KEY) {
+
+      if (process.env.B2_KEY_ID && process.env.B2_APPLICATION_KEY && process.env.B2_BUCKET) {
         try {
-          const wasabiKey = `maps/${mapId}/${fileName}`;
-          await uploadToWasabi(file.path, wasabiKey, file.mimetype);
-          fileUrl = wasabiKey; // Store the key, not the URL
-          console.log('✅ File uploaded to Wasabi with key:', wasabiKey);
-        } catch (wasabiError) {
-          console.error('❌ Wasabi upload failed, using local storage:', wasabiError.message);
+          const b2Key = `maps/${mapId}/${fileName}`;
+          await uploadToB2(file.path, b2Key, file.mimetype);
+          fileUrl = b2Key; // Store the key, not the URL
+          console.log('✅ File uploaded to Backblaze B2 with key:', b2Key);
+        } catch (b2Error) {
+          console.error('❌ Backblaze B2 upload failed, using local storage:', b2Error.message);
           // Fallback to local storage
         }
       } else {
-        console.log('⚠️ Wasabi not configured, using local storage');
+        console.log('⚠️ Backblaze B2 not configured, using local storage');
       }
       
       console.log('🔍 Inserting file with created_by:', req.user.id, 'for map:', mapId);
@@ -912,7 +879,7 @@ router.post('/:id/files', authenticateUser, uploadLimiter, upload.array('files',
         mapId,
         fileName, // filename - stored file name
         file.originalname, // original_filename - user's original file name
-        fileUrl, // file_path - Wasabi URL or local filename
+        fileUrl, // file_path - Backblaze key or local filename
         fileType,
         file.size,
         file.mimetype || 'application/octet-stream', // mime_type
