@@ -68,12 +68,12 @@ const upload = multer({
     fileSize: 50 * 1024 * 1024 // 50MB limit
   },
   fileFilter: (req, file, cb) => {
-    const allowedTypes = ['.pdf', '.jpg', '.jpeg', '.png', '.gif'];
+    const allowedTypes = ['.pdf', '.jpg', '.jpeg', '.png', '.gif', '.ocd'];
     const ext = path.extname(file.originalname).toLowerCase();
     if (allowedTypes.includes(ext)) {
       cb(null, true);
     } else {
-      cb(new Error('Invalid file type. Only PDF and image files are allowed.'));
+      cb(new Error('Invalid file type. Only PDF, OCD, and image files are allowed.'));
     }
   }
 });
@@ -1110,7 +1110,7 @@ router.delete('/:id', authenticateUser, requireAdmin, async (req, res) => {
  *           type: string
  *         file_type:
  *           type: string
- *           enum: [PDF, JPG, JPEG, PNG, GIF]
+ *           enum: [PDF, JPG, JPEG, PNG, GIF, OCD]
  *         file_size:
  *           type: integer
  *         mime_type:
