@@ -27,7 +27,7 @@ export const handleApiError = (error: any): string => {
       case 413:
         return 'Filen er for stor. Maksimal filstørrelse er 50MB.';
       case 415:
-        return 'Filtype ikke støttet. Kun PDF og bildefiler er tillatt.';
+        return 'Filtype ikke støttet. Kun PDF, OCD og bildefiler er tillatt.';
       case 422:
         return message || 'Valideringsfeil. Sjekk at alle felt er fylt ut korrekt.';
       case 429:

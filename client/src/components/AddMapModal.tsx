@@ -732,7 +732,7 @@ const AddMapModal: React.FC<AddMapModalProps> = ({ isOpen, onClose, mapToEdit, o
                 <p className="text-sm text-gray-600 mb-4">
                   {mapToEdit 
                     ? 'Legg til nye filer eller fjern eksisterende filer'
-                    : 'Last opp kartfiler og eventuelle bildefiler'
+                    : 'Last opp kartfiler (.pdf, .ocd) og eventuelle bildefiler'
                   }
                 </p>
               </div>
@@ -822,10 +822,10 @@ const AddMapModal: React.FC<AddMapModalProps> = ({ isOpen, onClose, mapToEdit, o
                 </div>
               )}
 
-              <div 
+              <div
                 className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
-                  isDragOver 
-                    ? 'border-eok-500 bg-eok-50' 
+                  isDragOver
+                    ? 'border-eok-500 bg-eok-50'
                     : 'border-gray-300 hover:border-gray-400'
                 }`}
                 onDragOver={handleDragOver}
@@ -834,17 +834,17 @@ const AddMapModal: React.FC<AddMapModalProps> = ({ isOpen, onClose, mapToEdit, o
               >
                 <Upload className={`h-8 w-8 mx-auto mb-2 ${isDragOver ? 'text-eok-500' : 'text-gray-400'}`} />
                 <p className={`text-sm mb-2 ${isDragOver ? 'text-eok-700' : 'text-gray-600'}`}>
-                  {isDragOver 
-                    ? 'Slipp filene her...' 
-                    : mapToEdit 
-                      ? 'Dra filer hit eller klikk for å legge til nye filer' 
-                      : 'Dra filer hit eller klikk for å laste opp Ocad, PDF eller bildefiler'
+                  {isDragOver
+                    ? 'Slipp filene her...'
+                    : mapToEdit
+                      ? 'Dra filer hit eller klikk for å legge til nye filer'
+                      : 'Dra filer hit eller klikk for å laste opp PDF-, OCD- eller bildefiler'
                   }
                 </p>
                 <input
                   type="file"
                   multiple
-                  accept=".pdf,.jpg,.jpeg,.png,.gif,.ocd"
+                  accept=".pdf,.ocd,.jpg,.jpeg,.png,.gif"
                   onChange={handleFileChange}
                   className="hidden"
                   id="file-upload"
