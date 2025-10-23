@@ -34,51 +34,51 @@ router.get('/', async (req, res) => {
   }
 
   try {
-    // File storage health check (Wasabi S3)
+    // File storage health check (Backblaze B2)
     const filesStart = Date.now();
-    
-    // Check if Wasabi environment variables are set
-    const wasabiEndpoint = process.env.WASABI_ENDPOINT;
-    const wasabiAccessKey = process.env.WASABI_ACCESS_KEY;
-    const wasabiSecretKey = process.env.WASABI_SECRET_KEY;
-    const wasabiBucket = process.env.WASABI_BUCKET;
-    const wasabiRegion = process.env.WASABI_REGION;
-    
-    if (!wasabiEndpoint || !wasabiAccessKey || !wasabiSecretKey || !wasabiBucket) {
-      throw new Error('Wasabi environment variables not configured');
+
+    // Check if Backblaze B2 environment variables are set
+    const b2Region = process.env.B2_REGION || 'us-west-001';
+    const b2Endpoint = process.env.B2_ENDPOINT || `https://s3.${b2Region}.backblazeb2.com`;
+    const b2KeyId = process.env.B2_KEY_ID;
+    const b2ApplicationKey = process.env.B2_APPLICATION_KEY;
+    const b2Bucket = process.env.B2_BUCKET;
+
+    if (!b2KeyId || !b2ApplicationKey || !b2Bucket) {
+      throw new Error('Backblaze B2 environment variables not configured');
     }
-    
-    // Configure AWS SDK for Wasabi
+
+    // Configure AWS SDK for Backblaze B2
     const s3 = new AWS.S3({
-      endpoint: wasabiEndpoint,
-      accessKeyId: wasabiAccessKey,
-      secretAccessKey: wasabiSecretKey,
-      region: wasabiRegion || 'us-east-1',
+      endpoint: b2Endpoint,
+      accessKeyId: b2KeyId,
+      secretAccessKey: b2ApplicationKey,
+      region: b2Region,
       s3ForcePathStyle: true
     });
-    
-    // Test Wasabi connection by listing objects
+
+    // Test Backblaze connection by listing objects
     const listParams = {
-      Bucket: wasabiBucket,
+      Bucket: b2Bucket,
       MaxKeys: 1
     };
-    
+
     await s3.listObjectsV2(listParams).promise();
-    
+
     const filesResponseTime = Date.now() - filesStart;
-    
+
     healthChecks.services.fileStorage = {
       status: 'healthy',
       responseTime: `${filesResponseTime}ms`,
-      details: `Wasabi S3 storage accessible (${wasabiBucket})`,
-      endpoint: wasabiEndpoint,
-      region: wasabiRegion || 'us-east-1'
+      details: `Backblaze B2 storage accessible (${b2Bucket})`,
+      endpoint: b2Endpoint,
+      region: b2Region
     };
   } catch (error) {
     healthChecks.services.fileStorage = {
       status: 'unhealthy',
       error: error.message,
-      details: 'Wasabi S3 storage not accessible or not configured'
+      details: 'Backblaze B2 storage not accessible or not configured'
     };
     overallHealthy = false;
   }
@@ -198,49 +198,49 @@ router.get('/files', async (req, res) => {
   try {
     const start = Date.now();
     
-    // Check if Wasabi environment variables are set
-    const wasabiEndpoint = process.env.WASABI_ENDPOINT;
-    const wasabiAccessKey = process.env.WASABI_ACCESS_KEY;
-    const wasabiSecretKey = process.env.WASABI_SECRET_KEY;
-    const wasabiBucket = process.env.WASABI_BUCKET;
-    const wasabiRegion = process.env.WASABI_REGION;
-    
-    if (!wasabiEndpoint || !wasabiAccessKey || !wasabiSecretKey || !wasabiBucket) {
-      throw new Error('Wasabi environment variables not configured');
+    // Check if Backblaze B2 environment variables are set
+    const b2Region = process.env.B2_REGION || 'us-west-001';
+    const b2Endpoint = process.env.B2_ENDPOINT || `https://s3.${b2Region}.backblazeb2.com`;
+    const b2KeyId = process.env.B2_KEY_ID;
+    const b2ApplicationKey = process.env.B2_APPLICATION_KEY;
+    const b2Bucket = process.env.B2_BUCKET;
+
+    if (!b2KeyId || !b2ApplicationKey || !b2Bucket) {
+      throw new Error('Backblaze B2 environment variables not configured');
     }
-    
-    // Configure AWS SDK for Wasabi
+
+    // Configure AWS SDK for Backblaze B2
     const s3 = new AWS.S3({
-      endpoint: wasabiEndpoint,
-      accessKeyId: wasabiAccessKey,
-      secretAccessKey: wasabiSecretKey,
-      region: wasabiRegion || 'us-east-1',
+      endpoint: b2Endpoint,
+      accessKeyId: b2KeyId,
+      secretAccessKey: b2ApplicationKey,
+      region: b2Region,
       s3ForcePathStyle: true
     });
-    
-    // Test Wasabi connection by listing objects
+
+    // Test Backblaze connection by listing objects
     const listParams = {
-      Bucket: wasabiBucket,
+      Bucket: b2Bucket,
       MaxKeys: 1
     };
-    
+
     const result = await s3.listObjectsV2(listParams).promise();
     const responseTime = Date.now() - start;
-    
+
     res.json({
       status: 'healthy',
       responseTime: `${responseTime}ms`,
-      storage: 'Wasabi S3',
-      bucket: wasabiBucket,
-      endpoint: wasabiEndpoint,
-      region: wasabiRegion || 'us-east-1',
+      storage: 'Backblaze B2',
+      bucket: b2Bucket,
+      endpoint: b2Endpoint,
+      region: b2Region,
       objectCount: result.KeyCount || 0
     });
   } catch (error) {
     res.status(503).json({
       status: 'unhealthy',
       error: error.message,
-      storage: 'Wasabi S3'
+      storage: 'Backblaze B2'
     });
   }
 });
@@ -353,7 +353,7 @@ router.get('/maps', async (req, res) => {
  *
  * /health/files:
  *   get:
- *     summary: Health check for fil-lagring (Wasabi)
+ *     summary: Health check for fil-lagring (Backblaze B2)
  *     tags: [Health]
  *     responses:
  *       200:

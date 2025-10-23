@@ -75,10 +75,11 @@ export const validateFile = (file: File): { isValid: boolean; error?: string } =
     'image/jpeg',
     'image/jpg',
     'image/png',
-    'image/gif'
+    'image/gif',
+    'application/octet-stream'
   ];
 
-  const allowedExtensions = ['.pdf', '.jpg', '.jpeg', '.png', '.gif'];
+  const allowedExtensions = ['.pdf', '.jpg', '.jpeg', '.png', '.gif', '.ocd'];
   
   if (file.size > maxSize) {
     return {
