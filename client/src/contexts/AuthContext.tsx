@@ -9,6 +9,7 @@ interface User {
   firstName: string;
   lastName: string;
   isAdmin: boolean;
+  isSuperAdmin: boolean;
 }
 
 interface AuthContextType {
@@ -60,13 +61,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
             
             // Set user data from Clerk
+            const roles = Array.isArray(clerkUser.publicMetadata?.roles)
+              ? clerkUser.publicMetadata.roles.map(role => String(role).toLowerCase())
+              : [];
+            const isSuperAdmin = roles.includes('superadmin') || Boolean(clerkUser.publicMetadata?.isSuperAdmin);
+
             setUser({
               id: clerkUser.id,
               username: clerkUser.username || clerkUser.emailAddresses[0]?.emailAddress || '',
               email: clerkUser.emailAddresses[0]?.emailAddress || '',
               firstName: clerkUser.firstName || '',
               lastName: clerkUser.lastName || '',
-              isAdmin: Boolean(clerkUser.publicMetadata?.isAdmin) || false
+              isAdmin: Boolean(clerkUser.publicMetadata?.isAdmin) || isSuperAdmin,
+              isSuperAdmin
             });
           }
         } catch (error) {
