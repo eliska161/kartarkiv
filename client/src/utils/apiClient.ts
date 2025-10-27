@@ -1,6 +1,11 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const defaultBaseUrl =
+  process.env.NODE_ENV === 'development'
+    ? 'http://localhost:5000'
+    : 'https://kartarkiv-production.up.railway.app';
+
+const API_BASE_URL = process.env.REACT_APP_API_URL || defaultBaseUrl;
 
 // Create axios instance with default config
 const apiClient: AxiosInstance = axios.create({
