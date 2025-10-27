@@ -1,0 +1,344 @@
+const express = require('express');
+const pool = require('../database/connection');
+const { authenticateUser, requireSuperAdmin } = require('../middleware/auth-clerk-fixed');
+
+const router = express.Router();
+
+const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+
+const clientBaseUrl = process.env.CLIENT_BASE_URL || 'http://localhost:3000';
+const stripeApiBase = 'https://api.stripe.com/v1';
+
+const callStripe = async (method, path, params = null) => {
+  if (!stripeSecretKey) {
+    throw new Error('Stripe er ikke konfigurert');
+  }
+
+  const headers = {
+    Authorization: `Bearer ${stripeSecretKey}`
+  };
+
+  let body;
+  if (params) {
+    headers['Content-Type'] = 'application/x-www-form-urlencoded';
+    body = params.toString();
+  }
+
+  if (typeof globalThis.fetch !== 'function') {
+    throw new Error('Fetch API is not available in this environment');
+  }
+
+  const response = await globalThis.fetch(`${stripeApiBase}${path}`, {
+    method,
+    headers,
+    body
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Stripe API error (${response.status}): ${text}`);
+  }
+
+  return response.json();
+};
+
+const ensureTables = async () => {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS club_invoices (
+      id SERIAL PRIMARY KEY,
+      month VARCHAR(7) NOT NULL,
+      due_date DATE,
+      notes TEXT,
+      total_amount_cents INTEGER NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      created_by VARCHAR(255) NOT NULL,
+      created_by_email TEXT,
+      stripe_session_id TEXT,
+      stripe_payment_intent TEXT,
+      invoice_requested_at TIMESTAMP,
+      invoice_requested_by TEXT,
+      invoice_request_email TEXT,
+      created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
+      updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW()
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS club_invoice_items (
+      id SERIAL PRIMARY KEY,
+      invoice_id INTEGER NOT NULL REFERENCES club_invoices(id) ON DELETE CASCADE,
+      description TEXT NOT NULL,
+      amount_cents INTEGER NOT NULL,
+      quantity INTEGER NOT NULL DEFAULT 1
+    )
+  `);
+};
+
+ensureTables().catch(error => {
+  console.error('❌ Failed to ensure payment tables exist:', error);
+});
+
+const getInvoices = async (invoiceId = null) => {
+  const params = [];
+  let whereClause = '';
+  if (invoiceId) {
+    params.push(invoiceId);
+    whereClause = 'WHERE i.id = $1';
+  }
+
+  const { rows } = await pool.query(
+    `
+      SELECT
+        i.id,
+        i.month,
+        i.due_date,
+        i.notes,
+        i.total_amount_cents,
+        i.status,
+        i.created_by,
+        i.created_by_email,
+        i.stripe_session_id,
+        i.stripe_payment_intent,
+        i.invoice_requested_at,
+        i.invoice_requested_by,
+        i.invoice_request_email,
+        i.created_at,
+        i.updated_at,
+        COALESCE(
+          json_agg(
+            json_build_object(
+              'id', ii.id,
+              'description', ii.description,
+              'amount_cents', ii.amount_cents,
+              'quantity', ii.quantity
+            )
+          ) FILTER (WHERE ii.id IS NOT NULL),
+          '[]'
+        ) AS items
+      FROM club_invoices i
+      LEFT JOIN club_invoice_items ii ON ii.invoice_id = i.id
+      ${whereClause}
+      GROUP BY i.id
+      ORDER BY i.created_at DESC
+    `,
+    params
+  );
+
+  return rows.map(row => {
+    const items = Array.isArray(row.items) ? row.items : [];
+
+    return {
+      ...row,
+      total_amount: row.total_amount_cents / 100,
+      items: items.map(item => ({
+        ...item,
+        amount: item.amount_cents / 100
+      }))
+    };
+  });
+};
+
+router.get('/invoices', authenticateUser, async (req, res) => {
+  try {
+    const invoices = await getInvoices();
+    res.json({ invoices });
+  } catch (error) {
+    console.error('❌ Failed to fetch invoices:', error);
+    res.status(500).json({ error: 'Kunne ikke hente fakturaer' });
+  }
+});
+
+router.post('/invoices', authenticateUser, requireSuperAdmin, async (req, res) => {
+  const { month, dueDate, notes, items } = req.body;
+
+  if (!month) {
+    return res.status(400).json({ error: 'Måned er påkrevd' });
+  }
+
+  if (!Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({ error: 'Legg til minst én kostnadslinje' });
+  }
+
+  const normalizedItems = items.map(item => ({
+    description: String(item.description || '').trim(),
+    amount: Number(item.amount || 0),
+    quantity: Number(item.quantity || 1)
+  })).filter(item => item.description && item.amount > 0 && item.quantity > 0);
+
+  if (normalizedItems.length === 0) {
+    return res.status(400).json({ error: 'Hver linje må ha beskrivelse og beløp' });
+  }
+
+  const totalAmountCents = normalizedItems.reduce((sum, item) => {
+    return sum + Math.round(item.amount * 100) * item.quantity;
+  }, 0);
+
+  if (totalAmountCents <= 0) {
+    return res.status(400).json({ error: 'Totalbeløpet må være større enn 0' });
+  }
+
+  try {
+    const { rows } = await pool.query(
+      `
+        INSERT INTO club_invoices (
+          month, due_date, notes, total_amount_cents, status, created_by, created_by_email
+        ) VALUES ($1, $2, $3, $4, 'pending', $5, $6)
+        RETURNING *
+      `,
+      [month, dueDate || null, notes || null, totalAmountCents, req.user.id, req.user.email]
+    );
+
+    const invoice = rows[0];
+
+    for (const item of normalizedItems) {
+      await pool.query(
+        `
+          INSERT INTO club_invoice_items (invoice_id, description, amount_cents, quantity)
+          VALUES ($1, $2, $3, $4)
+        `,
+        [invoice.id, item.description, Math.round(item.amount * 100), item.quantity]
+      );
+    }
+
+    const [createdInvoice] = await getInvoices(invoice.id);
+
+    res.status(201).json({ invoice: createdInvoice });
+  } catch (error) {
+    console.error('❌ Failed to create invoice:', error);
+    res.status(500).json({ error: 'Kunne ikke opprette faktura' });
+  }
+});
+
+router.post('/invoices/:invoiceId/checkout', authenticateUser, async (req, res) => {
+  if (!stripeSecretKey) {
+    return res.status(500).json({ error: 'Stripe er ikke konfigurert' });
+  }
+
+  const invoiceId = Number(req.params.invoiceId);
+  if (!Number.isInteger(invoiceId)) {
+    return res.status(400).json({ error: 'Ugyldig faktura-ID' });
+  }
+
+  try {
+    const [invoice] = await getInvoices(invoiceId);
+    if (!invoice) {
+      return res.status(404).json({ error: 'Fant ikke faktura' });
+    }
+
+    if (invoice.status === 'paid') {
+      return res.status(400).json({ error: 'Fakturaen er allerede betalt' });
+    }
+
+    const params = new URLSearchParams();
+    params.append('mode', 'payment');
+    params.append('customer_email', req.user.email || '');
+    params.append('success_url', `${clientBaseUrl}/admin/betaling?success=true&invoiceId=${invoice.id}&session_id={CHECKOUT_SESSION_ID}`);
+    params.append('cancel_url', `${clientBaseUrl}/admin/betaling?cancelled=true&invoiceId=${invoice.id}`);
+    params.append('metadata[invoiceId]', String(invoice.id));
+    params.append('payment_method_types[]', 'card');
+
+    invoice.items.forEach((item, index) => {
+      params.append(`line_items[${index}][price_data][currency]`, 'nok');
+      params.append(`line_items[${index}][price_data][product_data][name]`, item.description);
+      params.append(`line_items[${index}][price_data][unit_amount]`, String(Math.round(item.amount * 100)));
+      params.append(`line_items[${index}][quantity]`, String(item.quantity));
+    });
+
+    const session = await callStripe('POST', '/checkout/sessions', params);
+
+    await pool.query(
+      `
+        UPDATE club_invoices
+        SET stripe_session_id = $1,
+            updated_at = NOW()
+        WHERE id = $2
+      `,
+      [session.id, invoice.id]
+    );
+
+    res.json({ sessionId: session.id, url: session.url });
+  } catch (error) {
+    console.error('❌ Failed to create Stripe session:', error);
+    res.status(500).json({ error: 'Kunne ikke starte betaling' });
+  }
+});
+
+router.post('/checkout/confirm', authenticateUser, async (req, res) => {
+  if (!stripeSecretKey) {
+    return res.status(500).json({ error: 'Stripe er ikke konfigurert' });
+  }
+
+  const { sessionId, invoiceId } = req.body;
+
+  if (!sessionId || !invoiceId) {
+    return res.status(400).json({ error: 'Mangler sessionId eller invoiceId' });
+  }
+
+  try {
+    const session = await callStripe('GET', `/checkout/sessions/${sessionId}`);
+
+    if (session.payment_status !== 'paid') {
+      return res.status(400).json({ error: 'Betalingen er ikke fullført ennå' });
+    }
+
+    const paymentIntentId = session.payment_intent;
+
+    await pool.query(
+      `
+        UPDATE club_invoices
+        SET status = 'paid',
+            stripe_payment_intent = $1,
+            updated_at = NOW()
+        WHERE id = $2
+      `,
+      [paymentIntentId || null, invoiceId]
+    );
+
+    const [invoice] = await getInvoices(invoiceId);
+
+    res.json({ invoice });
+  } catch (error) {
+    console.error('❌ Failed to confirm Stripe payment:', error);
+    res.status(500).json({ error: 'Kunne ikke bekrefte betaling' });
+  }
+});
+
+router.post('/invoices/:invoiceId/request-invoice', authenticateUser, async (req, res) => {
+  const invoiceId = Number(req.params.invoiceId);
+  const { contactEmail } = req.body || {};
+
+  if (!Number.isInteger(invoiceId)) {
+    return res.status(400).json({ error: 'Ugyldig faktura-ID' });
+  }
+
+  try {
+    const [invoice] = await getInvoices(invoiceId);
+    if (!invoice) {
+      return res.status(404).json({ error: 'Fant ikke faktura' });
+    }
+
+    const { rows } = await pool.query(
+      `
+        UPDATE club_invoices
+        SET status = 'invoice_requested',
+            invoice_requested_at = NOW(),
+            invoice_requested_by = $1,
+            invoice_request_email = $2,
+            updated_at = NOW()
+        WHERE id = $3
+        RETURNING *
+      `,
+      [req.user.email, contactEmail || req.user.email || null, invoiceId]
+    );
+
+    const updated = rows[0];
+    const [fullInvoice] = await getInvoices(updated.id);
+
+    res.json({ invoice: fullInvoice });
+  } catch (error) {
+    console.error('❌ Failed to request invoice send-out:', error);
+    res.status(500).json({ error: 'Kunne ikke sende faktura' });
+  }
+});
+
+module.exports = router;
