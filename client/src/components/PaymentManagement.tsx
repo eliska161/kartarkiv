@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import axios from 'axios';
+import type { AxiosResponse } from 'axios';
+import { apiGet, apiPost } from '../utils/apiClient';
 import { CreditCard, FileText, Loader2, PlusCircle, Send, Wallet } from 'lucide-react';
 
 interface PaymentManagementProps {
@@ -95,8 +96,10 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
     setLoading(true);
     setError(null);
     try {
-      const { data } = await axios.get<{ invoices: Invoice[] }>('/api/payments/invoices');
-      setInvoices(data.invoices || []);
+      const { data } = (await apiGet('/api/payments/invoices')) as AxiosResponse<{
+        invoices: Invoice[];
+      }>;
+      setInvoices(data?.invoices || []);
     } catch (err: any) {
       console.error('Kunne ikke hente fakturaer', err);
       setError(err.response?.data?.error || 'Kunne ikke hente fakturaer');
@@ -127,7 +130,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
       const confirmPayment = async () => {
         try {
           setMessage('Bekrefter betaling...');
-          await axios.post('/api/payments/checkout/confirm', {
+          await apiPost('/api/payments/checkout/confirm', {
             sessionId,
             invoiceId: Number(invoiceId)
           });
@@ -214,7 +217,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
     }
 
     try {
-      await axios.post('/api/payments/invoices', {
+      await apiPost('/api/payments/invoices', {
         month: form.month,
         dueDate: form.dueDate || null,
         notes: form.notes || null,
@@ -234,7 +237,9 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
   const handleCheckout = async (invoice: Invoice) => {
     try {
       setMessage('Laster Stripe-betaling...');
-      const { data } = await axios.post<{ url: string }>('/api/payments/invoices/' + invoice.id + '/checkout');
+      const { data } = (await apiPost(
+        `/api/payments/invoices/${invoice.id}/checkout`
+      )) as AxiosResponse<{ url: string }>;
       if (data.url) {
         window.location.href = data.url;
       } else {
@@ -251,9 +256,9 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
     const contactEmail = window.prompt('Oppgi e-postadressen fakturaen skal sendes til:', suggestedEmail) || undefined;
 
     try {
-      const { data } = await axios.post<{ invoice: Invoice }>(`/api/payments/invoices/${invoice.id}/request-invoice`, {
+      const { data } = (await apiPost(`/api/payments/invoices/${invoice.id}/request-invoice`, {
         contactEmail
-      });
+      })) as AxiosResponse<{ invoice: Invoice }>;
       setMessage('Fakturabestilling registrert.');
       setInvoices(prev => prev.map(item => (item.id === invoice.id ? data.invoice : item)));
     } catch (err: any) {
