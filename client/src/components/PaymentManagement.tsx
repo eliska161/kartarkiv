@@ -265,7 +265,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
       if (data.url) {
         window.location.href = data.url;
       } else {
-        showError('Kunne ikke starte betaling', 'Mottok ikke en gyldig Stripe-lenke.');
+        showError('Kunne ikke starte Stripe-betaling', 'Mottok ikke en gyldig Stripe-lenke.');
       }
     } catch (err: any) {
       console.error('Kunne ikke starte stripe-betaling', err);
