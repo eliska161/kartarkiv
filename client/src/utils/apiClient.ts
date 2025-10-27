@@ -1,6 +1,18 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const resolveDefaultBaseUrl = () => {
+  if (process.env.REACT_APP_API_URL) {
+    return process.env.REACT_APP_API_URL;
+  }
+
+  if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
+    return 'http://localhost:5000';
+  }
+
+  return 'https://kartarkiv-production.up.railway.app';
+};
+
+const API_BASE_URL = resolveDefaultBaseUrl();
 
 // Create axios instance with default config
 const apiClient: AxiosInstance = axios.create({
