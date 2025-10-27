@@ -1,6 +1,20 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const resolveDefaultBaseUrl = () => {
+  if (process.env.REACT_APP_API_URL) {
+    return process.env.REACT_APP_API_URL;
+  }
+
+  if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
+    return 'http://localhost:5000';
+  }
+
+  return 'https://kartarkiv-production.up.railway.app';
+};
+
+const API_BASE_URL = resolveDefaultBaseUrl();
+
+const isTestEnvironment = process.env.NODE_ENV === 'test';
 
 // Create axios instance with default config
 const apiClient: AxiosInstance = axios.create({
@@ -13,9 +27,9 @@ const apiClient: AxiosInstance = axios.create({
 });
 
 // Retry configuration
-const MAX_RETRIES = 5;
-const RETRY_DELAY = 2000; // 2 seconds
-const RATE_LIMIT_DELAY = 10000; // 10 seconds for rate limiting
+const MAX_RETRIES = isTestEnvironment ? 0 : 5;
+const RETRY_DELAY = isTestEnvironment ? 0 : 2000; // 2 seconds
+const RATE_LIMIT_DELAY = isTestEnvironment ? 0 : 10000; // 10 seconds for rate limiting
 
 // Retry function
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -59,10 +73,12 @@ const retryRequest = async (config: AxiosRequestConfig, retryCount = 0): Promise
     }
     
     // If it's a CORS error, try to refresh the page
-    if (isCorsError && retryCount >= MAX_RETRIES) {
+    if (!isTestEnvironment && isCorsError && retryCount >= MAX_RETRIES) {
       console.error('🚫 API: CORS error after retries, suggesting page refresh');
-      if (window.confirm('Det oppstod en tilkoblingsfeil. Vil du oppdatere siden?')) {
-        window.location.reload();
+      if (typeof window !== 'undefined' && typeof window.confirm === 'function') {
+        if (window.confirm('Det oppstod en tilkoblingsfeil. Vil du oppdatere siden?')) {
+          window.location.reload();
+        }
       }
     }
     
