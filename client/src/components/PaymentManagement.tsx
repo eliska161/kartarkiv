@@ -1,7 +1,8 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { AxiosResponse } from 'axios';
 import { apiGet, apiPost } from '../utils/apiClient';
-import { CreditCard, FileText, Loader2, PlusCircle, Send, Wallet } from 'lucide-react';
+import { CreditCard, FileText, Loader2, PlusCircle, Send, Wallet, X } from 'lucide-react';
+import { useToast } from '../contexts/ToastContext';
 
 interface PaymentManagementProps {
   isSuperAdmin: boolean;
@@ -32,6 +33,10 @@ interface Invoice {
   invoice_requested_at: string | null;
   invoice_requested_by: string | null;
   invoice_request_email: string | null;
+  stripe_invoice_id?: string | null;
+  stripe_customer_id?: string | null;
+  stripe_invoice_url?: string | null;
+  stripe_invoice_pdf?: string | null;
   items: InvoiceItem[];
 }
 
@@ -41,7 +46,7 @@ const statusConfig: Record<Invoice['status'], { label: string; className: string
     className: 'bg-yellow-100 text-yellow-800'
   },
   invoice_requested: {
-    label: 'Faktura forespurt',
+    label: 'Faktura sendt',
     className: 'bg-blue-100 text-blue-800'
   },
   paid: {
@@ -68,9 +73,13 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
+  const [paymentConfirmation, setPaymentConfirmation] = useState<Invoice | null>(null);
+  const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
+  const [invoiceModalEmail, setInvoiceModalEmail] = useState('');
+  const [invoiceModalLoading, setInvoiceModalLoading] = useState(false);
+  const [invoiceModalTarget, setInvoiceModalTarget] = useState<Invoice | null>(null);
   const hasHandledCheckoutRef = useRef(false);
+  const { showSuccess, showError, showInfo, showWarning } = useToast();
 
   const [form, setForm] = useState({
     month: '',
@@ -92,25 +101,32 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
     }, 0);
   }, [form.items]);
 
-  const fetchInvoices = async () => {
-    setLoading(true);
-    setError(null);
+  const fetchInvoices = useCallback(async (withSpinner = true): Promise<Invoice[]> => {
+    if (withSpinner) {
+      setLoading(true);
+    }
+
     try {
       const { data } = (await apiGet('/api/payments/invoices')) as AxiosResponse<{
         invoices: Invoice[];
       }>;
-      setInvoices(data?.invoices || []);
+      const fetched = data?.invoices || [];
+      setInvoices(fetched);
+      return fetched;
     } catch (err: any) {
       console.error('Kunne ikke hente fakturaer', err);
-      setError(err.response?.data?.error || 'Kunne ikke hente fakturaer');
+      showError('Kunne ikke hente fakturaer', err.response?.data?.error);
+      return [];
     } finally {
-      setLoading(false);
+      if (withSpinner) {
+        setLoading(false);
+      }
     }
-  };
+  }, [showError]);
 
   useEffect(() => {
     fetchInvoices();
-  }, []);
+  }, [fetchInvoices]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -120,7 +136,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
     const cancelled = params.get('cancelled');
 
     if (cancelled === 'true' && invoiceId && !hasHandledCheckoutRef.current) {
-      setMessage('Betalingen ble avbrutt. Du kan prøve igjen når som helst.');
+      showWarning('Betaling avbrutt', 'Du kan prøve igjen når som helst.');
       hasHandledCheckoutRef.current = true;
       window.history.replaceState({}, document.title, window.location.pathname);
       return;
@@ -129,16 +145,24 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
     if (success === 'true' && sessionId && invoiceId && !hasHandledCheckoutRef.current) {
       const confirmPayment = async () => {
         try {
-          setMessage('Bekrefter betaling...');
-          await apiPost('/api/payments/checkout/confirm', {
+          showInfo('Bekrefter betaling...');
+          const { data } = (await apiPost('/api/payments/checkout/confirm', {
             sessionId,
             invoiceId: Number(invoiceId)
-          });
-          setMessage('Betaling registrert! Takk for at du betalte via Stripe.');
-          await fetchInvoices();
+          })) as AxiosResponse<{ invoice: Invoice }>;
+
+          const refreshed = await fetchInvoices(false);
+          const updatedInvoice =
+            refreshed.find(item => item.id === Number(invoiceId)) || data?.invoice || null;
+
+          if (updatedInvoice) {
+            setPaymentConfirmation(updatedInvoice);
+          }
+
+          showSuccess('Betaling fullført', 'Fakturaen er registrert som betalt.');
         } catch (err: any) {
           console.error('Kunne ikke bekrefte betaling', err);
-          setError(err.response?.data?.error || 'Kunne ikke bekrefte betaling');
+          showError('Kunne ikke bekrefte betaling', err.response?.data?.error);
         } finally {
           hasHandledCheckoutRef.current = true;
           window.history.replaceState({}, document.title, window.location.pathname);
@@ -147,7 +171,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
 
       confirmPayment();
     }
-  }, []);
+  }, [fetchInvoices, showError, showInfo, showSuccess, showWarning]);
 
   const handleItemChange = (index: number, field: keyof InvoiceItemDraft, value: string | number) => {
     setForm(prev => {
@@ -199,8 +223,6 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
   const handleCreateInvoice = async (event: React.FormEvent) => {
     event.preventDefault();
     setSaving(true);
-    setError(null);
-    setMessage(null);
 
     const items = form.items
       .map(item => ({
@@ -211,7 +233,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
       .filter(item => item.description && item.amount > 0 && item.quantity > 0);
 
     if (!form.month || items.length === 0) {
-      setError('Angi måned og minst én gyldig kostnadslinje.');
+      showError('Ufullstendig faktura', 'Angi måned og minst én gyldig kostnadslinje.');
       setSaving(false);
       return;
     }
@@ -223,12 +245,12 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
         notes: form.notes || null,
         items
       });
-      setMessage('Faktura opprettet!');
+      showSuccess('Faktura opprettet', `Fakturaen for ${form.month} er klar.`);
       resetForm();
       await fetchInvoices();
     } catch (err: any) {
       console.error('Kunne ikke opprette faktura', err);
-      setError(err.response?.data?.error || 'Kunne ikke opprette faktura');
+      showError('Kunne ikke opprette faktura', err.response?.data?.error);
     } finally {
       setSaving(false);
     }
@@ -236,34 +258,53 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
 
   const handleCheckout = async (invoice: Invoice) => {
     try {
-      setMessage('Laster Stripe-betaling...');
+      showInfo('Åpner Stripe', 'Du sendes til Stripe for å fullføre betalingen.');
       const { data } = (await apiPost(
         `/api/payments/invoices/${invoice.id}/checkout`
       )) as AxiosResponse<{ url: string }>;
       if (data.url) {
         window.location.href = data.url;
       } else {
-        setError('Kunne ikke starte Stripe-betaling.');
+        showError('Kunne ikke starte Stripe-betaling', 'Mottok ikke en gyldig Stripe-lenke.');
       }
     } catch (err: any) {
       console.error('Kunne ikke starte stripe-betaling', err);
-      setError(err.response?.data?.error || 'Kunne ikke starte betaling');
+      showError('Kunne ikke starte betaling', err.response?.data?.error);
     }
   };
 
-  const handleInvoiceRequest = async (invoice: Invoice) => {
+  const openInvoiceModal = (invoice: Invoice) => {
     const suggestedEmail = invoice.invoice_request_email || invoice.invoice_requested_by || '';
-    const contactEmail = window.prompt('Oppgi e-postadressen fakturaen skal sendes til:', suggestedEmail) || undefined;
+    setInvoiceModalEmail(suggestedEmail);
+    setInvoiceModalTarget(invoice);
+    setIsInvoiceModalOpen(true);
+  };
 
+  const handleInvoiceRequestSubmit = async () => {
+    if (!invoiceModalTarget) {
+      return;
+    }
+
+    const email = invoiceModalEmail.trim();
+    if (!email) {
+      showError('E-postadresse mangler', 'Angi e-postadressen fakturaen skal sendes til.');
+      return;
+    }
+
+    setInvoiceModalLoading(true);
     try {
-      const { data } = (await apiPost(`/api/payments/invoices/${invoice.id}/request-invoice`, {
-        contactEmail
+      const { data } = (await apiPost(`/api/payments/invoices/${invoiceModalTarget.id}/request-invoice`, {
+        contactEmail: email
       })) as AxiosResponse<{ invoice: Invoice }>;
-      setMessage('Fakturabestilling registrert.');
-      setInvoices(prev => prev.map(item => (item.id === invoice.id ? data.invoice : item)));
+      showSuccess('Faktura sendt', 'Stripe har sendt fakturaen til valgt e-post.');
+      setInvoices(prev => prev.map(item => (item.id === invoiceModalTarget.id ? data.invoice : item)));
+      setIsInvoiceModalOpen(false);
+      setInvoiceModalTarget(null);
     } catch (err: any) {
       console.error('Kunne ikke forespørre faktura', err);
-      setError(err.response?.data?.error || 'Kunne ikke forespørre faktura');
+      showError('Kunne ikke sende faktura', err.response?.data?.error);
+    } finally {
+      setInvoiceModalLoading(false);
     }
   };
 
@@ -277,15 +318,43 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
         <p className="text-gray-600">Hold oversikt over kostnader og sørg for enkel betaling via Stripe eller faktura.</p>
       </div>
 
-      {error && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
-          {error}
-        </div>
-      )}
-
-      {message && (
-        <div className="p-4 bg-green-50 border border-green-200 rounded-lg text-green-700">
-          {message}
+      {paymentConfirmation && (
+        <div className="border border-green-200 bg-green-50 rounded-lg p-6">
+          <div className="flex items-start justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-green-900">Betaling fullført</h3>
+              <p className="text-sm text-green-800 mt-1">
+                Fakturaen for {paymentConfirmation.month} er registrert som betalt. Takk!
+              </p>
+            </div>
+            <button
+              onClick={() => setPaymentConfirmation(null)}
+              className="text-green-700 hover:text-green-900"
+              aria-label="Lukk bekreftelse"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+          <div className="mt-4 grid gap-3 md:grid-cols-2 text-sm text-green-900">
+            <div>
+              <span className="font-medium">Totalt:</span> {formatCurrency(paymentConfirmation.total_amount)}
+            </div>
+            <div>
+              <span className="font-medium">Betalt:</span> {formatDate(paymentConfirmation.updated_at)}
+            </div>
+            {paymentConfirmation.stripe_invoice_url && (
+              <div className="md:col-span-2">
+                <a
+                  href={paymentConfirmation.stripe_invoice_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm font-medium text-eok-700 hover:text-eok-800"
+                >
+                  Åpne kvittering i Stripe →
+                </a>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -467,8 +536,20 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
                         {invoice.notes && <div>Notat: {invoice.notes}</div>}
                         {invoice.invoice_requested_at && (
                           <div>
-                            Faktura forespurt {formatDate(invoice.invoice_requested_at)} av {invoice.invoice_requested_by || 'ukjent'}
-                            {invoice.invoice_request_email && ` (sendes til ${invoice.invoice_request_email})`}
+                            Faktura sendt {formatDate(invoice.invoice_requested_at)} av {invoice.invoice_requested_by || 'ukjent'}
+                            {invoice.invoice_request_email && ` (til ${invoice.invoice_request_email})`}
+                          </div>
+                        )}
+                        {invoice.stripe_invoice_url && (
+                          <div>
+                            <a
+                              href={invoice.stripe_invoice_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm font-medium text-eok-700 hover:text-eok-800"
+                            >
+                              Vis Stripe-faktura →
+                            </a>
                           </div>
                         )}
                       </div>
@@ -505,7 +586,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
                         Betal med kort
                       </button>
                       <button
-                        onClick={() => handleInvoiceRequest(invoice)}
+                        onClick={() => openInvoiceModal(invoice)}
                         className="flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
                       >
                         <Send className="h-4 w-4 mr-2" />
@@ -519,6 +600,88 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
           </div>
         )}
       </div>
+
+      {isInvoiceModalOpen && invoiceModalTarget && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-lg">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Send faktura med e-post</h3>
+                <p className="text-sm text-gray-600">Velg hvilken adresse Stripe skal sende fakturaen til.</p>
+              </div>
+              <button
+                onClick={() => {
+                  if (!invoiceModalLoading) {
+                    setIsInvoiceModalOpen(false);
+                    setInvoiceModalTarget(null);
+                  }
+                }}
+                className="text-gray-400 hover:text-gray-600"
+                aria-label="Lukk"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">E-postadresse</label>
+                <input
+                  type="email"
+                  value={invoiceModalEmail}
+                  onChange={event => setInvoiceModalEmail(event.target.value)}
+                  placeholder="epost@klubben.no"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-eok-500 focus:ring-eok-500"
+                  autoFocus
+                  required
+                />
+              </div>
+              <div className="bg-gray-50 rounded-lg p-4 text-sm text-gray-600 space-y-2">
+                <div>
+                  <span className="font-medium text-gray-800">Faktura:</span> {invoiceModalTarget.month}
+                </div>
+                <div>
+                  <span className="font-medium text-gray-800">Totalbeløp:</span> {formatCurrency(invoiceModalTarget.total_amount)}
+                </div>
+                {invoiceModalTarget.due_date && (
+                  <div>
+                    <span className="font-medium text-gray-800">Forfallsdato:</span> {formatDate(invoiceModalTarget.due_date)}
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 p-6 border-t border-gray-200">
+              <button
+                onClick={() => {
+                  if (!invoiceModalLoading) {
+                    setIsInvoiceModalOpen(false);
+                    setInvoiceModalTarget(null);
+                  }
+                }}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                Avbryt
+              </button>
+              <button
+                onClick={handleInvoiceRequestSubmit}
+                disabled={invoiceModalLoading}
+                className="btn-primary flex items-center"
+              >
+                {invoiceModalLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Sender...
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-4 w-4 mr-2" />
+                    Send faktura
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -58,6 +58,10 @@ const ensureTables = async () => {
       invoice_requested_at TIMESTAMP,
       invoice_requested_by TEXT,
       invoice_request_email TEXT,
+      stripe_invoice_id TEXT,
+      stripe_customer_id TEXT,
+      stripe_invoice_url TEXT,
+      stripe_invoice_pdf TEXT,
       created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
       updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW()
     )
@@ -72,6 +76,11 @@ const ensureTables = async () => {
       quantity INTEGER NOT NULL DEFAULT 1
     )
   `);
+
+  await pool.query('ALTER TABLE club_invoices ADD COLUMN IF NOT EXISTS stripe_invoice_id TEXT');
+  await pool.query('ALTER TABLE club_invoices ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT');
+  await pool.query('ALTER TABLE club_invoices ADD COLUMN IF NOT EXISTS stripe_invoice_url TEXT');
+  await pool.query('ALTER TABLE club_invoices ADD COLUMN IF NOT EXISTS stripe_invoice_pdf TEXT');
 };
 
 ensureTables().catch(error => {
@@ -99,6 +108,10 @@ const getInvoices = async (invoiceId = null) => {
         i.created_by_email,
         i.stripe_session_id,
         i.stripe_payment_intent,
+        i.stripe_invoice_id,
+        i.stripe_customer_id,
+        i.stripe_invoice_url,
+        i.stripe_invoice_pdf,
         i.invoice_requested_at,
         i.invoice_requested_by,
         i.invoice_request_email,
@@ -304,6 +317,10 @@ router.post('/checkout/confirm', authenticateUser, async (req, res) => {
 });
 
 router.post('/invoices/:invoiceId/request-invoice', authenticateUser, async (req, res) => {
+  if (!stripeSecretKey) {
+    return res.status(500).json({ error: 'Stripe er ikke konfigurert' });
+  }
+
   const invoiceId = Number(req.params.invoiceId);
   const { contactEmail } = req.body || {};
 
@@ -311,10 +328,89 @@ router.post('/invoices/:invoiceId/request-invoice', authenticateUser, async (req
     return res.status(400).json({ error: 'Ugyldig faktura-ID' });
   }
 
+  const normalizedEmail = String(contactEmail || req.user.email || '').trim();
+  if (!normalizedEmail) {
+    return res.status(400).json({ error: 'Oppgi e-postadressen fakturaen skal sendes til' });
+  }
+
   try {
     const [invoice] = await getInvoices(invoiceId);
     if (!invoice) {
       return res.status(404).json({ error: 'Fant ikke faktura' });
+    }
+
+    if (invoice.status === 'paid') {
+      return res.status(400).json({ error: 'Fakturaen er allerede betalt' });
+    }
+
+    const unixDueDate = invoice.due_date ? Math.floor(new Date(invoice.due_date).getTime() / 1000) : null;
+
+    let stripeInvoiceId = invoice.stripe_invoice_id;
+    let stripeCustomerId = invoice.stripe_customer_id;
+    let stripeInvoiceUrl = invoice.stripe_invoice_url;
+    let stripeInvoicePdf = invoice.stripe_invoice_pdf;
+
+    if (stripeInvoiceId) {
+      if (stripeCustomerId) {
+        const updateCustomerParams = new URLSearchParams();
+        updateCustomerParams.append('email', normalizedEmail);
+        await callStripe('POST', `/customers/${stripeCustomerId}`, updateCustomerParams);
+      }
+
+      const updateInvoiceParams = new URLSearchParams();
+      updateInvoiceParams.append('description', invoice.notes || `Kartarkiv ${invoice.month}`);
+      if (unixDueDate) {
+        updateInvoiceParams.append('due_date', String(unixDueDate));
+      } else {
+        updateInvoiceParams.append('days_until_due', '14');
+      }
+
+      await callStripe('POST', `/invoices/${stripeInvoiceId}`, updateInvoiceParams);
+      await callStripe('POST', `/invoices/${stripeInvoiceId}/send`);
+      const refreshedStripeInvoice = await callStripe('GET', `/invoices/${stripeInvoiceId}`);
+      stripeInvoiceUrl = refreshedStripeInvoice.hosted_invoice_url || null;
+      stripeInvoicePdf = refreshedStripeInvoice.invoice_pdf || null;
+      stripeCustomerId = refreshedStripeInvoice.customer || stripeCustomerId;
+    } else {
+      const customerParams = new URLSearchParams();
+      customerParams.append('email', normalizedEmail);
+      customerParams.append('metadata[invoiceId]', String(invoice.id));
+      const customer = await callStripe('POST', '/customers', customerParams);
+
+      const invoiceParams = new URLSearchParams();
+      invoiceParams.append('customer', customer.id);
+      invoiceParams.append('collection_method', 'send_invoice');
+      invoiceParams.append('auto_advance', 'true');
+      invoiceParams.append('metadata[invoiceId]', String(invoice.id));
+      invoiceParams.append('description', invoice.notes || `Kartarkiv ${invoice.month}`);
+      if (unixDueDate) {
+        invoiceParams.append('due_date', String(unixDueDate));
+      } else {
+        invoiceParams.append('days_until_due', '14');
+      }
+
+      const stripeInvoice = await callStripe('POST', '/invoices', invoiceParams);
+
+      for (const [index, item] of invoice.items.entries()) {
+        const invoiceItemParams = new URLSearchParams();
+        invoiceItemParams.append('invoice', stripeInvoice.id);
+        invoiceItemParams.append('currency', 'nok');
+        invoiceItemParams.append('amount', String(Math.round(item.amount * 100)));
+        invoiceItemParams.append('quantity', String(item.quantity));
+        invoiceItemParams.append('description', item.description);
+        invoiceItemParams.append('metadata[invoiceId]', String(invoice.id));
+        invoiceItemParams.append('metadata[lineItemIndex]', String(index));
+        await callStripe('POST', '/invoiceitems', invoiceItemParams);
+      }
+
+      await callStripe('POST', `/invoices/${stripeInvoice.id}/finalize`);
+      await callStripe('POST', `/invoices/${stripeInvoice.id}/send`);
+      const refreshedStripeInvoice = await callStripe('GET', `/invoices/${stripeInvoice.id}`);
+
+      stripeInvoiceId = refreshedStripeInvoice.id;
+      stripeCustomerId = refreshedStripeInvoice.customer || customer.id;
+      stripeInvoiceUrl = refreshedStripeInvoice.hosted_invoice_url || null;
+      stripeInvoicePdf = refreshedStripeInvoice.invoice_pdf || null;
     }
 
     const { rows } = await pool.query(
@@ -324,11 +420,15 @@ router.post('/invoices/:invoiceId/request-invoice', authenticateUser, async (req
             invoice_requested_at = NOW(),
             invoice_requested_by = $1,
             invoice_request_email = $2,
+            stripe_invoice_id = $3,
+            stripe_customer_id = $4,
+            stripe_invoice_url = $5,
+            stripe_invoice_pdf = $6,
             updated_at = NOW()
-        WHERE id = $3
+        WHERE id = $7
         RETURNING *
       `,
-      [req.user.email, contactEmail || req.user.email || null, invoiceId]
+      [req.user.email, normalizedEmail, stripeInvoiceId, stripeCustomerId, stripeInvoiceUrl, stripeInvoicePdf, invoiceId]
     );
 
     const updated = rows[0];
