@@ -1,32 +1,26 @@
-# syntax=docker/dockerfile:1
+# ✅ Bruk Railway sin Nixpacks base
+FROM ghcr.io/railwayapp/nixpacks:ubuntu-latest
 
-FROM node:20-bookworm-slim AS base
+# Arbeidsmappe
 WORKDIR /app
-ENV NODE_ENV=production
 
-FROM base AS deps
-# Install build tooling required for native dependencies such as sharp
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-        python3 \
-        build-essential \
-    && rm -rf /var/lib/apt/lists/*
-USER node
-# Install server dependencies without dev packages
-COPY --chown=node:node server/package.json ./package.json
-COPY --chown=node:node server/package-lock.json ./package-lock.json
+# ✅ Kopier kun det nødvendige først (for bedre cache)
+COPY package*.json ./
+
+# Installer avhengigheter (bruk ci for ren installasjon)
 RUN npm ci --omit=dev
 
-FROM base AS runner
-# Install runtime libraries only
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-        libvips42 \
-    && rm -rf /var/lib/apt/lists/*
+# ✅ Kopier resten av appen
+COPY . .
 
-COPY --from=deps /app/node_modules ./node_modules
-COPY --chown=node:node server ./
+# ✅ Ikke bruk ARG eller ENV for secrets her!
+# Railway håndterer miljøvariabler automatisk under runtime.
 
-USER node
-EXPOSE 3000
-CMD ["node", "index.js"]
+# Sett path for globale bins
+RUN printf '\nPATH=/app/node_modules/.bin:$PATH' >> /root/.profile
+
+# Eksponer port hvis nødvendig (Railway detekterer ofte automatisk)
+EXPOSE 8080
+
+# ✅ Start kommando
+CMD ["npm", "start"]
