@@ -19,7 +19,9 @@ const isTestEnvironment = process.env.NODE_ENV === 'test';
 // Create axios instance with default config
 const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 30000,
+  // Keep the standard 30s request window for real users, but let automated test
+  // runs fail fast so snapshot jobs do not stall on unreachable services.
+  timeout: isTestEnvironment ? 1000 : 30000,
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',

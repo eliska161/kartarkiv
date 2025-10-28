@@ -394,12 +394,19 @@ router.post('/invoices/:invoiceId/request-invoice', authenticateUser, async (req
       for (const [index, item] of invoice.items.entries()) {
         const invoiceItemParams = new URLSearchParams();
         invoiceItemParams.append('invoice', stripeInvoice.id);
-        invoiceItemParams.append('currency', 'nok');
-        invoiceItemParams.append('amount', String(Math.round(item.amount * 100)));
-        invoiceItemParams.append('quantity', String(item.quantity));
         invoiceItemParams.append('description', item.description);
         invoiceItemParams.append('metadata[invoiceId]', String(invoice.id));
         invoiceItemParams.append('metadata[lineItemIndex]', String(index));
+        invoiceItemParams.append('price_data[currency]', 'nok');
+        invoiceItemParams.append(
+          'price_data[product_data][name]',
+          item.description
+        );
+        invoiceItemParams.append(
+          'price_data[unit_amount]',
+          String(Math.round(item.amount * 100))
+        );
+        invoiceItemParams.append('quantity', String(item.quantity));
         await callStripe('POST', '/invoiceitems', invoiceItemParams);
       }
 
