@@ -17,7 +17,7 @@ type FocusState = {
 } | null;
 
 const AdminDashboard: React.FC = () => {
-  useUser(); // Get Clerk user data
+  const { user } = useUser(); // Get Clerk user data
   const { maps, loading, fetchMaps, deleteMap, fetchMap } = useMap();
   const location = useLocation();
   const navigate = useNavigate();
