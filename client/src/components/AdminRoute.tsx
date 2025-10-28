@@ -22,7 +22,11 @@ const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
   }
 
   // Check if user is admin (from Clerk public metadata)
-  const isAdmin = user?.publicMetadata?.isAdmin || false;
+  const roles = Array.isArray(user?.publicMetadata?.roles)
+    ? user?.publicMetadata?.roles.map(role => String(role).toLowerCase())
+    : [];
+  const isSuperAdmin = roles.includes('superadmin') || Boolean(user?.publicMetadata?.isSuperAdmin);
+  const isAdmin = Boolean(user?.publicMetadata?.isAdmin) || isSuperAdmin;
   
   if (!isAdmin) {
     return <Navigate to="/" replace />;
