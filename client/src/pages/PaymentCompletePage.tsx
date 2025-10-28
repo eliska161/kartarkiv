@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { CheckCircle, AlertTriangle, ArrowLeft, ExternalLink, Loader2 } from 'lucide-react';
 import { apiPost } from '../utils/apiClient';
 import { useToast } from '../contexts/ToastContext';
+import { useAuth } from '../contexts/AuthContext';
 
 interface InvoiceItem {
   id?: number;
@@ -31,6 +32,7 @@ const PaymentCompletePage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { showError, showSuccess } = useToast();
+  const { loading: authLoading, token } = useAuth();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
@@ -40,6 +42,16 @@ const PaymentCompletePage: React.FC = () => {
   const invoiceId = searchParams.get('invoiceId');
 
   useEffect(() => {
+    if (authLoading) {
+      return;
+    }
+
+    if (!token) {
+      setStatus('error');
+      setErrorMessage('Du må være innlogget for å fullføre betalingen. Logg inn og prøv igjen.');
+      return;
+    }
+
     const confirmPayment = async () => {
       if (!sessionId || !invoiceId) {
         setStatus('error');
@@ -71,7 +83,7 @@ const PaymentCompletePage: React.FC = () => {
     };
 
     confirmPayment();
-  }, [invoiceId, sessionId, showError, showSuccess]);
+  }, [authLoading, token, invoiceId, sessionId, showError, showSuccess]);
 
   const handleBackToPayments = () => {
     navigate('/admin', {
