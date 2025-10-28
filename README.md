@@ -22,6 +22,18 @@ This repository contains the Express-based backend under `server/` and a React f
    npm start
    ```
 
+### Stripe configuration
+
+The new betalingsfanen i adminpanelet bruker Stripe Checkout for kortbetalinger. Konfigurer følgende miljøvariabler før du
+starter backend-serveren:
+
+| Variabel | Beskrivelse |
+| --- | --- |
+| `STRIPE_SECRET_KEY` | Stripe sitt hemmelige API-nøkkel (starter vanligvis med `sk_live_` eller `sk_test_`). |
+| `CLIENT_BASE_URL` | URL-en som klienten kjører på lokalt eller i produksjon (brukes for å sende Stripe tilbake til riktig side, f.eks. `http://localhost:3000`). |
+
+Når variablene er satt kan superadministratorer opprette fakturaer, og klubbene kan betale via kort eller be om faktura.
+
 ## Testing
 
 The root package exposes a placeholder test script that currently echoes `No tests specified`. Add tests under the respective workspace (`server/` or `client/`) and wire them into the root `package.json` when available.
