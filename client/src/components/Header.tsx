@@ -10,6 +10,13 @@ const Header: React.FC = () => {
   const navigate = useNavigate();
   const [customLogo, setCustomLogo] = useState<string | null>(null);
 
+  const metadata = (user?.publicMetadata || {}) as { isAdmin?: boolean; isSuperAdmin?: boolean; roles?: any[] };
+  const roles = Array.isArray(metadata.roles)
+    ? metadata.roles.map((role) => String(role).toLowerCase())
+    : [];
+  const isSuperAdmin = roles.includes('superadmin') || Boolean(metadata.isSuperAdmin);
+  const isAdmin = Boolean(metadata.isAdmin) || isSuperAdmin;
+
   useEffect(() => {
     // Try to load custom logo from static files
     const loadCustomLogo = async () => {
@@ -83,7 +90,7 @@ const Header: React.FC = () => {
                   Min Profil
                 </button>
                 
-                {user?.publicMetadata?.isAdmin && (
+                {isAdmin && (
                   <button
                     onClick={() => navigate('/admin')}
                     className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium flex items-center"
@@ -129,7 +136,7 @@ const Header: React.FC = () => {
                       }
                     </div>
                     <div className="text-gray-500">
-                      {user?.publicMetadata?.isAdmin ? 'Administrator' : 'Bruker'}
+                      {isSuperAdmin ? 'Superadministrator' : isAdmin ? 'Administrator' : 'Bruker'}
                     </div>
                   </div>
                 </div>

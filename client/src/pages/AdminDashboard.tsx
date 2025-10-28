@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useUser } from '@clerk/clerk-react';
 import { useMap } from '../contexts/MapContext';
 import Header from '../components/Header';
@@ -8,16 +8,60 @@ import UptimeStatus from '../components/UptimeStatus';
 import ApiLogs from '../components/ApiLogs';
 import AnnouncementManagement from '../components/AnnouncementManagement';
 import ServerRestart from '../components/ServerRestart';
-import { Plus, MapPin, Users, BarChart3, Edit, Trash2, User, Shield, Activity, Megaphone, Server } from 'lucide-react';
+import PaymentManagement from '../components/PaymentManagement';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Plus, MapPin, Users, BarChart3, Edit, Trash2, User, Shield, Activity, Megaphone, Server, CreditCard } from 'lucide-react';
+
+const adminTabs = [
+  { id: 'maps', label: 'Kart', icon: MapPin },
+  { id: 'users', label: 'Brukeradministrasjon', icon: Shield },
+  { id: 'announcements', label: 'Kunngjøringer', icon: Megaphone },
+  { id: 'payments', label: 'Betaling', icon: CreditCard },
+  { id: 'stats', label: 'Statistikk', icon: BarChart3 },
+  { id: 'logs', label: 'API Logs', icon: Activity },
+  { id: 'server', label: 'Server', icon: Server }
+] as const;
+
+type AdminTabId = typeof adminTabs[number]['id'];
+
+const isValidTab = (value: string | null): value is AdminTabId =>
+  Boolean(value && adminTabs.some(tab => tab.id === value));
 
 const AdminDashboard: React.FC = () => {
-  useUser(); // Get Clerk user data
+  const { user } = useUser(); // Get Clerk user data
   const { maps, loading, fetchMaps, deleteMap, fetchMap } = useMap();
-  const [activeTab, setActiveTab] = useState<'maps' | 'users' | 'stats' | 'logs' | 'announcements' | 'server'>('maps');
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const initialTab = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    const queryTab = params.get('tab');
+    return isValidTab(queryTab) ? queryTab : 'maps';
+  }, [location.search]);
+
+  const [activeTab, setActiveTabState] = useState<AdminTabId>(initialTab);
+
+  useEffect(() => {
+    if (activeTab !== initialTab) {
+      setActiveTabState(initialTab);
+    }
+  }, [initialTab, activeTab]);
+
+  const setActiveTab = (tabId: AdminTabId) => {
+    setActiveTabState(tabId);
+    const params = new URLSearchParams(location.search);
+    params.set('tab', tabId);
+    navigate({ pathname: location.pathname, search: params.toString() }, { replace: true });
+  };
   const [showAddMapModal, setShowAddMapModal] = useState(false);
   const [editingMap, setEditingMap] = useState<any>(null);
   const [selectedMaps, setSelectedMaps] = useState<Set<number>>(new Set());
   const [bulkActionMode, setBulkActionMode] = useState(false);
+
+  const roles = Array.isArray(user?.publicMetadata?.roles)
+    ? (user?.publicMetadata?.roles as any[]).map(role => String(role).toLowerCase())
+    : [];
+  const isSuperAdmin = roles.includes('superadmin') || Boolean(user?.publicMetadata?.isSuperAdmin);
 
   const stats = {
     totalMaps: maps.length
@@ -85,14 +129,7 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  const tabs = [
-    { id: 'maps', label: 'Kart', icon: MapPin },
-    { id: 'users', label: 'Brukeradministrasjon', icon: Shield },
-    { id: 'announcements', label: 'Kunngjøringer', icon: Megaphone },
-    { id: 'stats', label: 'Statistikk', icon: BarChart3 },
-    { id: 'logs', label: 'API Logs', icon: Activity },
-    { id: 'server', label: 'Server', icon: Server }
-  ] as const;
+  const tabs = adminTabs;
 
   return (
     <div className="min-h-screen bg-gray-50 pb-16">
@@ -356,6 +393,9 @@ const AdminDashboard: React.FC = () => {
             <div className="p-6">
               <AnnouncementManagement />
             </div>
+          )}
+          {activeTab === 'payments' && (
+            <PaymentManagement isSuperAdmin={isSuperAdmin} />
           )}
           
           {activeTab === 'logs' && (
