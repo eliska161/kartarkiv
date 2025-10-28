@@ -58,6 +58,8 @@ const ensureTables = async () => {
       invoice_requested_at TIMESTAMP,
       invoice_requested_by TEXT,
       invoice_request_email TEXT,
+      invoice_request_name TEXT,
+      invoice_request_phone TEXT,
       stripe_invoice_id TEXT,
       stripe_customer_id TEXT,
       stripe_invoice_url TEXT,
@@ -81,6 +83,8 @@ const ensureTables = async () => {
   await pool.query('ALTER TABLE club_invoices ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT');
   await pool.query('ALTER TABLE club_invoices ADD COLUMN IF NOT EXISTS stripe_invoice_url TEXT');
   await pool.query('ALTER TABLE club_invoices ADD COLUMN IF NOT EXISTS stripe_invoice_pdf TEXT');
+  await pool.query('ALTER TABLE club_invoices ADD COLUMN IF NOT EXISTS invoice_request_name TEXT');
+  await pool.query('ALTER TABLE club_invoices ADD COLUMN IF NOT EXISTS invoice_request_phone TEXT');
 };
 
 ensureTables().catch(error => {
@@ -115,6 +119,8 @@ const getInvoices = async (invoiceId = null) => {
         i.invoice_requested_at,
         i.invoice_requested_by,
         i.invoice_request_email,
+        i.invoice_request_name,
+        i.invoice_request_phone,
         i.created_at,
         i.updated_at,
         COALESCE(
@@ -322,15 +328,22 @@ router.post('/invoices/:invoiceId/request-invoice', authenticateUser, async (req
   }
 
   const invoiceId = Number(req.params.invoiceId);
-  const { contactEmail } = req.body || {};
+  const { contactEmail, contactName, contactPhone } = req.body || {};
 
   if (!Number.isInteger(invoiceId)) {
     return res.status(400).json({ error: 'Ugyldig faktura-ID' });
   }
 
   const normalizedEmail = String(contactEmail || req.user.email || '').trim();
+  const normalizedName = String(contactName || '').trim();
+  const normalizedPhoneRaw = contactPhone == null ? '' : String(contactPhone).trim();
+  const normalizedPhone = normalizedPhoneRaw || null;
   if (!normalizedEmail) {
     return res.status(400).json({ error: 'Oppgi e-postadressen fakturaen skal sendes til' });
+  }
+
+  if (!normalizedName) {
+    return res.status(400).json({ error: 'Oppgi navnet eller bedriften som skal stå på fakturaen' });
   }
 
   try {
@@ -354,6 +367,10 @@ router.post('/invoices/:invoiceId/request-invoice', authenticateUser, async (req
       if (stripeCustomerId) {
         const updateCustomerParams = new URLSearchParams();
         updateCustomerParams.append('email', normalizedEmail);
+        updateCustomerParams.append('name', normalizedName);
+        if (normalizedPhone) {
+          updateCustomerParams.append('phone', normalizedPhone);
+        }
         await callStripe('POST', `/customers/${stripeCustomerId}`, updateCustomerParams);
       }
 
@@ -375,6 +392,10 @@ router.post('/invoices/:invoiceId/request-invoice', authenticateUser, async (req
       const customerParams = new URLSearchParams();
       customerParams.append('email', normalizedEmail);
       customerParams.append('metadata[invoiceId]', String(invoice.id));
+      customerParams.append('name', normalizedName);
+      if (normalizedPhone) {
+        customerParams.append('phone', normalizedPhone);
+      }
       const customer = await callStripe('POST', '/customers', customerParams);
 
       const invoiceParams = new URLSearchParams();
@@ -382,6 +403,10 @@ router.post('/invoices/:invoiceId/request-invoice', authenticateUser, async (req
       invoiceParams.append('collection_method', 'send_invoice');
       invoiceParams.append('auto_advance', 'true');
       invoiceParams.append('metadata[invoiceId]', String(invoice.id));
+      invoiceParams.append('metadata[contactName]', normalizedName);
+      if (normalizedPhone) {
+        invoiceParams.append('metadata[contactPhone]', normalizedPhone);
+      }
       invoiceParams.append('description', invoice.notes || `Kartarkiv ${invoice.month}`);
       if (unixDueDate) {
         invoiceParams.append('due_date', String(unixDueDate));
@@ -427,15 +452,27 @@ router.post('/invoices/:invoiceId/request-invoice', authenticateUser, async (req
             invoice_requested_at = NOW(),
             invoice_requested_by = $1,
             invoice_request_email = $2,
-            stripe_invoice_id = $3,
-            stripe_customer_id = $4,
-            stripe_invoice_url = $5,
-            stripe_invoice_pdf = $6,
+            invoice_request_name = $3,
+            invoice_request_phone = $4,
+            stripe_invoice_id = $5,
+            stripe_customer_id = $6,
+            stripe_invoice_url = $7,
+            stripe_invoice_pdf = $8,
             updated_at = NOW()
-        WHERE id = $7
+        WHERE id = $9
         RETURNING *
       `,
-      [req.user.email, normalizedEmail, stripeInvoiceId, stripeCustomerId, stripeInvoiceUrl, stripeInvoicePdf, invoiceId]
+      [
+        req.user.email,
+        normalizedEmail,
+        normalizedName,
+        normalizedPhone,
+        stripeInvoiceId,
+        stripeCustomerId,
+        stripeInvoiceUrl,
+        stripeInvoicePdf,
+        invoiceId
+      ]
     );
 
     const updated = rows[0];

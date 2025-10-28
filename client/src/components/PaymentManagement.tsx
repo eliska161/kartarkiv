@@ -33,6 +33,8 @@ interface Invoice {
   invoice_requested_at: string | null;
   invoice_requested_by: string | null;
   invoice_request_email: string | null;
+  invoice_request_name: string | null;
+  invoice_request_phone: string | null;
   stripe_invoice_id?: string | null;
   stripe_customer_id?: string | null;
   stripe_invoice_url?: string | null;
@@ -76,6 +78,8 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
   const [paymentConfirmation, setPaymentConfirmation] = useState<Invoice | null>(null);
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
   const [invoiceModalEmail, setInvoiceModalEmail] = useState('');
+  const [invoiceModalName, setInvoiceModalName] = useState('');
+  const [invoiceModalPhone, setInvoiceModalPhone] = useState('');
   const [invoiceModalLoading, setInvoiceModalLoading] = useState(false);
   const [invoiceModalTarget, setInvoiceModalTarget] = useState<Invoice | null>(null);
   const hasHandledCheckoutRef = useRef(false);
@@ -276,8 +280,21 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
   const openInvoiceModal = (invoice: Invoice) => {
     const suggestedEmail = invoice.invoice_request_email || invoice.invoice_requested_by || '';
     setInvoiceModalEmail(suggestedEmail);
+    setInvoiceModalName(invoice.invoice_request_name || '');
+    setInvoiceModalPhone(invoice.invoice_request_phone || '');
     setInvoiceModalTarget(invoice);
     setIsInvoiceModalOpen(true);
+  };
+
+  const closeInvoiceModal = () => {
+    if (invoiceModalLoading) {
+      return;
+    }
+    setIsInvoiceModalOpen(false);
+    setInvoiceModalTarget(null);
+    setInvoiceModalEmail('');
+    setInvoiceModalName('');
+    setInvoiceModalPhone('');
   };
 
   const handleInvoiceRequestSubmit = async () => {
@@ -285,7 +302,15 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
       return;
     }
 
+    const name = invoiceModalName.trim();
     const email = invoiceModalEmail.trim();
+    const phone = invoiceModalPhone.trim();
+
+    if (!name) {
+      showError('Navn mangler', 'Angi navnet eller bedriften som skal stå på fakturaen.');
+      return;
+    }
+
     if (!email) {
       showError('E-postadresse mangler', 'Angi e-postadressen fakturaen skal sendes til.');
       return;
@@ -294,7 +319,9 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
     setInvoiceModalLoading(true);
     try {
       const { data } = (await apiPost(`/api/payments/invoices/${invoiceModalTarget.id}/request-invoice`, {
-        contactEmail: email
+        contactEmail: email,
+        contactName: name,
+        contactPhone: phone || undefined
       })) as AxiosResponse<{ invoice: Invoice }>;
       showSuccess('Faktura sendt', 'Stripe har sendt fakturaen til valgt e-post.');
       setInvoices(prev => prev.map(item => (item.id === invoiceModalTarget.id ? data.invoice : item)));
@@ -610,12 +637,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
                 <p className="text-sm text-gray-600">Velg hvilken adresse Stripe skal sende fakturaen til.</p>
               </div>
               <button
-                onClick={() => {
-                  if (!invoiceModalLoading) {
-                    setIsInvoiceModalOpen(false);
-                    setInvoiceModalTarget(null);
-                  }
-                }}
+                onClick={closeInvoiceModal}
                 className="text-gray-400 hover:text-gray-600"
                 aria-label="Lukk"
               >
@@ -624,6 +646,18 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
             </div>
             <div className="p-6 space-y-4">
               <div>
+                <label className="block text-sm font-medium text-gray-700">Navn eller bedrift</label>
+                <input
+                  type="text"
+                  value={invoiceModalName}
+                  onChange={event => setInvoiceModalName(event.target.value)}
+                  placeholder="Kartklubben AS"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-eok-500 focus:ring-eok-500"
+                  autoFocus
+                  required
+                />
+              </div>
+              <div>
                 <label className="block text-sm font-medium text-gray-700">E-postadresse</label>
                 <input
                   type="email"
@@ -631,8 +665,17 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
                   onChange={event => setInvoiceModalEmail(event.target.value)}
                   placeholder="epost@klubben.no"
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-eok-500 focus:ring-eok-500"
-                  autoFocus
                   required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Telefonnummer (valgfritt)</label>
+                <input
+                  type="tel"
+                  value={invoiceModalPhone}
+                  onChange={event => setInvoiceModalPhone(event.target.value)}
+                  placeholder="+47 12 34 56 78"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-eok-500 focus:ring-eok-500"
                 />
               </div>
               <div className="bg-gray-50 rounded-lg p-4 text-sm text-gray-600 space-y-2">
@@ -651,12 +694,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
             </div>
             <div className="flex justify-end gap-3 p-6 border-t border-gray-200">
               <button
-                onClick={() => {
-                  if (!invoiceModalLoading) {
-                    setIsInvoiceModalOpen(false);
-                    setInvoiceModalTarget(null);
-                  }
-                }}
+                onClick={closeInvoiceModal}
                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
               >
                 Avbryt
