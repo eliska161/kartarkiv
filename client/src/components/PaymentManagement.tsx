@@ -134,8 +134,6 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const success = params.get('success');
-    const sessionId = params.get('session_id');
     const invoiceId = params.get('invoiceId');
     const cancelled = params.get('cancelled');
 
@@ -145,37 +143,34 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
       window.history.replaceState({}, document.title, window.location.pathname);
       return;
     }
+  }, [showWarning]);
 
-    if (success === 'true' && sessionId && invoiceId && !hasHandledCheckoutRef.current) {
-      const confirmPayment = async () => {
-        try {
-          showInfo('Bekrefter betaling...');
-          const { data } = (await apiPost('/api/payments/checkout/confirm', {
-            sessionId,
-            invoiceId: Number(invoiceId)
-          })) as AxiosResponse<{ invoice: Invoice }>;
-
-          const refreshed = await fetchInvoices(false);
-          const updatedInvoice =
-            refreshed.find(item => item.id === Number(invoiceId)) || data?.invoice || null;
-
-          if (updatedInvoice) {
-            setPaymentConfirmation(updatedInvoice);
-          }
-
-          showSuccess('Betaling fullført', 'Fakturaen er registrert som betalt.');
-        } catch (err: any) {
-          console.error('Kunne ikke bekrefte betaling', err);
-          showError('Kunne ikke bekrefte betaling', err.response?.data?.error);
-        } finally {
-          hasHandledCheckoutRef.current = true;
-          window.history.replaceState({}, document.title, window.location.pathname);
-        }
-      };
-
-      confirmPayment();
+  useEffect(() => {
+    const storedConfirmation = sessionStorage.getItem('kartarkiv:lastPaidInvoice');
+    if (!storedConfirmation) {
+      return;
     }
-  }, [fetchInvoices, showError, showInfo, showSuccess, showWarning]);
+
+    try {
+      const parsed: Invoice = JSON.parse(storedConfirmation);
+      setPaymentConfirmation(parsed);
+    } catch (error) {
+      console.warn('⚠️ Klarte ikke å lese bekreftet betaling fra sessionStorage', error);
+    } finally {
+      sessionStorage.removeItem('kartarkiv:lastPaidInvoice');
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!paymentConfirmation) {
+      return;
+    }
+
+    const match = invoices.find(item => item.id === paymentConfirmation.id);
+    if (match && match.updated_at !== paymentConfirmation.updated_at) {
+      setPaymentConfirmation(match);
+    }
+  }, [invoices, paymentConfirmation]);
 
   const handleItemChange = (index: number, field: keyof InvoiceItemDraft, value: string | number) => {
     setForm(prev => {

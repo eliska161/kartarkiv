@@ -19,6 +19,7 @@ interface AuthContextType {
   register: (userData: RegisterData) => Promise<void>;
   logout: () => void;
   loading: boolean;
+  sessionExpired: boolean;
 }
 
 interface RegisterData {
@@ -49,6 +50,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [sessionExpired, setSessionExpired] = useState(false);
 
   // Configure axios defaults with Clerk token
   useEffect(() => {
@@ -58,6 +60,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           const token = await getToken();
           if (token) {
             setToken(token);
+            setSessionExpired(false);
             axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
             
             // Set user data from Clerk
@@ -83,6 +86,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // User is not signed in
         setUser(null);
         setToken(null);
+        setSessionExpired(false);
         delete axios.defaults.headers.common['Authorization'];
       }
       setLoading(!isLoaded);
@@ -143,8 +147,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           } catch (refreshError) {
             console.error('Failed to refresh token:', refreshError);
             processQueue(refreshError, null);
-            // Redirect to login
-            window.location.href = '/login';
+            setSessionExpired(true);
+            setUser(null);
+            setToken(null);
+            delete axios.defaults.headers.common['Authorization'];
             return Promise.reject(refreshError);
           } finally {
             isRefreshing = false;
@@ -173,6 +179,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Clerk handles logout
     setUser(null);
     setToken(null);
+    setSessionExpired(false);
     delete axios.defaults.headers.common['Authorization'];
   };
 
@@ -182,7 +189,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     login,
     register,
     logout,
-    loading
+    loading,
+    sessionExpired
   };
 
   return (

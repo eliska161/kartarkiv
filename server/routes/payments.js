@@ -143,7 +143,7 @@ const getInvoices = async (invoiceId = null) => {
     params
   );
 
-  return rows.map(row => {
+  const invoices = rows.map(row => {
     const items = Array.isArray(row.items) ? row.items : [];
 
     return {
@@ -155,6 +155,53 @@ const getInvoices = async (invoiceId = null) => {
       }))
     };
   });
+
+  if (!stripeSecretKey) {
+    return invoices;
+  }
+
+  const syncedInvoices = [];
+
+  for (const invoice of invoices) {
+    if (invoice.status !== 'paid' && invoice.stripe_invoice_id) {
+      try {
+        const stripeInvoice = await callStripe('GET', `/invoices/${invoice.stripe_invoice_id}`);
+
+        const isPaid = stripeInvoice?.status === 'paid' || Boolean(stripeInvoice?.paid);
+
+        if (isPaid) {
+          const hostedUrl = stripeInvoice.hosted_invoice_url || null;
+          const pdfUrl = stripeInvoice.invoice_pdf || null;
+
+          const { rows: updateRows } = await pool.query(
+            `
+              UPDATE club_invoices
+              SET status = 'paid',
+                  stripe_invoice_url = $1,
+                  stripe_invoice_pdf = $2,
+                  updated_at = NOW()
+              WHERE id = $3
+              RETURNING updated_at
+            `,
+            [hostedUrl, pdfUrl, invoice.id]
+          );
+
+          invoice.status = 'paid';
+          invoice.stripe_invoice_url = hostedUrl;
+          invoice.stripe_invoice_pdf = pdfUrl;
+          if (updateRows[0]?.updated_at) {
+            invoice.updated_at = updateRows[0].updated_at;
+          }
+        }
+      } catch (statusError) {
+        console.warn('⚠️ Could not refresh Stripe invoice status:', statusError);
+      }
+    }
+
+    syncedInvoices.push(invoice);
+  }
+
+  return syncedInvoices;
 };
 
 const createStripeInvoiceForClub = async (invoice, { email, name, phone }) => {
@@ -312,7 +359,10 @@ router.post('/invoices/:invoiceId/checkout', authenticateUser, async (req, res) 
     const params = new URLSearchParams();
     params.append('mode', 'payment');
     params.append('customer_email', req.user.email || '');
-    params.append('success_url', `${clientBaseUrl}/admin/betaling?success=true&invoiceId=${invoice.id}&session_id={CHECKOUT_SESSION_ID}`);
+    params.append(
+      'success_url',
+      `${clientBaseUrl}/admin/betaling/fullfort?invoiceId=${invoice.id}&session_id={CHECKOUT_SESSION_ID}`
+    );
     params.append('cancel_url', `${clientBaseUrl}/admin/betaling?cancelled=true&invoiceId=${invoice.id}`);
     params.append('metadata[invoiceId]', String(invoice.id));
     params.append('payment_method_types[]', 'card');
