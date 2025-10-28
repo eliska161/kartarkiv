@@ -157,6 +157,63 @@ const getInvoices = async (invoiceId = null) => {
   });
 };
 
+const createStripeInvoiceForClub = async (invoice, { email, name, phone }) => {
+  const customerParams = new URLSearchParams();
+  customerParams.append('email', email);
+  customerParams.append('metadata[invoiceId]', String(invoice.id));
+  customerParams.append('name', name);
+  if (phone) {
+    customerParams.append('phone', phone);
+  }
+
+  const customer = await callStripe('POST', '/customers', customerParams);
+
+  const invoiceParams = new URLSearchParams();
+  invoiceParams.append('customer', customer.id);
+  invoiceParams.append('collection_method', 'send_invoice');
+  invoiceParams.append('auto_advance', 'true');
+  invoiceParams.append('metadata[invoiceId]', String(invoice.id));
+  invoiceParams.append('metadata[contactName]', name);
+  if (phone) {
+    invoiceParams.append('metadata[contactPhone]', phone);
+  }
+  invoiceParams.append('description', invoice.notes || `Kartarkiv ${invoice.month}`);
+
+  const unixDueDate = invoice.due_date ? Math.floor(new Date(invoice.due_date).getTime() / 1000) : null;
+  if (unixDueDate) {
+    invoiceParams.append('due_date', String(unixDueDate));
+  } else {
+    invoiceParams.append('days_until_due', '14');
+  }
+
+  const stripeInvoice = await callStripe('POST', '/invoices', invoiceParams);
+
+  for (const [index, item] of invoice.items.entries()) {
+    const invoiceItemParams = new URLSearchParams();
+    invoiceItemParams.append('invoice', stripeInvoice.id);
+    invoiceItemParams.append('description', item.description);
+    invoiceItemParams.append('metadata[invoiceId]', String(invoice.id));
+    invoiceItemParams.append('metadata[lineItemIndex]', String(index));
+    invoiceItemParams.append('price_data[currency]', 'nok');
+    invoiceItemParams.append('price_data[product_data][name]', item.description);
+    invoiceItemParams.append('price_data[unit_amount]', String(Math.round(item.amount * 100)));
+    invoiceItemParams.append('quantity', String(item.quantity));
+    await callStripe('POST', '/invoiceitems', invoiceItemParams);
+  }
+
+  await callStripe('POST', `/invoices/${stripeInvoice.id}/finalize`);
+  await callStripe('POST', `/invoices/${stripeInvoice.id}/send`);
+
+  const refreshedStripeInvoice = await callStripe('GET', `/invoices/${stripeInvoice.id}`);
+
+  return {
+    stripeInvoiceId: refreshedStripeInvoice.id,
+    stripeCustomerId: refreshedStripeInvoice.customer || customer.id,
+    stripeInvoiceUrl: refreshedStripeInvoice.hosted_invoice_url || null,
+    stripeInvoicePdf: refreshedStripeInvoice.invoice_pdf || null
+  };
+};
+
 router.get('/invoices', authenticateUser, async (req, res) => {
   try {
     const invoices = await getInvoices();
@@ -363,18 +420,51 @@ router.post('/invoices/:invoiceId/request-invoice', authenticateUser, async (req
     let stripeInvoiceUrl = invoice.stripe_invoice_url;
     let stripeInvoicePdf = invoice.stripe_invoice_pdf;
 
+    let existingStripeInvoice = null;
     if (stripeInvoiceId) {
-      if (stripeCustomerId) {
-        const updateCustomerParams = new URLSearchParams();
-        updateCustomerParams.append('email', normalizedEmail);
-        updateCustomerParams.append('name', normalizedName);
-        if (normalizedPhone) {
-          updateCustomerParams.append('phone', normalizedPhone);
+      try {
+        existingStripeInvoice = await callStripe('GET', `/invoices/${stripeInvoiceId}`);
+      } catch (fetchError) {
+        console.warn('⚠️ Could not fetch existing Stripe invoice, recreating it instead:', fetchError);
+        existingStripeInvoice = null;
+        stripeInvoiceId = null;
+      }
+    }
+
+    if (!stripeCustomerId && existingStripeInvoice && existingStripeInvoice.customer) {
+      stripeCustomerId = existingStripeInvoice.customer;
+    }
+
+    if (!stripeInvoiceId || !existingStripeInvoice || !stripeCustomerId) {
+      if (stripeInvoiceId && existingStripeInvoice && !existingStripeInvoice.customer) {
+        try {
+          await callStripe('POST', `/invoices/${stripeInvoiceId}/void`);
+        } catch (voidError) {
+          console.warn('⚠️ Failed to void incomplete Stripe invoice before recreating:', voidError);
         }
-        await callStripe('POST', `/customers/${stripeCustomerId}`, updateCustomerParams);
       }
 
+      const createdInvoice = await createStripeInvoiceForClub(invoice, {
+        email: normalizedEmail,
+        name: normalizedName,
+        phone: normalizedPhone
+      });
+
+      stripeInvoiceId = createdInvoice.stripeInvoiceId;
+      stripeCustomerId = createdInvoice.stripeCustomerId;
+      stripeInvoiceUrl = createdInvoice.stripeInvoiceUrl;
+      stripeInvoicePdf = createdInvoice.stripeInvoicePdf;
+    } else {
+      const customerParams = new URLSearchParams();
+      customerParams.append('email', normalizedEmail);
+      customerParams.append('name', normalizedName);
+      if (normalizedPhone) {
+        customerParams.append('phone', normalizedPhone);
+      }
+      await callStripe('POST', `/customers/${stripeCustomerId}`, customerParams);
+
       const updateInvoiceParams = new URLSearchParams();
+      updateInvoiceParams.append('customer', stripeCustomerId);
       updateInvoiceParams.append('description', invoice.notes || `Kartarkiv ${invoice.month}`);
       if (unixDueDate) {
         updateInvoiceParams.append('due_date', String(unixDueDate));
@@ -388,61 +478,6 @@ router.post('/invoices/:invoiceId/request-invoice', authenticateUser, async (req
       stripeInvoiceUrl = refreshedStripeInvoice.hosted_invoice_url || null;
       stripeInvoicePdf = refreshedStripeInvoice.invoice_pdf || null;
       stripeCustomerId = refreshedStripeInvoice.customer || stripeCustomerId;
-    } else {
-      const customerParams = new URLSearchParams();
-      customerParams.append('email', normalizedEmail);
-      customerParams.append('metadata[invoiceId]', String(invoice.id));
-      customerParams.append('name', normalizedName);
-      if (normalizedPhone) {
-        customerParams.append('phone', normalizedPhone);
-      }
-      const customer = await callStripe('POST', '/customers', customerParams);
-
-      const invoiceParams = new URLSearchParams();
-      invoiceParams.append('customer', customer.id);
-      invoiceParams.append('collection_method', 'send_invoice');
-      invoiceParams.append('auto_advance', 'true');
-      invoiceParams.append('metadata[invoiceId]', String(invoice.id));
-      invoiceParams.append('metadata[contactName]', normalizedName);
-      if (normalizedPhone) {
-        invoiceParams.append('metadata[contactPhone]', normalizedPhone);
-      }
-      invoiceParams.append('description', invoice.notes || `Kartarkiv ${invoice.month}`);
-      if (unixDueDate) {
-        invoiceParams.append('due_date', String(unixDueDate));
-      } else {
-        invoiceParams.append('days_until_due', '14');
-      }
-
-      const stripeInvoice = await callStripe('POST', '/invoices', invoiceParams);
-
-      for (const [index, item] of invoice.items.entries()) {
-        const invoiceItemParams = new URLSearchParams();
-        invoiceItemParams.append('invoice', stripeInvoice.id);
-        invoiceItemParams.append('description', item.description);
-        invoiceItemParams.append('metadata[invoiceId]', String(invoice.id));
-        invoiceItemParams.append('metadata[lineItemIndex]', String(index));
-        invoiceItemParams.append('price_data[currency]', 'nok');
-        invoiceItemParams.append(
-          'price_data[product_data][name]',
-          item.description
-        );
-        invoiceItemParams.append(
-          'price_data[unit_amount]',
-          String(Math.round(item.amount * 100))
-        );
-        invoiceItemParams.append('quantity', String(item.quantity));
-        await callStripe('POST', '/invoiceitems', invoiceItemParams);
-      }
-
-      await callStripe('POST', `/invoices/${stripeInvoice.id}/finalize`);
-      await callStripe('POST', `/invoices/${stripeInvoice.id}/send`);
-      const refreshedStripeInvoice = await callStripe('GET', `/invoices/${stripeInvoice.id}`);
-
-      stripeInvoiceId = refreshedStripeInvoice.id;
-      stripeCustomerId = refreshedStripeInvoice.customer || customer.id;
-      stripeInvoiceUrl = refreshedStripeInvoice.hosted_invoice_url || null;
-      stripeInvoicePdf = refreshedStripeInvoice.invoice_pdf || null;
     }
 
     const { rows } = await pool.query(

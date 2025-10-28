@@ -327,6 +327,9 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
       setInvoices(prev => prev.map(item => (item.id === invoiceModalTarget.id ? data.invoice : item)));
       setIsInvoiceModalOpen(false);
       setInvoiceModalTarget(null);
+      setInvoiceModalEmail('');
+      setInvoiceModalName('');
+      setInvoiceModalPhone('');
     } catch (err: any) {
       console.error('Kunne ikke forespørre faktura', err);
       showError('Kunne ikke sende faktura', err.response?.data?.error);
