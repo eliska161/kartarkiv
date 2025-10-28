@@ -10,6 +10,7 @@ const clientBaseUrl = process.env.CLIENT_BASE_URL || 'http://localhost:3000';
 const stripeApiBase = 'https://api.stripe.com/v1';
 
 const STRIPE_FEE_DESCRIPTION = 'Stripe-gebyr';
+const STRIPE_LOCALE = 'nb';
 const STRIPE_FEE_PERCENT_NUMERATOR = 24; // 2.4%
 const STRIPE_FEE_PERCENT_DENOMINATOR = 1000;
 const STRIPE_FEE_FIXED_CENTS = 200; // NOK 2,00
@@ -339,6 +340,7 @@ const createStripeInvoiceForClub = async (invoice, { email, name, phone }) => {
   customerParams.append('email', email);
   customerParams.append('metadata[invoiceId]', String(invoice.id));
   customerParams.append('name', name);
+  customerParams.append('preferred_locales[]', STRIPE_LOCALE);
   if (phone) {
     customerParams.append('phone', phone);
   }
@@ -489,6 +491,7 @@ router.post('/invoices/:invoiceId/checkout', authenticateUser, async (req, res) 
     const params = new URLSearchParams();
     params.append('mode', 'payment');
     params.append('customer_email', req.user.email || '');
+    params.append('locale', STRIPE_LOCALE);
     params.append(
       'success_url',
       `${clientBaseUrl}/admin/betaling/fullfort?invoiceId=${invoice.id}&session_id={CHECKOUT_SESSION_ID}`
@@ -642,6 +645,7 @@ router.post('/invoices/:invoiceId/request-invoice', authenticateUser, async (req
       const customerParams = new URLSearchParams();
       customerParams.append('email', normalizedEmail);
       customerParams.append('name', normalizedName);
+      customerParams.append('preferred_locales[]', STRIPE_LOCALE);
       if (normalizedPhone) {
         customerParams.append('phone', normalizedPhone);
       }
