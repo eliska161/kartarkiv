@@ -19,6 +19,7 @@ interface InvoiceItem {
   description: string;
   amount: number;
   quantity: number;
+  amount_cents?: number;
 }
 
 interface Invoice {
@@ -55,6 +56,21 @@ const statusConfig: Record<Invoice['status'], { label: string; className: string
     label: 'Betalt',
     className: 'bg-green-100 text-green-800'
   }
+};
+
+const STRIPE_FEE_PERCENT_NUMERATOR = 24;
+const STRIPE_FEE_PERCENT_DENOMINATOR = 1000; // 2.4%
+const STRIPE_FEE_FIXED = 2; // NOK 2,00
+
+const calculateStripeFee = (baseAmount: number) => {
+  if (!baseAmount || baseAmount <= 0) {
+    return 0;
+  }
+
+  const baseCents = Math.round(baseAmount * 100);
+  const percentFeeCents = Math.round((baseCents * STRIPE_FEE_PERCENT_NUMERATOR) / STRIPE_FEE_PERCENT_DENOMINATOR);
+  const totalFeeCents = percentFeeCents + STRIPE_FEE_FIXED * 100;
+  return totalFeeCents / 100;
 };
 
 const formatCurrency = (amount: number) =>
@@ -98,12 +114,15 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
     ] as InvoiceItemDraft[]
   });
 
-  const formTotal = useMemo(() => {
+  const formBaseTotal = useMemo(() => {
     return form.items.reduce((sum, item) => {
       const amount = parseFloat(item.amount.replace(',', '.')) || 0;
       return sum + amount * (item.quantity || 1);
     }, 0);
   }, [form.items]);
+
+  const formStripeFee = useMemo(() => calculateStripeFee(formBaseTotal), [formBaseTotal]);
+  const formTotal = useMemo(() => formBaseTotal + formStripeFee, [formBaseTotal, formStripeFee]);
 
   const fetchInvoices = useCallback(async (withSpinner = true): Promise<Invoice[]> => {
     if (withSpinner) {
@@ -495,9 +514,13 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
               </div>
             </div>
 
-            <div className="flex items-center justify-between">
-              <div className="text-sm text-gray-600">
-                Totalbeløp: <span className="font-semibold text-gray-900">{formatCurrency(formTotal)}</span>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="text-sm text-gray-600 space-y-1">
+                <div>Sum uten gebyr: {formatCurrency(formBaseTotal)}</div>
+                <div>Stripe-gebyr (2,4% + 2,00 kr): {formatCurrency(formStripeFee)}</div>
+                <div className="font-semibold text-gray-900">
+                  Totalt (inkl. gebyr): {formatCurrency(formTotal)}
+                </div>
               </div>
               <button
                 type="submit"
@@ -599,6 +622,9 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
                         </div>
                       ))}
                     </div>
+                    <p className="text-xs text-gray-500 mt-2">
+                      Totalsummen inkluderer et automatisk Stripe-gebyr (2,4% + 2,00 kr).
+                    </p>
                   </div>
 
                   {invoice.status !== 'paid' && (

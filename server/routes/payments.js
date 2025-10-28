@@ -9,6 +9,11 @@ const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
 const clientBaseUrl = process.env.CLIENT_BASE_URL || 'http://localhost:3000';
 const stripeApiBase = 'https://api.stripe.com/v1';
 
+const STRIPE_FEE_DESCRIPTION = 'Stripe-gebyr';
+const STRIPE_FEE_PERCENT_NUMERATOR = 24; // 2.4%
+const STRIPE_FEE_PERCENT_DENOMINATOR = 1000;
+const STRIPE_FEE_FIXED_CENTS = 200; // NOK 2,00
+
 const callStripe = async (method, path, params = null) => {
   if (!stripeSecretKey) {
     throw new Error('Stripe er ikke konfigurert');
@@ -40,6 +45,127 @@ const callStripe = async (method, path, params = null) => {
   }
 
   return response.json();
+};
+
+const calculateStripeFeeCents = totalWithoutFeeCents => {
+  if (!totalWithoutFeeCents || totalWithoutFeeCents <= 0) {
+    return 0;
+  }
+
+  const percentFee = Math.round((totalWithoutFeeCents * STRIPE_FEE_PERCENT_NUMERATOR) / STRIPE_FEE_PERCENT_DENOMINATOR);
+  return percentFee + STRIPE_FEE_FIXED_CENTS;
+};
+
+const ensureStripeFeeForInvoice = async invoice => {
+  if (!invoice || !Array.isArray(invoice.items)) {
+    return invoice;
+  }
+
+  const normalizedDescription = STRIPE_FEE_DESCRIPTION.toLowerCase();
+  let feeItem = invoice.items.find(item => (item.description || '').toLowerCase() === normalizedDescription) || null;
+
+  const itemsWithoutFee = feeItem
+    ? invoice.items.filter(item => item !== feeItem)
+    : invoice.items;
+
+  const baseTotalCents = itemsWithoutFee.reduce((sum, item) => {
+    const amountCents = Number.isFinite(item.amount_cents)
+      ? Number(item.amount_cents)
+      : Math.round(Number(item.amount || 0) * 100);
+    const quantity = Number.isFinite(item.quantity) && item.quantity > 0 ? Number(item.quantity) : 1;
+    return sum + amountCents * quantity;
+  }, 0);
+
+  if (baseTotalCents <= 0) {
+    return invoice;
+  }
+
+  const desiredFeeCents = calculateStripeFeeCents(baseTotalCents);
+  if (desiredFeeCents <= 0) {
+    return invoice;
+  }
+
+  if (!feeItem) {
+    const { rows: feeRows } = await pool.query(
+      `
+        WITH existing AS (
+          SELECT id, amount_cents, quantity
+          FROM club_invoice_items
+          WHERE invoice_id = $1 AND description = $2
+          LIMIT 1
+        ),
+        inserted AS (
+          INSERT INTO club_invoice_items (invoice_id, description, amount_cents, quantity)
+          SELECT $1, $2, $3, 1
+          WHERE NOT EXISTS (SELECT 1 FROM existing)
+          RETURNING id, amount_cents, quantity, TRUE AS inserted
+        )
+        SELECT id, amount_cents, quantity, inserted
+        FROM inserted
+        UNION ALL
+        SELECT id, amount_cents, quantity, FALSE AS inserted
+        FROM existing
+        LIMIT 1
+      `,
+      [invoice.id, STRIPE_FEE_DESCRIPTION, desiredFeeCents]
+    );
+
+    const feeRow = feeRows[0];
+    if (!feeRow) {
+      return invoice;
+    }
+
+    if (!feeRow.inserted && (Number(feeRow.amount_cents) !== desiredFeeCents || Number(feeRow.quantity) !== 1)) {
+      await pool.query(
+        `UPDATE club_invoice_items SET amount_cents = $1, quantity = 1 WHERE id = $2`,
+        [desiredFeeCents, feeRow.id]
+      );
+    }
+
+    feeItem = {
+      id: feeRow.id,
+      description: STRIPE_FEE_DESCRIPTION,
+      amount_cents: desiredFeeCents,
+      amount: desiredFeeCents / 100,
+      quantity: 1
+    };
+
+    invoice.items.push(feeItem);
+  } else {
+    const needsUpdate =
+      Number(feeItem.amount_cents) !== desiredFeeCents || Number(feeItem.quantity) !== 1;
+
+    if (needsUpdate) {
+      await pool.query(
+        `UPDATE club_invoice_items SET amount_cents = $1, quantity = 1 WHERE id = $2`,
+        [desiredFeeCents, feeItem.id]
+      );
+      feeItem.amount_cents = desiredFeeCents;
+    }
+
+    feeItem.amount = desiredFeeCents / 100;
+    feeItem.quantity = 1;
+  }
+
+  const targetTotalCents = baseTotalCents + desiredFeeCents;
+
+  const { rows: updatedRows } = await pool.query(
+    `
+      UPDATE club_invoices
+      SET total_amount_cents = $1,
+          updated_at = CASE WHEN total_amount_cents = $1 THEN updated_at ELSE NOW() END
+      WHERE id = $2
+      RETURNING total_amount_cents, updated_at
+    `,
+    [targetTotalCents, invoice.id]
+  );
+
+  invoice.total_amount = (updatedRows[0]?.total_amount_cents ?? targetTotalCents) / 100;
+  if (updatedRows[0]?.updated_at) {
+    invoice.updated_at = updatedRows[0].updated_at;
+  }
+
+  return invoice;
 };
 
 const ensureTables = async () => {
@@ -143,10 +269,11 @@ const getInvoices = async (invoiceId = null) => {
     params
   );
 
-  const invoices = rows.map(row => {
-    const items = Array.isArray(row.items) ? row.items : [];
+  const invoices = [];
 
-    return {
+  for (const row of rows) {
+    const items = Array.isArray(row.items) ? row.items : [];
+    const invoice = {
       ...row,
       total_amount: row.total_amount_cents / 100,
       items: items.map(item => ({
@@ -154,7 +281,10 @@ const getInvoices = async (invoiceId = null) => {
         amount: item.amount_cents / 100
       }))
     };
-  });
+
+    await ensureStripeFeeForInvoice(invoice);
+    invoices.push(invoice);
+  }
 
   if (!stripeSecretKey) {
     return invoices;

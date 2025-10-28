@@ -12,10 +12,8 @@ const SessionExpiredScreen: React.FC = () => {
           </div>
         </div>
         <div className="space-y-2">
-          <h1 className="text-2xl font-semibold text-gray-900">Økt utløpt</h1>
-          <p className="text-gray-600">
-            Økten din har utløpt. Vennligst logg inn igjen med Clerk for å fortsette.
-          </p>
+          <h1 className="text-2xl font-semibold text-gray-900">Økt Utløpt</h1>
+          <p className="text-gray-600">Økt utløpt, vennligst logg inn igjen med en login fra Clerk.</p>
         </div>
         <div>
           <SignInButton mode="modal">
