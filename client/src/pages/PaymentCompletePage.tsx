@@ -74,7 +74,10 @@ const PaymentCompletePage: React.FC = () => {
   }, [invoiceId, sessionId, showError, showSuccess]);
 
   const handleBackToPayments = () => {
-    navigate('/admin?tab=payments', { replace: true });
+    navigate('/admin', {
+      replace: true,
+      state: { focusTab: 'payments', invoiceId: invoice?.id || null }
+    });
   };
 
   return (

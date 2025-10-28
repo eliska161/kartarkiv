@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useUser } from '@clerk/clerk-react';
 import { useMap } from '../contexts/MapContext';
 import Header from '../components/Header';
@@ -10,58 +10,37 @@ import AnnouncementManagement from '../components/AnnouncementManagement';
 import ServerRestart from '../components/ServerRestart';
 import PaymentManagement from '../components/PaymentManagement';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Plus, MapPin, Users, BarChart3, Edit, Trash2, User, Shield, Activity, Megaphone, Server, CreditCard } from 'lucide-react';
+import { Plus, MapPin, BarChart3, Edit, Trash2, Shield, Activity, Megaphone, Server, CreditCard } from 'lucide-react';
 
-const adminTabs = [
-  { id: 'maps', label: 'Kart', icon: MapPin },
-  { id: 'users', label: 'Brukeradministrasjon', icon: Shield },
-  { id: 'announcements', label: 'Kunngjøringer', icon: Megaphone },
-  { id: 'payments', label: 'Betaling', icon: CreditCard },
-  { id: 'stats', label: 'Statistikk', icon: BarChart3 },
-  { id: 'logs', label: 'API Logs', icon: Activity },
-  { id: 'server', label: 'Server', icon: Server }
-] as const;
-
-type AdminTabId = typeof adminTabs[number]['id'];
-
-const isValidTab = (value: string | null): value is AdminTabId =>
-  Boolean(value && adminTabs.some(tab => tab.id === value));
+type FocusState = {
+  focusTab?: string;
+} | null;
 
 const AdminDashboard: React.FC = () => {
-  const { user } = useUser(); // Get Clerk user data
+  useUser(); // Get Clerk user data
   const { maps, loading, fetchMaps, deleteMap, fetchMap } = useMap();
   const location = useLocation();
   const navigate = useNavigate();
-
-  const initialTab = useMemo(() => {
-    const params = new URLSearchParams(location.search);
-    const queryTab = params.get('tab');
-    return isValidTab(queryTab) ? queryTab : 'maps';
-  }, [location.search]);
-
-  const [activeTab, setActiveTabState] = useState<AdminTabId>(initialTab);
-
-  useEffect(() => {
-    if (activeTab !== initialTab) {
-      setActiveTabState(initialTab);
-    }
-  }, [initialTab, activeTab]);
-
-  const setActiveTab = (tabId: AdminTabId) => {
-    setActiveTabState(tabId);
-    const params = new URLSearchParams(location.search);
-    params.set('tab', tabId);
-    navigate({ pathname: location.pathname, search: params.toString() }, { replace: true });
-  };
+  const [activeTab, setActiveTab] = useState<'maps' | 'users' | 'announcements' | 'payments' | 'stats' | 'logs' | 'server'>('maps');
   const [showAddMapModal, setShowAddMapModal] = useState(false);
   const [editingMap, setEditingMap] = useState<any>(null);
   const [selectedMaps, setSelectedMaps] = useState<Set<number>>(new Set());
   const [bulkActionMode, setBulkActionMode] = useState(false);
 
-  const roles = Array.isArray(user?.publicMetadata?.roles)
-    ? (user?.publicMetadata?.roles as any[]).map(role => String(role).toLowerCase())
+  const { user } = useUser();
+  const metadata = (user?.publicMetadata || {}) as { isAdmin?: boolean; isSuperAdmin?: boolean; roles?: any[] };
+  const roles = Array.isArray(metadata.roles)
+    ? metadata.roles.map(role => String(role).toLowerCase())
     : [];
-  const isSuperAdmin = roles.includes('superadmin') || Boolean(user?.publicMetadata?.isSuperAdmin);
+  const isSuperAdmin = roles.includes('superadmin') || Boolean(metadata.isSuperAdmin);
+
+  useEffect(() => {
+    const state = (location.state as FocusState) || null;
+    if (state?.focusTab === 'payments') {
+      setActiveTab('payments');
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  }, [location, navigate]);
 
   const stats = {
     totalMaps: maps.length
@@ -111,7 +90,7 @@ const AdminDashboard: React.FC = () => {
 
   const handleBulkDelete = async () => {
     if (selectedMaps.size === 0) return;
-    
+
     const mapNames = maps.filter(map => selectedMaps.has(map.id)).map(map => map.name);
     if (window.confirm(`Er du sikker på at du vil slette ${selectedMaps.size} kart?\n\n${mapNames.join('\n')}\n\nDette kan ikke angres.`)) {
       try {
@@ -129,12 +108,20 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  const tabs = adminTabs;
+  const tabs = [
+    { id: 'maps', label: 'Kart', icon: MapPin },
+    { id: 'users', label: 'Brukeradministrasjon', icon: Shield },
+    { id: 'announcements', label: 'Kunngjøringer', icon: Megaphone },
+    { id: 'payments', label: 'Betaling', icon: CreditCard },
+    { id: 'stats', label: 'Statistikk', icon: BarChart3 },
+    { id: 'logs', label: 'API Logs', icon: Activity },
+    { id: 'server', label: 'Server', icon: Server }
+  ] as const;
 
   return (
     <div className="min-h-screen bg-gray-50 pb-16">
       <Header />
-      
+
       <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-4 lg:py-8">
         {/* Page header */}
         <div className="mb-8">
@@ -206,8 +193,8 @@ const AdminDashboard: React.FC = () => {
                   <button
                     onClick={() => setBulkActionMode(!bulkActionMode)}
                     className={`px-3 py-1 text-sm rounded-lg ${
-                      bulkActionMode 
-                        ? 'bg-eok-100 text-eok-700' 
+                      bulkActionMode
+                        ? 'bg-eok-100 text-eok-700'
                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                   >
@@ -234,7 +221,7 @@ const AdminDashboard: React.FC = () => {
                   </div>
                 </div>
               )}
-              
+
               {loading ? (
                 <div className="flex justify-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-eok-600"></div>
@@ -321,14 +308,14 @@ const AdminDashboard: React.FC = () => {
                           {!bulkActionMode && (
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                               <div className="flex space-x-2">
-                                <button 
+                                <button
                                   onClick={() => handleEditMap(map)}
                                   className="text-eok-600 hover:text-eok-900 flex items-center"
                                 >
                                   <Edit className="h-4 w-4 mr-1" />
                                   Rediger
                                 </button>
-                                <button 
+                                <button
                                   onClick={() => handleDeleteMap(map.id, map.name)}
                                   className="text-red-600 hover:text-red-900 flex items-center"
                                 >
@@ -351,8 +338,18 @@ const AdminDashboard: React.FC = () => {
             <UserManagement key="user-management" />
           )}
 
+          {activeTab === 'announcements' && (
+            <div className="p-6">
+              <AnnouncementManagement />
+            </div>
+          )}
 
-          
+          {activeTab === 'payments' && (
+            <div className="p-6">
+              <PaymentManagement isSuperAdmin={isSuperAdmin} />
+            </div>
+          )}
+
           {activeTab === 'stats' && (
             <div className="p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-6">Statistikk</h2>
@@ -366,7 +363,7 @@ const AdminDashboard: React.FC = () => {
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="card">
                   <h3 className="text-md font-semibold text-gray-900 mb-4">Siste aktivitet</h3>
                   <div className="space-y-2">
@@ -381,29 +378,20 @@ const AdminDashboard: React.FC = () => {
                   </div>
                 </div>
               </div>
-              
+
               {/* UptimeRobot Status */}
               <div className="mt-6">
                 <UptimeStatus showDetails={true} />
               </div>
             </div>
           )}
-          
-          {activeTab === 'announcements' && (
-            <div className="p-6">
-              <AnnouncementManagement />
-            </div>
-          )}
-          {activeTab === 'payments' && (
-            <PaymentManagement isSuperAdmin={isSuperAdmin} />
-          )}
-          
+
           {activeTab === 'logs' && (
             <div className="p-6">
               <ApiLogs />
             </div>
           )}
-          
+
           {activeTab === 'server' && (
             <div className="p-6">
               <ServerRestart />

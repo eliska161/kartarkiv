@@ -1,5 +1,5 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { ClerkProvider } from '@clerk/clerk-react';
 import { nbNO } from '@clerk/localizations';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -24,75 +24,111 @@ import ApiDocPage from './pages/ApiDocPage';
 
 const clerkPubKey = process.env.REACT_APP_CLERK_PUBLISHABLE_KEY;
 
-const AppContent: React.FC = () => {
-  const { sessionExpired } = useAuth();
+type LocationState = {
+  from?: string;
+} | null;
 
+const SessionExpiryHandler: React.FC = () => {
+  const { sessionExpired } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (sessionExpired) {
+      if (location.pathname !== '/session-expired') {
+        navigate('/session-expired', {
+          replace: true,
+          state: { from: location.pathname }
+        });
+      }
+      return;
+    }
+
+    if (location.pathname === '/session-expired') {
+      const state = (location.state as LocationState) || {};
+      const from = state.from && state.from !== '/session-expired' ? state.from : '/';
+      navigate(from, { replace: true });
+    }
+  }, [sessionExpired, location, navigate]);
+
+  return null;
+};
+
+const AppContent: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50">
-      {sessionExpired ? (
-        <SessionExpiredScreen />
-      ) : (
-        <>
-          <AnnouncementBar />
-          <Routes>
-            {/* Public routes */}
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/download/:token" element={<PublicDownloadPage />} />
-            <Route path="/terms-of-service" element={<TermsOfService />} />
-            <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-            <Route path="/api-doc" element={<ApiDocPage />} />
+      <AnnouncementBar />
+      <SessionExpiryHandler />
+      <Routes>
+        {/* Public routes */}
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/session-expired" element={<SessionExpiredScreen />} />
+        <Route path="/download/:token" element={<PublicDownloadPage />} />
+        <Route path="/terms-of-service" element={<TermsOfService />} />
+        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+        <Route path="/api-doc" element={<ApiDocPage />} />
 
-            {/* Protected routes */}
-            <Route path="/" element={
-              <ProtectedRoute>
-                <MapPage />
-              </ProtectedRoute>
-            } />
+        {/* Protected routes */}
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <MapPage />
+            </ProtectedRoute>
+          }
+        />
 
-            <Route path="/map/:id" element={
-              <ProtectedRoute>
-                <MapDetailPage />
-              </ProtectedRoute>
-            } />
+        <Route
+          path="/map/:id"
+          element={
+            <ProtectedRoute>
+              <MapDetailPage />
+            </ProtectedRoute>
+          }
+        />
 
-            <Route path="/profile" element={
-              <ProtectedRoute>
-                <ProfilePage />
-              </ProtectedRoute>
-            } />
-        
-            {/* Admin routes */}
-            <Route path="/admin" element={
-              <AdminRoute>
-                <AdminDashboard />
-              </AdminRoute>
-            } />
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <ProfilePage />
+            </ProtectedRoute>
+          }
+        />
 
-            <Route
-              path="/admin/betaling/fullfort"
-              element={
-                <AdminRoute>
-                  <PaymentCompletePage />
-                </AdminRoute>
-              }
-            />
+        {/* Admin routes */}
+        <Route
+          path="/admin"
+          element={
+            <AdminRoute>
+              <AdminDashboard />
+            </AdminRoute>
+          }
+        />
 
-            {/* Redirect unknown routes to home */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </>
-      )}
+        <Route
+          path="/admin/betaling/fullfort"
+          element={
+            <AdminRoute>
+              <PaymentCompletePage />
+            </AdminRoute>
+          }
+        />
+
+        {/* Redirect unknown routes to home */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
     </div>
   );
 };
 
 function App() {
   if (!clerkPubKey) {
-    throw new Error("Missing Publishable Key")
+    throw new Error('Missing Publishable Key');
   }
 
   return (
-    <ClerkProvider 
+    <ClerkProvider
       publishableKey={clerkPubKey}
       localization={nbNO}
     >
