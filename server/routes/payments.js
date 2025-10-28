@@ -191,6 +191,7 @@ const createStripeInvoiceForClub = async (invoice, { email, name, phone }) => {
   for (const [index, item] of invoice.items.entries()) {
     const invoiceItemParams = new URLSearchParams();
     invoiceItemParams.append('invoice', stripeInvoice.id);
+    invoiceItemParams.append('customer', customer.id);
     invoiceItemParams.append('description', item.description);
     invoiceItemParams.append('metadata[invoiceId]', String(invoice.id));
     invoiceItemParams.append('metadata[lineItemIndex]', String(index));
