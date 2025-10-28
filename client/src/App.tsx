@@ -109,9 +109,9 @@ const AppContent: React.FC = () => {
         <Route
           path="/admin/betaling/fullfort"
           element={
-            <AdminRoute>
+            <ProtectedRoute>
               <PaymentCompletePage />
-            </AdminRoute>
+            </ProtectedRoute>
           }
         />
 
