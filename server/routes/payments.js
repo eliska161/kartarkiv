@@ -192,13 +192,16 @@ const createStripeInvoiceForClub = async (invoice, { email, name, phone }) => {
     const invoiceItemParams = new URLSearchParams();
     invoiceItemParams.append('invoice', stripeInvoice.id);
     invoiceItemParams.append('customer', customer.id);
-    invoiceItemParams.append('description', item.description);
+    const rawQuantity = Number(item.quantity || 1);
+    const safeQuantity = Number.isFinite(rawQuantity) && rawQuantity > 0 ? rawQuantity : 1;
+    const formattedDescription =
+      safeQuantity > 1 ? `${item.description} (x${safeQuantity})` : item.description;
+    invoiceItemParams.append('description', formattedDescription);
     invoiceItemParams.append('metadata[invoiceId]', String(invoice.id));
     invoiceItemParams.append('metadata[lineItemIndex]', String(index));
-    invoiceItemParams.append('price_data[currency]', 'nok');
-    invoiceItemParams.append('price_data[product_data][name]', item.description);
-    invoiceItemParams.append('price_data[unit_amount]', String(Math.round(item.amount * 100)));
-    invoiceItemParams.append('quantity', String(item.quantity));
+    const totalAmountCents = Math.round(item.amount * 100) * safeQuantity;
+    invoiceItemParams.append('amount', String(totalAmountCents));
+    invoiceItemParams.append('currency', 'nok');
     await callStripe('POST', '/invoiceitems', invoiceItemParams);
   }
 
