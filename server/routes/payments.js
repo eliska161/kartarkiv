@@ -59,6 +59,23 @@ const calculateStripeFeeCents = totalWithoutFeeCents => {
   return percentFee + STRIPE_FEE_FIXED_CENTS;
 };
 
+const computeStripeDueDateSeconds = dueDateValue => {
+  if (!dueDateValue) {
+    return null;
+  }
+
+  const parsed = new Date(dueDateValue);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  const endOfDayMillis = parsed.getTime() + (23 * 60 * 60 + 59 * 60 + 59) * 1000;
+  const minimumFutureMillis = Date.now() + 60 * 60 * 1000; // At least one hour from now
+  const safeDueDateMillis = Math.max(endOfDayMillis, minimumFutureMillis);
+
+  return Math.floor(safeDueDateMillis / 1000);
+};
+
 const parseAddressForStripe = address => {
   if (!address) {
     return {};
@@ -546,7 +563,7 @@ const createStripeInvoiceForClub = async (invoice, { email, name, phone, address
   invoiceParams.append('metadata[contactPhone]', phone);
   invoiceParams.append('description', invoice.notes || `Kartarkiv ${invoice.month}`);
 
-  const unixDueDate = invoice.due_date ? Math.floor(new Date(invoice.due_date).getTime() / 1000) : null;
+  const unixDueDate = computeStripeDueDateSeconds(invoice.due_date);
   if (unixDueDate) {
     invoiceParams.append('due_date', String(unixDueDate));
   } else {
@@ -797,7 +814,7 @@ router.post('/invoices/:invoiceId/request-invoice', authenticateUser, async (req
       return res.status(400).json({ error: 'Fakturaen er allerede betalt' });
     }
 
-    const unixDueDate = invoice.due_date ? Math.floor(new Date(invoice.due_date).getTime() / 1000) : null;
+    const unixDueDate = computeStripeDueDateSeconds(invoice.due_date);
 
     let stripeInvoiceId = invoice.stripe_invoice_id;
     let stripeCustomerId = invoice.stripe_customer_id;
