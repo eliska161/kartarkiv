@@ -43,16 +43,20 @@ const authenticateUser = async (req, res, next) => {
         
         // Extract user data from Clerk user object
         const email = clerkUser.emailAddresses?.[0]?.emailAddress || 'user@example.com';
-        const username = clerkUser.username || 
-                        clerkUser.firstName || 
-                        email?.split('@')[0] || 
+        const username = clerkUser.username ||
+                        clerkUser.firstName ||
+                        email?.split('@')[0] ||
                         'Unknown';
         const firstName = clerkUser.firstName || null;
         const lastName = clerkUser.lastName || null;
-        const isAdmin = Boolean(clerkUser.publicMetadata?.isAdmin);
-        
+        const roles = Array.isArray(clerkUser.publicMetadata?.roles)
+          ? clerkUser.publicMetadata.roles.map(role => String(role).toLowerCase())
+          : [];
+        const isSuperAdmin = Boolean(clerkUser.publicMetadata?.isSuperAdmin) || roles.includes('superadmin');
+        const isAdmin = Boolean(clerkUser.publicMetadata?.isAdmin) || isSuperAdmin;
+
         console.log('🔐 CLERK AUTH - Extracted user data:', { email, username, firstName, lastName, isAdmin });
-        
+
         // Add user info to request
         req.user = {
           id: payload.sub,
@@ -60,7 +64,9 @@ const authenticateUser = async (req, res, next) => {
           username: username,
           firstName: firstName,
           lastName: lastName,
-          isAdmin: isAdmin
+          isAdmin: isAdmin,
+          isSuperAdmin: isSuperAdmin,
+          roles
         };
       } catch (clerkApiError) {
         console.error('🔐 CLERK AUTH - Clerk API error:', clerkApiError.message);
@@ -69,15 +75,21 @@ const authenticateUser = async (req, res, next) => {
         // Fallback to JWT payload data
         const email = payload.email || 'user@example.com';
         const username = payload.username || email?.split('@')[0] || 'Unknown';
-        const isAdmin = Boolean(payload.public_metadata?.isAdmin || payload.publicMetadata?.isAdmin);
-        
+        const roles = Array.isArray(payload.public_metadata?.roles || payload.publicMetadata?.roles)
+          ? (payload.public_metadata?.roles || payload.publicMetadata?.roles).map(role => String(role).toLowerCase())
+          : [];
+        const isSuperAdmin = Boolean(payload.public_metadata?.isSuperAdmin || payload.publicMetadata?.isSuperAdmin) || roles.includes('superadmin');
+        const isAdmin = Boolean(payload.public_metadata?.isAdmin || payload.publicMetadata?.isAdmin) || isSuperAdmin;
+
         req.user = {
           id: payload.sub,
           email: email,
           username: username,
           firstName: null,
           lastName: null,
-          isAdmin: isAdmin
+          isAdmin: isAdmin,
+          isSuperAdmin: isSuperAdmin,
+          roles
         };
       }
       
@@ -104,7 +116,9 @@ const authenticateUser = async (req, res, next) => {
         id: fallbackId,
         email: `fallback_${Date.now()}@example.com`,
         username: 'FallbackUser',
-        isAdmin: true
+        isAdmin: true,
+        isSuperAdmin: true,
+        roles: ['superadmin']
       };
       
       console.log('🔐 CLERK AUTH - Fallback user created:', req.user);
@@ -120,7 +134,7 @@ const authenticateUser = async (req, res, next) => {
 const requireAdmin = (req, res, next) => {
   // Check if user is the specific admin user for announcements
   const ALLOWED_ADMIN_USER_ID = 'user_32bpgM3LWUuJhy36OgSS09F2fcy';
-  
+
   if (req.url.includes('/announcements')) {
     // For announcements, only allow the specific user
     if (req.user.id !== ALLOWED_ADMIN_USER_ID) {
@@ -135,7 +149,15 @@ const requireAdmin = (req, res, next) => {
   next();
 };
 
+const requireSuperAdmin = (req, res, next) => {
+  if (!req.user?.isSuperAdmin) {
+    return res.status(403).json({ error: 'Superadmin access required' });
+  }
+  next();
+};
+
 module.exports = {
   authenticateUser,
-  requireAdmin
+  requireAdmin,
+  requireSuperAdmin
 };
