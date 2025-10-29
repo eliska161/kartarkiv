@@ -191,6 +191,7 @@ const ensureTables = async () => {
       stripe_customer_id TEXT,
       stripe_invoice_url TEXT,
       stripe_invoice_pdf TEXT,
+      invoice_request_address TEXT,
       created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
       updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW()
     )
@@ -212,6 +213,25 @@ const ensureTables = async () => {
   await pool.query('ALTER TABLE club_invoices ADD COLUMN IF NOT EXISTS stripe_invoice_pdf TEXT');
   await pool.query('ALTER TABLE club_invoices ADD COLUMN IF NOT EXISTS invoice_request_name TEXT');
   await pool.query('ALTER TABLE club_invoices ADD COLUMN IF NOT EXISTS invoice_request_phone TEXT');
+  await pool.query('ALTER TABLE club_invoices ADD COLUMN IF NOT EXISTS invoice_request_address TEXT');
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS club_invoice_recipients (
+      id SERIAL PRIMARY KEY,
+      name TEXT NOT NULL,
+      email TEXT NOT NULL,
+      phone TEXT,
+      address TEXT,
+      created_by TEXT,
+      created_by_email TEXT,
+      created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
+      updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW()
+    )
+  `);
+
+  await pool.query(
+    'ALTER TABLE club_invoice_recipients ADD CONSTRAINT IF NOT EXISTS club_invoice_recipients_email_key UNIQUE (email)'
+  );
 };
 
 ensureTables().catch(error => {
@@ -248,6 +268,7 @@ const getInvoices = async (invoiceId = null) => {
         i.invoice_request_email,
         i.invoice_request_name,
         i.invoice_request_phone,
+        i.invoice_request_address,
         i.created_at,
         i.updated_at,
         COALESCE(
@@ -335,7 +356,7 @@ const getInvoices = async (invoiceId = null) => {
   return syncedInvoices;
 };
 
-const createStripeInvoiceForClub = async (invoice, { email, name, phone }) => {
+const createStripeInvoiceForClub = async (invoice, { email, name, phone, address }) => {
   const customerParams = new URLSearchParams();
   customerParams.append('email', email);
   customerParams.append('metadata[invoiceId]', String(invoice.id));
@@ -343,6 +364,9 @@ const createStripeInvoiceForClub = async (invoice, { email, name, phone }) => {
   customerParams.append('preferred_locales[]', STRIPE_LOCALE);
   if (phone) {
     customerParams.append('phone', phone);
+  }
+  if (address) {
+    customerParams.append('address[line1]', address);
   }
 
   const customer = await callStripe('POST', '/customers', customerParams);
@@ -353,6 +377,9 @@ const createStripeInvoiceForClub = async (invoice, { email, name, phone }) => {
   invoiceParams.append('auto_advance', 'true');
   invoiceParams.append('metadata[invoiceId]', String(invoice.id));
   invoiceParams.append('metadata[contactName]', name);
+  if (address) {
+    invoiceParams.append('metadata[contactAddress]', address);
+  }
   if (phone) {
     invoiceParams.append('metadata[contactPhone]', phone);
   }
@@ -572,7 +599,7 @@ router.post('/invoices/:invoiceId/request-invoice', authenticateUser, async (req
   }
 
   const invoiceId = Number(req.params.invoiceId);
-  const { contactEmail, contactName, contactPhone } = req.body || {};
+  const { contactEmail, contactName, contactPhone, contactAddress } = req.body || {};
 
   if (!Number.isInteger(invoiceId)) {
     return res.status(400).json({ error: 'Ugyldig faktura-ID' });
@@ -582,6 +609,8 @@ router.post('/invoices/:invoiceId/request-invoice', authenticateUser, async (req
   const normalizedName = String(contactName || '').trim();
   const normalizedPhoneRaw = contactPhone == null ? '' : String(contactPhone).trim();
   const normalizedPhone = normalizedPhoneRaw || null;
+  const normalizedAddressRaw = contactAddress == null ? '' : String(contactAddress).trim();
+  const normalizedAddress = normalizedAddressRaw || null;
   if (!normalizedEmail) {
     return res.status(400).json({ error: 'Oppgi e-postadressen fakturaen skal sendes til' });
   }
@@ -634,7 +663,8 @@ router.post('/invoices/:invoiceId/request-invoice', authenticateUser, async (req
       const createdInvoice = await createStripeInvoiceForClub(invoice, {
         email: normalizedEmail,
         name: normalizedName,
-        phone: normalizedPhone
+        phone: normalizedPhone,
+        address: normalizedAddress
       });
 
       stripeInvoiceId = createdInvoice.stripeInvoiceId;
@@ -649,11 +679,17 @@ router.post('/invoices/:invoiceId/request-invoice', authenticateUser, async (req
       if (normalizedPhone) {
         customerParams.append('phone', normalizedPhone);
       }
+      if (normalizedAddress) {
+        customerParams.append('address[line1]', normalizedAddress);
+      }
       await callStripe('POST', `/customers/${stripeCustomerId}`, customerParams);
 
       const updateInvoiceParams = new URLSearchParams();
       updateInvoiceParams.append('customer', stripeCustomerId);
       updateInvoiceParams.append('description', invoice.notes || `Kartarkiv ${invoice.month}`);
+      if (normalizedAddress) {
+        updateInvoiceParams.append('metadata[contactAddress]', normalizedAddress);
+      }
       if (unixDueDate) {
         updateInvoiceParams.append('due_date', String(unixDueDate));
       } else {
@@ -677,12 +713,13 @@ router.post('/invoices/:invoiceId/request-invoice', authenticateUser, async (req
             invoice_request_email = $2,
             invoice_request_name = $3,
             invoice_request_phone = $4,
-            stripe_invoice_id = $5,
-            stripe_customer_id = $6,
-            stripe_invoice_url = $7,
-            stripe_invoice_pdf = $8,
+            invoice_request_address = $5,
+            stripe_invoice_id = $6,
+            stripe_customer_id = $7,
+            stripe_invoice_url = $8,
+            stripe_invoice_pdf = $9,
             updated_at = NOW()
-        WHERE id = $9
+        WHERE id = $10
         RETURNING *
       `,
       [
@@ -690,6 +727,7 @@ router.post('/invoices/:invoiceId/request-invoice', authenticateUser, async (req
         normalizedEmail,
         normalizedName,
         normalizedPhone,
+        normalizedAddress,
         stripeInvoiceId,
         stripeCustomerId,
         stripeInvoiceUrl,
@@ -705,6 +743,64 @@ router.post('/invoices/:invoiceId/request-invoice', authenticateUser, async (req
   } catch (error) {
     console.error('❌ Failed to request invoice send-out:', error);
     res.status(500).json({ error: 'Kunne ikke sende faktura' });
+  }
+});
+
+router.get('/recipients', authenticateUser, async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `
+        SELECT id, name, email, phone, address, created_at, updated_at
+        FROM club_invoice_recipients
+        ORDER BY LOWER(name), LOWER(email)
+      `
+    );
+
+    res.json({ recipients: rows });
+  } catch (error) {
+    console.error('❌ Failed to fetch invoice recipients:', error);
+    res.status(500).json({ error: 'Kunne ikke hente lagrede mottakere' });
+  }
+});
+
+router.post('/recipients', authenticateUser, requireSuperAdmin, async (req, res) => {
+  const { name, email, phone, address } = req.body || {};
+
+  const normalizedName = String(name || '').trim();
+  const normalizedEmail = String(email || '').trim().toLowerCase();
+  const normalizedPhoneRaw = phone == null ? '' : String(phone).trim();
+  const normalizedPhone = normalizedPhoneRaw || null;
+  const normalizedAddressRaw = address == null ? '' : String(address).trim();
+  const normalizedAddress = normalizedAddressRaw || null;
+
+  if (!normalizedName) {
+    return res.status(400).json({ error: 'Oppgi navn eller bedrift for mottakeren' });
+  }
+
+  if (!normalizedEmail) {
+    return res.status(400).json({ error: 'Oppgi e-postadresse for mottakeren' });
+  }
+
+  try {
+    const { rows } = await pool.query(
+      `
+        INSERT INTO club_invoice_recipients (name, email, phone, address, created_by, created_by_email, updated_at)
+        VALUES ($1, $2, $3, $4, $5, $6, NOW())
+        ON CONFLICT (email)
+        DO UPDATE SET
+          name = EXCLUDED.name,
+          phone = EXCLUDED.phone,
+          address = EXCLUDED.address,
+          updated_at = NOW()
+        RETURNING id, name, email, phone, address, created_at, updated_at
+      `,
+      [normalizedName, normalizedEmail, normalizedPhone, normalizedAddress, req.user.id, req.user.email]
+    );
+
+    res.status(201).json({ recipient: rows[0] });
+  } catch (error) {
+    console.error('❌ Failed to save invoice recipient:', error);
+    res.status(500).json({ error: 'Kunne ikke lagre mottaker' });
   }
 });
 

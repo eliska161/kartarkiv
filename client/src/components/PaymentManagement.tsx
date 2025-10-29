@@ -36,11 +36,22 @@ interface Invoice {
   invoice_request_email: string | null;
   invoice_request_name: string | null;
   invoice_request_phone: string | null;
+  invoice_request_address: string | null;
   stripe_invoice_id?: string | null;
   stripe_customer_id?: string | null;
   stripe_invoice_url?: string | null;
   stripe_invoice_pdf?: string | null;
   items: InvoiceItem[];
+}
+
+interface InvoiceRecipient {
+  id: number;
+  name: string;
+  email: string;
+  phone: string | null;
+  address: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 const statusConfig: Record<Invoice['status'], { label: string; className: string }> = {
@@ -96,10 +107,16 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
   const [invoiceModalEmail, setInvoiceModalEmail] = useState('');
   const [invoiceModalName, setInvoiceModalName] = useState('');
   const [invoiceModalPhone, setInvoiceModalPhone] = useState('');
+  const [invoiceModalAddress, setInvoiceModalAddress] = useState('');
+  const [invoiceModalSelectedRecipient, setInvoiceModalSelectedRecipient] = useState<string>('custom');
   const [invoiceModalLoading, setInvoiceModalLoading] = useState(false);
   const [invoiceModalTarget, setInvoiceModalTarget] = useState<Invoice | null>(null);
+  const [recipients, setRecipients] = useState<InvoiceRecipient[]>([]);
+  const [recipientsLoading, setRecipientsLoading] = useState(false);
+  const [recipientSaving, setRecipientSaving] = useState(false);
   const hasHandledCheckoutRef = useRef(false);
   const { showSuccess, showError, showInfo, showWarning } = useToast();
+  const collator = useMemo(() => new Intl.Collator('nb', { sensitivity: 'base' }), []);
 
   const [form, setForm] = useState({
     month: '',
@@ -123,6 +140,46 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
 
   const formStripeFee = useMemo(() => calculateStripeFee(formBaseTotal), [formBaseTotal]);
   const formTotal = useMemo(() => formBaseTotal + formStripeFee, [formBaseTotal, formStripeFee]);
+
+  const sortRecipients = useCallback(
+    (list: InvoiceRecipient[]) =>
+      [...list].sort((a, b) => {
+        const nameComparison = collator.compare(a.name, b.name);
+        if (nameComparison !== 0) {
+          return nameComparison;
+        }
+        return collator.compare(a.email, b.email);
+      }),
+    [collator]
+  );
+
+  const fetchRecipients = useCallback(
+    async (withSpinner = true) => {
+      if (withSpinner) {
+        setRecipientsLoading(true);
+      }
+
+      try {
+        const { data } = (await apiGet('/api/payments/recipients')) as AxiosResponse<{
+          recipients: InvoiceRecipient[];
+        }>;
+        const fetched = Array.isArray(data?.recipients) ? data.recipients : [];
+        setRecipients(sortRecipients(fetched));
+      } catch (error: any) {
+        const status = error?.response?.status;
+        if (status !== 403 && status !== 404) {
+          console.error('Kunne ikke hente mottakere', error);
+          showError('Kunne ikke hente mottakere', error?.response?.data?.error);
+        }
+        setRecipients([]);
+      } finally {
+        if (withSpinner) {
+          setRecipientsLoading(false);
+        }
+      }
+    },
+    [showError, sortRecipients]
+  );
 
   const fetchInvoices = useCallback(async (withSpinner = true): Promise<Invoice[]> => {
     if (withSpinner) {
@@ -150,6 +207,10 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
   useEffect(() => {
     fetchInvoices();
   }, [fetchInvoices]);
+
+  useEffect(() => {
+    fetchRecipients();
+  }, [fetchRecipients]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -292,10 +353,16 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
   };
 
   const openInvoiceModal = (invoice: Invoice) => {
-    const suggestedEmail = invoice.invoice_request_email || invoice.invoice_requested_by || '';
-    setInvoiceModalEmail(suggestedEmail);
-    setInvoiceModalName(invoice.invoice_request_name || '');
-    setInvoiceModalPhone(invoice.invoice_request_phone || '');
+    const suggestedEmail = (invoice.invoice_request_email || invoice.invoice_requested_by || '').trim();
+    const matchedRecipient = suggestedEmail
+      ? recipients.find(recipient => recipient.email.toLowerCase() === suggestedEmail.toLowerCase()) || null
+      : null;
+
+    setInvoiceModalEmail(matchedRecipient?.email || suggestedEmail || '');
+    setInvoiceModalName(matchedRecipient?.name || invoice.invoice_request_name || '');
+    setInvoiceModalPhone(matchedRecipient?.phone || invoice.invoice_request_phone || '');
+    setInvoiceModalAddress(matchedRecipient?.address || invoice.invoice_request_address || '');
+    setInvoiceModalSelectedRecipient(matchedRecipient ? String(matchedRecipient.id) : 'custom');
     setInvoiceModalTarget(invoice);
     setIsInvoiceModalOpen(true);
   };
@@ -309,6 +376,71 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
     setInvoiceModalEmail('');
     setInvoiceModalName('');
     setInvoiceModalPhone('');
+    setInvoiceModalAddress('');
+    setInvoiceModalSelectedRecipient('custom');
+  };
+
+  const handleRecipientSelectionChange = (value: string) => {
+    setInvoiceModalSelectedRecipient(value);
+
+    if (value === 'custom') {
+      return;
+    }
+
+    const selected = recipients.find(recipient => String(recipient.id) === value);
+    if (selected) {
+      setInvoiceModalName(selected.name);
+      setInvoiceModalEmail(selected.email);
+      setInvoiceModalPhone(selected.phone || '');
+      setInvoiceModalAddress(selected.address || '');
+    }
+  };
+
+  const handleSaveRecipientPreset = async () => {
+    const name = invoiceModalName.trim();
+    const email = invoiceModalEmail.trim();
+    const phone = invoiceModalPhone.trim();
+    const address = invoiceModalAddress.trim();
+
+    if (!name) {
+      showError('Navn mangler', 'Oppgi navnet eller bedriften du vil lagre.');
+      return;
+    }
+
+    if (!email) {
+      showError('E-postadresse mangler', 'Oppgi en e-postadresse for mottakeren.');
+      return;
+    }
+
+    setRecipientSaving(true);
+
+    try {
+      const { data } = (await apiPost('/api/payments/recipients', {
+        name,
+        email,
+        phone: phone || undefined,
+        address: address || undefined
+      })) as AxiosResponse<{ recipient: InvoiceRecipient }>;
+
+      if (data?.recipient) {
+        setRecipients(prev => {
+          const filtered = prev.filter(item => item.id !== data.recipient.id);
+          return sortRecipients([...filtered, data.recipient]);
+        });
+
+        setInvoiceModalSelectedRecipient(String(data.recipient.id));
+        setInvoiceModalName(data.recipient.name);
+        setInvoiceModalEmail(data.recipient.email);
+        setInvoiceModalPhone(data.recipient.phone || '');
+        setInvoiceModalAddress(data.recipient.address || '');
+        showSuccess('Mottaker lagret', 'Mottakeren er klar til gjenbruk.');
+      }
+    } catch (error: any) {
+      console.error('Kunne ikke lagre mottaker', error);
+      showError('Kunne ikke lagre mottaker', error?.response?.data?.error);
+    } finally {
+      setRecipientSaving(false);
+    }
   };
 
   const handleInvoiceRequestSubmit = async () => {
@@ -319,6 +451,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
     const name = invoiceModalName.trim();
     const email = invoiceModalEmail.trim();
     const phone = invoiceModalPhone.trim();
+    const address = invoiceModalAddress.trim();
 
     if (!name) {
       showError('Navn mangler', 'Angi navnet eller bedriften som skal stå på fakturaen.');
@@ -335,7 +468,8 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
       const { data } = (await apiPost(`/api/payments/invoices/${invoiceModalTarget.id}/request-invoice`, {
         contactEmail: email,
         contactName: name,
-        contactPhone: phone || undefined
+        contactPhone: phone || undefined,
+        contactAddress: address || undefined
       })) as AxiosResponse<{ invoice: Invoice }>;
       showSuccess('Faktura sendt', 'Stripe har sendt fakturaen til valgt e-post.');
       setInvoices(prev => prev.map(item => (item.id === invoiceModalTarget.id ? data.invoice : item)));
@@ -344,6 +478,8 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
       setInvoiceModalEmail('');
       setInvoiceModalName('');
       setInvoiceModalPhone('');
+      setInvoiceModalAddress('');
+      setInvoiceModalSelectedRecipient('custom');
     } catch (err: any) {
       console.error('Kunne ikke forespørre faktura', err);
       showError('Kunne ikke sende faktura', err.response?.data?.error);
@@ -588,6 +724,9 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
                             {invoice.invoice_request_email && ` (til ${invoice.invoice_request_email})`}
                           </div>
                         )}
+                        {invoice.invoice_request_address && (
+                          <div>Adresse: {invoice.invoice_request_address}</div>
+                        )}
                         {invoice.stripe_invoice_url && (
                           <div>
                             <a
@@ -670,6 +809,30 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
             </div>
             <div className="p-6 space-y-4">
               <div>
+                <label className="block text-sm font-medium text-gray-700">Lagret mottaker</label>
+                <select
+                  value={invoiceModalSelectedRecipient}
+                  onChange={event => handleRecipientSelectionChange(event.target.value)}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-eok-500 focus:ring-eok-500"
+                  disabled={recipientsLoading && recipients.length === 0}
+                >
+                  <option value="custom">
+                    {recipients.length > 0 ? 'Egendefiner mottaker' : 'Ingen lagrede mottakere tilgjengelig'}
+                  </option>
+                  {recipients.map(recipient => (
+                    <option key={recipient.id} value={String(recipient.id)}>
+                      {recipient.name} – {recipient.email}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  Velg en lagret mottaker eller fyll inn detaljene manuelt.
+                </p>
+                {recipientsLoading && (
+                  <p className="text-xs text-gray-400">Laster mottakere…</p>
+                )}
+              </div>
+              <div>
                 <label className="block text-sm font-medium text-gray-700">Navn eller bedrift</label>
                 <input
                   type="text"
@@ -702,6 +865,42 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-eok-500 focus:ring-eok-500"
                 />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Adresse (valgfritt)</label>
+                <textarea
+                  value={invoiceModalAddress}
+                  onChange={event => setInvoiceModalAddress(event.target.value)}
+                  rows={3}
+                  placeholder="Eksempelgata 1, 0123 Oslo"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-eok-500 focus:ring-eok-500"
+                />
+                <p className="text-xs text-gray-500 mt-1">Adresse sendes til Stripe og vises på fakturaen.</p>
+              </div>
+              {isSuperAdmin && (
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-xs text-gray-500">
+                    Lagre denne mottakeren for raskt å bruke samme informasjon senere.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleSaveRecipientPreset}
+                    disabled={recipientSaving}
+                    className="inline-flex items-center px-3 py-2 text-sm font-medium text-eok-700 hover:text-eok-800"
+                  >
+                    {recipientSaving ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Lagrer...
+                      </>
+                    ) : (
+                      <>
+                        <PlusCircle className="h-4 w-4 mr-2" />
+                        Lagre mottaker
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
               <div className="bg-gray-50 rounded-lg p-4 text-sm text-gray-600 space-y-2">
                 <div>
                   <span className="font-medium text-gray-800">Faktura:</span> {invoiceModalTarget.month}
