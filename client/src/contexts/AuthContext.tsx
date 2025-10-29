@@ -52,6 +52,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [sessionExpired, setSessionExpired] = useState(false);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const handleSessionExpired = () => {
+      setSessionExpired(true);
+      setUser(null);
+      setToken(null);
+      delete axios.defaults.headers.common['Authorization'];
+    };
+
+    window.addEventListener('session-expired', handleSessionExpired);
+    return () => {
+      window.removeEventListener('session-expired', handleSessionExpired);
+    };
+  }, []);
+
   // Configure axios defaults with Clerk token
   useEffect(() => {
     const setupAuth = async () => {

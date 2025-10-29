@@ -64,37 +64,98 @@ const parseAddressForStripe = address => {
     return {};
   }
 
-  const cleaned = String(address)
-    .split('\n')
-    .join(', ')
-    .split(',')
+  const rawSegments = String(address)
+    .split(/\n|,/)
     .map(segment => segment.trim())
     .filter(Boolean);
 
-  if (cleaned.length === 0) {
+  if (rawSegments.length === 0) {
     return {};
   }
 
-  const [line1, ...rest] = cleaned;
-  const joinedRest = rest.join(', ');
-  const postalMatch = joinedRest.match(/(\d{4})/);
-  const postal_code = postalMatch ? postalMatch[1] : undefined;
+  const [line1, ...tailSegments] = rawSegments;
+  const normalizedSegments = tailSegments.map(segment => segment.replace(/\s+/g, ' ').trim()).filter(Boolean);
+
+  const countryIndices = normalizedSegments
+    .map((segment, index) => ({ segment: segment.toLowerCase(), index }))
+    .filter(({ segment }) => segment === 'norge' || segment === 'norway')
+    .map(({ index }) => index);
+
+  let postalCode;
+  let postalIndex = -1;
+  normalizedSegments.forEach((segment, index) => {
+    if (postalIndex !== -1) {
+      return;
+    }
+    const match = segment.match(/(\d{4})/);
+    if (match) {
+      postalCode = match[1];
+      postalIndex = index;
+    }
+  });
+
+  const sanitize = value =>
+    value
+      .replace(/[^\p{L}\p{M}\s-]/gu, '')
+      .replace(/\s+/g, ' ')
+      .trim();
 
   let city;
-  if (postal_code) {
-    const afterPostal = joinedRest.split(postal_code).pop();
-    city = afterPostal ? afterPostal.replace(/[^\p{L}\p{M}\s-]/gu, '').trim() : undefined;
-  } else if (rest.length > 0) {
-    city = rest[rest.length - 1];
+  let cityIndex = -1;
+
+  if (postalIndex !== -1) {
+    const segment = normalizedSegments[postalIndex];
+    const afterPostal = sanitize(segment.replace(postalCode, ''));
+    if (afterPostal) {
+      city = afterPostal;
+      cityIndex = postalIndex;
+    }
   }
 
-  const line2 = rest.length > 0 ? rest.join(', ') : undefined;
+  if (!city && postalIndex !== -1) {
+    const nextIndex = postalIndex + 1;
+    if (nextIndex < normalizedSegments.length && !countryIndices.includes(nextIndex)) {
+      const nextSegment = normalizedSegments[nextIndex];
+      if (!/\d/.test(nextSegment)) {
+        city = sanitize(nextSegment);
+        cityIndex = nextIndex;
+      }
+    }
+  }
+
+  if (!city) {
+    for (let index = 0; index < normalizedSegments.length; index += 1) {
+      if (countryIndices.includes(index) || /\d/.test(normalizedSegments[index])) {
+        continue;
+      }
+      city = sanitize(normalizedSegments[index]);
+      cityIndex = index;
+      break;
+    }
+  }
+
+  const line2Parts = normalizedSegments
+    .map((segment, index) => ({ segment, index }))
+    .filter(({ index }) => index !== postalIndex && index !== cityIndex && !countryIndices.includes(index))
+    .map(({ segment }) => sanitize(segment))
+    .filter(part => Boolean(part) && part !== line1 && part !== city);
+
+  const seen = new Set();
+  const uniqueLine2Parts = [];
+  for (const part of line2Parts) {
+    if (!seen.has(part)) {
+      seen.add(part);
+      uniqueLine2Parts.push(part);
+    }
+  }
+
+  const line2 = uniqueLine2Parts.length > 0 ? uniqueLine2Parts.join(', ') : undefined;
 
   return {
     line1,
     line2,
-    postal_code,
-    city
+    postal_code: postalCode,
+    city: city || undefined
   };
 };
 
@@ -107,7 +168,7 @@ const applyStripeAddressParams = (params, address) => {
   if (line1) {
     params.append('address[line1]', line1);
   }
-  if (line2 && line2 !== line1) {
+  if (line2 && line2 !== line1 && line2 !== city) {
     params.append('address[line2]', line2);
   }
   if (postal_code) {
@@ -470,6 +531,7 @@ const createStripeInvoiceForClub = async (invoice, { email, name, phone, address
   customerParams.append('name', name);
   customerParams.append('preferred_locales[]', STRIPE_LOCALE);
   customerParams.append('phone', phone);
+  customerParams.append('tax_exempt', 'exempt');
   applyStripeAddressParams(customerParams, address);
 
   const customer = await callStripe('POST', '/customers', customerParams);
@@ -784,6 +846,7 @@ router.post('/invoices/:invoiceId/request-invoice', authenticateUser, async (req
       customerParams.append('name', normalizedName);
       customerParams.append('preferred_locales[]', STRIPE_LOCALE);
       customerParams.append('phone', normalizedPhone);
+      customerParams.append('tax_exempt', 'exempt');
       applyStripeAddressParams(customerParams, normalizedAddress);
       await callStripe('POST', `/customers/${stripeCustomerId}`, customerParams);
 

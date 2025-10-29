@@ -46,7 +46,7 @@ Følg disse stegene for å sette opp en token som fungerer både lokalt og i pro
 
 1. Opprett eller logg inn på en Mapbox-konto på [mapbox.com](https://www.mapbox.com/).
 2. Gå til **Account** → **Tokens** og opprett en ny token med "Public" type.
-3. Huk av for "Address Autofill" (eller søk etter `address-autofill` under Scopes) slik at tokenen får tilgang til Search API-et.
+3. Under **Token scopes** må du krysse av for `SEARCH:READ` og `ADDRESS:READ`. Den enkleste måten er å søke etter «address-autofill» i filteret; når du aktiverer den vil Mapbox automatisk markere begge disse scope-ene.
 4. Under *URL restrictions* kan du legge til domenene som skal bruke autofyll (for eksempel `http://localhost:3000` og produksjonsdomenet).
 5. Kopier tokenen (starter med `pk.`) og legg den i `client/.env.local` som `REACT_APP_MAPBOX_ACCESS_TOKEN`.
 

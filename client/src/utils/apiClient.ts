@@ -84,11 +84,14 @@ const retryRequest = async (config: AxiosRequestConfig, retryCount = 0): Promise
       }
     }
     
-    // If it's a token expired error, redirect to login
+    // If it's a token expired error, notify the app so it can route to the
+    // dedicated session expiry screen without forcing a full reload.
     if (error.response?.data?.code === 'TOKEN_EXPIRED') {
-      console.error('🚫 API: Token expired, redirecting to login');
-      window.location.href = '/login';
-      throw new Error('Token expired - redirecting to login');
+      console.error('🚫 API: Token expired, redirecting to session expiry screen');
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('session-expired'));
+      }
+      throw new Error('Token expired - redirecting to session expiry screen');
     }
     
     // If it's rate limiting after all retries
