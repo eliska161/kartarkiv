@@ -575,6 +575,7 @@ const createStripeInvoiceForClub = async (invoice, { email, name, phone, address
   for (const [index, item] of invoice.items.entries()) {
     const invoiceItemParams = new URLSearchParams();
     invoiceItemParams.append('invoice', stripeInvoice.id);
+    invoiceItemParams.append('customer', customer.id);
     const rawQuantity = Number(item.quantity || 1);
     const safeQuantity = Number.isFinite(rawQuantity) && rawQuantity > 0 ? rawQuantity : 1;
     const formattedDescription =
