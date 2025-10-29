@@ -1,5 +1,5 @@
 import React from 'react';
-import { SignInButton } from '@clerk/clerk-react';
+import { SignIn } from '@clerk/clerk-react';
 import { LogOut } from 'lucide-react';
 
 const SessionExpiredScreen: React.FC = () => {
@@ -12,15 +12,30 @@ const SessionExpiredScreen: React.FC = () => {
           </div>
         </div>
         <div className="space-y-2">
-          <h1 className="text-2xl font-semibold text-gray-900">Økt Utløpt</h1>
-          <p className="text-gray-600">Økt utløpt, vennligst logg inn igjen med en login fra Clerk.</p>
+          <h1 className="text-2xl font-semibold text-gray-900">Økt utløpt</h1>
+          <p className="text-gray-600">Økt utløpt, vennligst logg inn igjen</p>
         </div>
-        <div>
-          <SignInButton mode="modal">
-            <button type="button" className="btn-primary w-full">
-              Logg inn på nytt
-            </button>
-          </SignInButton>
+        <div className="flex justify-center">
+          <SignIn
+            appearance={{
+              elements: {
+                rootBox: 'w-full',
+                card: 'shadow-none bg-transparent p-0',
+                headerTitle: 'hidden',
+                headerSubtitle: 'hidden',
+                formButtonPrimary: 'btn-primary w-full',
+                formFieldInput:
+                  'border border-gray-300 rounded-md focus:border-eok-500 focus:ring-eok-500',
+                formFieldLabel: 'text-gray-700',
+                footerActionLink: 'text-eok-600 hover:text-eok-700',
+                socialButtonsBlockButton: 'border border-gray-300 hover:bg-gray-50',
+                dividerLine: 'bg-gray-300',
+                dividerText: 'text-gray-500'
+              }
+            }}
+            fallbackRedirectUrl="/"
+            redirectUrl="/admin"
+          />
         </div>
       </div>
     </div>
