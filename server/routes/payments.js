@@ -48,6 +48,8 @@ const callStripe = async (method, path, params = null) => {
   return response.json();
 };
 
+const COUNTRY_CODE = 'NO';
+
 const calculateStripeFeeCents = totalWithoutFeeCents => {
   if (!totalWithoutFeeCents || totalWithoutFeeCents <= 0) {
     return 0;
@@ -55,6 +57,66 @@ const calculateStripeFeeCents = totalWithoutFeeCents => {
 
   const percentFee = Math.round((totalWithoutFeeCents * STRIPE_FEE_PERCENT_NUMERATOR) / STRIPE_FEE_PERCENT_DENOMINATOR);
   return percentFee + STRIPE_FEE_FIXED_CENTS;
+};
+
+const parseAddressForStripe = address => {
+  if (!address) {
+    return {};
+  }
+
+  const cleaned = String(address)
+    .split('\n')
+    .join(', ')
+    .split(',')
+    .map(segment => segment.trim())
+    .filter(Boolean);
+
+  if (cleaned.length === 0) {
+    return {};
+  }
+
+  const [line1, ...rest] = cleaned;
+  const joinedRest = rest.join(', ');
+  const postalMatch = joinedRest.match(/(\d{4})/);
+  const postal_code = postalMatch ? postalMatch[1] : undefined;
+
+  let city;
+  if (postal_code) {
+    const afterPostal = joinedRest.split(postal_code).pop();
+    city = afterPostal ? afterPostal.replace(/[^\p{L}\p{M}\s-]/gu, '').trim() : undefined;
+  } else if (rest.length > 0) {
+    city = rest[rest.length - 1];
+  }
+
+  const line2 = rest.length > 0 ? rest.join(', ') : undefined;
+
+  return {
+    line1,
+    line2,
+    postal_code,
+    city
+  };
+};
+
+const applyStripeAddressParams = (params, address) => {
+  if (!params || !address) {
+    return;
+  }
+
+  const { line1, line2, postal_code, city } = parseAddressForStripe(address);
+  if (line1) {
+    params.append('address[line1]', line1);
+  }
+  if (line2 && line2 !== line1) {
+    params.append('address[line2]', line2);
+  }
+  if (postal_code) {
+    params.append('address[postal_code]', postal_code);
+  }
+  if (city) {
+    params.append('address[city]', city);
+  }
+  params.append('address[country]', COUNTRY_CODE);
 };
 
 const ensureStripeFeeForInvoice = async invoice => {
@@ -220,8 +282,8 @@ const ensureTables = async () => {
       id SERIAL PRIMARY KEY,
       name TEXT NOT NULL,
       email TEXT NOT NULL,
-      phone TEXT,
-      address TEXT,
+      phone TEXT NOT NULL,
+      address TEXT NOT NULL,
       created_by TEXT,
       created_by_email TEXT,
       created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
@@ -229,9 +291,50 @@ const ensureTables = async () => {
     )
   `);
 
-  await pool.query(
-    'ALTER TABLE club_invoice_recipients ADD CONSTRAINT IF NOT EXISTS club_invoice_recipients_email_key UNIQUE (email)'
-  );
+  await pool.query(`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'club_invoice_recipients'
+          AND column_name = 'phone'
+      ) THEN
+        ALTER TABLE club_invoice_recipients ADD COLUMN phone TEXT NOT NULL DEFAULT '';
+      END IF;
+
+      IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'club_invoice_recipients'
+          AND column_name = 'address'
+      ) THEN
+        ALTER TABLE club_invoice_recipients ADD COLUMN address TEXT NOT NULL DEFAULT '';
+      END IF;
+
+      UPDATE club_invoice_recipients
+      SET phone = COALESCE(NULLIF(TRIM(phone), ''), 'Mangler telefon')
+      WHERE phone IS NULL OR TRIM(phone) = '';
+
+      UPDATE club_invoice_recipients
+      SET address = COALESCE(NULLIF(TRIM(address), ''), 'Adresse ikke registrert')
+      WHERE address IS NULL OR TRIM(address) = '';
+
+      ALTER TABLE club_invoice_recipients ALTER COLUMN phone DROP DEFAULT;
+      ALTER TABLE club_invoice_recipients ALTER COLUMN address DROP DEFAULT;
+      ALTER TABLE club_invoice_recipients ALTER COLUMN phone SET NOT NULL;
+      ALTER TABLE club_invoice_recipients ALTER COLUMN address SET NOT NULL;
+
+      IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'club_invoice_recipients_email_key'
+          AND conrelid = 'club_invoice_recipients'::regclass
+      ) THEN
+        ALTER TABLE club_invoice_recipients
+        ADD CONSTRAINT club_invoice_recipients_email_key UNIQUE (email);
+      END IF;
+    END;
+    $$;
+  `);
 };
 
 ensureTables().catch(error => {
@@ -357,17 +460,17 @@ const getInvoices = async (invoiceId = null) => {
 };
 
 const createStripeInvoiceForClub = async (invoice, { email, name, phone, address }) => {
+  if (!email || !name || !phone || !address) {
+    throw new Error('Mangler nødvendig kundeinformasjon for Stripe-faktura');
+  }
+
   const customerParams = new URLSearchParams();
   customerParams.append('email', email);
   customerParams.append('metadata[invoiceId]', String(invoice.id));
   customerParams.append('name', name);
   customerParams.append('preferred_locales[]', STRIPE_LOCALE);
-  if (phone) {
-    customerParams.append('phone', phone);
-  }
-  if (address) {
-    customerParams.append('address[line1]', address);
-  }
+  customerParams.append('phone', phone);
+  applyStripeAddressParams(customerParams, address);
 
   const customer = await callStripe('POST', '/customers', customerParams);
 
@@ -377,12 +480,8 @@ const createStripeInvoiceForClub = async (invoice, { email, name, phone, address
   invoiceParams.append('auto_advance', 'true');
   invoiceParams.append('metadata[invoiceId]', String(invoice.id));
   invoiceParams.append('metadata[contactName]', name);
-  if (address) {
-    invoiceParams.append('metadata[contactAddress]', address);
-  }
-  if (phone) {
-    invoiceParams.append('metadata[contactPhone]', phone);
-  }
+  invoiceParams.append('metadata[contactAddress]', address);
+  invoiceParams.append('metadata[contactPhone]', phone);
   invoiceParams.append('description', invoice.notes || `Kartarkiv ${invoice.month}`);
 
   const unixDueDate = invoice.due_date ? Math.floor(new Date(invoice.due_date).getTime() / 1000) : null;
@@ -608,15 +707,23 @@ router.post('/invoices/:invoiceId/request-invoice', authenticateUser, async (req
   const normalizedEmail = String(contactEmail || req.user.email || '').trim();
   const normalizedName = String(contactName || '').trim();
   const normalizedPhoneRaw = contactPhone == null ? '' : String(contactPhone).trim();
-  const normalizedPhone = normalizedPhoneRaw || null;
+  const normalizedPhone = normalizedPhoneRaw;
   const normalizedAddressRaw = contactAddress == null ? '' : String(contactAddress).trim();
-  const normalizedAddress = normalizedAddressRaw || null;
+  const normalizedAddress = normalizedAddressRaw;
   if (!normalizedEmail) {
     return res.status(400).json({ error: 'Oppgi e-postadressen fakturaen skal sendes til' });
   }
 
   if (!normalizedName) {
     return res.status(400).json({ error: 'Oppgi navnet eller bedriften som skal stå på fakturaen' });
+  }
+
+  if (!normalizedPhone) {
+    return res.status(400).json({ error: 'Oppgi telefonnummer til mottakeren' });
+  }
+
+  if (!normalizedAddress) {
+    return res.status(400).json({ error: 'Oppgi fakturaadressen' });
   }
 
   try {
@@ -676,20 +783,14 @@ router.post('/invoices/:invoiceId/request-invoice', authenticateUser, async (req
       customerParams.append('email', normalizedEmail);
       customerParams.append('name', normalizedName);
       customerParams.append('preferred_locales[]', STRIPE_LOCALE);
-      if (normalizedPhone) {
-        customerParams.append('phone', normalizedPhone);
-      }
-      if (normalizedAddress) {
-        customerParams.append('address[line1]', normalizedAddress);
-      }
+      customerParams.append('phone', normalizedPhone);
+      applyStripeAddressParams(customerParams, normalizedAddress);
       await callStripe('POST', `/customers/${stripeCustomerId}`, customerParams);
 
       const updateInvoiceParams = new URLSearchParams();
       updateInvoiceParams.append('customer', stripeCustomerId);
       updateInvoiceParams.append('description', invoice.notes || `Kartarkiv ${invoice.month}`);
-      if (normalizedAddress) {
-        updateInvoiceParams.append('metadata[contactAddress]', normalizedAddress);
-      }
+      updateInvoiceParams.append('metadata[contactAddress]', normalizedAddress);
       if (unixDueDate) {
         updateInvoiceParams.append('due_date', String(unixDueDate));
       } else {
@@ -768,10 +869,8 @@ router.post('/recipients', authenticateUser, requireSuperAdmin, async (req, res)
 
   const normalizedName = String(name || '').trim();
   const normalizedEmail = String(email || '').trim().toLowerCase();
-  const normalizedPhoneRaw = phone == null ? '' : String(phone).trim();
-  const normalizedPhone = normalizedPhoneRaw || null;
-  const normalizedAddressRaw = address == null ? '' : String(address).trim();
-  const normalizedAddress = normalizedAddressRaw || null;
+  const normalizedPhone = String(phone || '').trim();
+  const normalizedAddress = String(address || '').trim();
 
   if (!normalizedName) {
     return res.status(400).json({ error: 'Oppgi navn eller bedrift for mottakeren' });
@@ -779,6 +878,14 @@ router.post('/recipients', authenticateUser, requireSuperAdmin, async (req, res)
 
   if (!normalizedEmail) {
     return res.status(400).json({ error: 'Oppgi e-postadresse for mottakeren' });
+  }
+
+  if (!normalizedPhone) {
+    return res.status(400).json({ error: 'Telefonnummer er påkrevd' });
+  }
+
+  if (!normalizedAddress) {
+    return res.status(400).json({ error: 'Adresse er påkrevd' });
   }
 
   try {

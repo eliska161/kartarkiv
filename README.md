@@ -34,6 +34,18 @@ starter backend-serveren:
 
 Når variablene er satt kan superadministratorer opprette fakturaer, og klubbene kan betale via kort eller be om faktura.
 
+### Google adresse-autoutfylling
+
+Fakturamodalen støtter adresseforslag fra Google Places API for å gjøre utfylling raskere. Legg til API-nøkkelen i klientmiljøet
+dersom du ønsker autoutfylling:
+
+```
+REACT_APP_GOOGLE_PLACES_API_KEY=<din Google Places API-nøkkel>
+```
+
+Nøkkelen må ha tilgang til Places API. Hvis variabelen ikke er satt fungerer skjemaet fortsatt, men brukeren må skrive inn
+adressen manuelt.
+
 ## Testing
 
 The root package exposes a placeholder test script that currently echoes `No tests specified`. Add tests under the respective workspace (`server/` or `client/`) and wire them into the root `package.json` when available.

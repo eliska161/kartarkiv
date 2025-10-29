@@ -3,6 +3,7 @@ import type { AxiosResponse } from 'axios';
 import { apiGet, apiPost } from '../utils/apiClient';
 import { CreditCard, FileText, Loader2, PlusCircle, Send, Wallet, X } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
+import AddressAutocompleteInput from './payments/AddressAutocompleteInput';
 
 interface PaymentManagementProps {
   isSuperAdmin: boolean;
@@ -48,8 +49,8 @@ interface InvoiceRecipient {
   id: number;
   name: string;
   email: string;
-  phone: string | null;
-  address: string | null;
+  phone: string;
+  address: string;
   created_at: string;
   updated_at: string;
 }
@@ -72,6 +73,19 @@ const statusConfig: Record<Invoice['status'], { label: string; className: string
 const STRIPE_FEE_PERCENT_NUMERATOR = 24;
 const STRIPE_FEE_PERCENT_DENOMINATOR = 1000; // 2.4%
 const STRIPE_FEE_FIXED = 2; // NOK 2,00
+
+const sanitizePresetValue = (value: string | null | undefined) => {
+  if (!value) {
+    return '';
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed || trimmed === 'Mangler telefon' || trimmed === 'Adresse ikke registrert') {
+    return '';
+  }
+
+  return trimmed;
+};
 
 const calculateStripeFee = (baseAmount: number) => {
   if (!baseAmount || baseAmount <= 0) {
@@ -161,10 +175,21 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
 
       try {
         const { data } = (await apiGet('/api/payments/recipients')) as AxiosResponse<{
-          recipients: InvoiceRecipient[];
+          recipients: Array<InvoiceRecipient & { phone?: string | null; address?: string | null }>;
         }>;
         const fetched = Array.isArray(data?.recipients) ? data.recipients : [];
-        setRecipients(sortRecipients(fetched));
+        const normalized = fetched.map(recipient => {
+          const rawPhone = (recipient.phone ?? '').trim();
+          const rawAddress = (recipient.address ?? '').trim();
+          const cleanedPhone = rawPhone === 'Mangler telefon' ? '' : rawPhone;
+          const cleanedAddress = rawAddress === 'Adresse ikke registrert' ? '' : rawAddress;
+          return {
+            ...recipient,
+            phone: cleanedPhone,
+            address: cleanedAddress
+          };
+        });
+        setRecipients(sortRecipients(normalized));
       } catch (error: any) {
         const status = error?.response?.status;
         if (status !== 403 && status !== 404) {
@@ -360,8 +385,14 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
 
     setInvoiceModalEmail(matchedRecipient?.email || suggestedEmail || '');
     setInvoiceModalName(matchedRecipient?.name || invoice.invoice_request_name || '');
-    setInvoiceModalPhone(matchedRecipient?.phone || invoice.invoice_request_phone || '');
-    setInvoiceModalAddress(matchedRecipient?.address || invoice.invoice_request_address || '');
+    setInvoiceModalPhone(
+      matchedRecipient ? sanitizePresetValue(matchedRecipient.phone) : sanitizePresetValue(invoice.invoice_request_phone)
+    );
+    setInvoiceModalAddress(
+      matchedRecipient
+        ? sanitizePresetValue(matchedRecipient.address)
+        : sanitizePresetValue(invoice.invoice_request_address)
+    );
     setInvoiceModalSelectedRecipient(matchedRecipient ? String(matchedRecipient.id) : 'custom');
     setInvoiceModalTarget(invoice);
     setIsInvoiceModalOpen(true);
@@ -391,8 +422,8 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
     if (selected) {
       setInvoiceModalName(selected.name);
       setInvoiceModalEmail(selected.email);
-      setInvoiceModalPhone(selected.phone || '');
-      setInvoiceModalAddress(selected.address || '');
+      setInvoiceModalPhone(sanitizePresetValue(selected.phone));
+      setInvoiceModalAddress(sanitizePresetValue(selected.address));
     }
   };
 
@@ -412,27 +443,42 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
       return;
     }
 
+    if (!phone) {
+      showError('Telefonnummer mangler', 'Telefonnummer må fylles ut for å lagre mottakeren.');
+      return;
+    }
+
+    if (!address) {
+      showError('Adresse mangler', 'Adresse må fylles ut for å lagre mottakeren.');
+      return;
+    }
+
     setRecipientSaving(true);
 
     try {
       const { data } = (await apiPost('/api/payments/recipients', {
         name,
         email,
-        phone: phone || undefined,
-        address: address || undefined
+        phone,
+        address
       })) as AxiosResponse<{ recipient: InvoiceRecipient }>;
 
       if (data?.recipient) {
+        const sanitizedRecipient: InvoiceRecipient = {
+          ...data.recipient,
+          phone: sanitizePresetValue(data.recipient.phone),
+          address: sanitizePresetValue(data.recipient.address)
+        };
         setRecipients(prev => {
-          const filtered = prev.filter(item => item.id !== data.recipient.id);
-          return sortRecipients([...filtered, data.recipient]);
+          const filtered = prev.filter(item => item.id !== sanitizedRecipient.id);
+          return sortRecipients([...filtered, sanitizedRecipient]);
         });
 
-        setInvoiceModalSelectedRecipient(String(data.recipient.id));
-        setInvoiceModalName(data.recipient.name);
-        setInvoiceModalEmail(data.recipient.email);
-        setInvoiceModalPhone(data.recipient.phone || '');
-        setInvoiceModalAddress(data.recipient.address || '');
+        setInvoiceModalSelectedRecipient(String(sanitizedRecipient.id));
+        setInvoiceModalName(sanitizedRecipient.name);
+        setInvoiceModalEmail(sanitizedRecipient.email);
+        setInvoiceModalPhone(sanitizedRecipient.phone);
+        setInvoiceModalAddress(sanitizedRecipient.address);
         showSuccess('Mottaker lagret', 'Mottakeren er klar til gjenbruk.');
       }
     } catch (error: any) {
@@ -463,13 +509,23 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
       return;
     }
 
+    if (!phone) {
+      showError('Telefonnummer mangler', 'Telefonnummer må fylles ut før fakturaen kan sendes.');
+      return;
+    }
+
+    if (!address) {
+      showError('Adresse mangler', 'Legg inn fakturaadresse før du sender.');
+      return;
+    }
+
     setInvoiceModalLoading(true);
     try {
       const { data } = (await apiPost(`/api/payments/invoices/${invoiceModalTarget.id}/request-invoice`, {
         contactEmail: email,
         contactName: name,
-        contactPhone: phone || undefined,
-        contactAddress: address || undefined
+        contactPhone: phone,
+        contactAddress: address
       })) as AxiosResponse<{ invoice: Invoice }>;
       showSuccess('Faktura sendt', 'Stripe har sendt fakturaen til valgt e-post.');
       setInvoices(prev => prev.map(item => (item.id === invoiceModalTarget.id ? data.invoice : item)));
@@ -489,10 +545,10 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
   };
 
   return (
-    <div className="p-6 space-y-8">
+    <div className="mx-auto max-w-5xl p-6 space-y-8">
       <div>
         <h2 className="text-xl font-semibold text-gray-900 flex items-center">
-          <Wallet className="h-5 w-5 mr-2 text-eok-600" />
+          <Wallet className="h-5 w-5 mr-2 text-slate-600" />
           Betalingsoversikt
         </h2>
         <p className="text-gray-600">Hold oversikt over kostnader og sørg for enkel betaling via Stripe eller faktura.</p>
@@ -528,7 +584,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
                   href={paymentConfirmation.stripe_invoice_url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-sm font-medium text-eok-700 hover:text-eok-800"
+                  className="text-sm font-medium text-slate-700 hover:text-slate-900"
                 >
                   Åpne kvittering i Stripe →
                 </a>
@@ -542,7 +598,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
         <div className="card">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-              <FileText className="h-5 w-5 mr-2 text-eok-600" />
+              <FileText className="h-5 w-5 mr-2 text-slate-600" />
               Opprett månedlig faktura
             </h3>
           </div>
@@ -555,7 +611,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
                   type="month"
                   value={form.month}
                   onChange={event => setForm(prev => ({ ...prev, month: event.target.value }))}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-eok-500 focus:ring-eok-500"
+                  className="mt-1 block w-full rounded-md border border-slate-300 shadow-sm focus:border-slate-500 focus:ring-2 focus:ring-slate-400"
                   required
                 />
               </label>
@@ -566,7 +622,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
                   type="date"
                   value={form.dueDate}
                   onChange={event => setForm(prev => ({ ...prev, dueDate: event.target.value }))}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-eok-500 focus:ring-eok-500"
+                  className="mt-1 block w-full rounded-md border border-slate-300 shadow-sm focus:border-slate-500 focus:ring-2 focus:ring-slate-400"
                 />
               </label>
 
@@ -576,7 +632,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
                   type="text"
                   value={form.notes}
                   onChange={event => setForm(prev => ({ ...prev, notes: event.target.value }))}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-eok-500 focus:ring-eok-500"
+                  className="mt-1 block w-full rounded-md border border-slate-300 shadow-sm focus:border-slate-500 focus:ring-2 focus:ring-slate-400"
                   placeholder="F.eks. Lisens og drift"
                 />
               </label>
@@ -585,13 +641,13 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h4 className="text-md font-semibold text-gray-900 flex items-center">
-                  <PlusCircle className="h-5 w-5 mr-2 text-eok-600" />
+                  <PlusCircle className="h-5 w-5 mr-2 text-slate-600" />
                   Kostnadslinjer
                 </h4>
                 <button
                   type="button"
                   onClick={addItem}
-                  className="text-sm text-eok-600 hover:text-eok-700 font-medium"
+                  className="text-sm text-slate-600 hover:text-slate-700 font-medium"
                 >
                   Legg til linje
                 </button>
@@ -606,7 +662,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
                         type="text"
                         value={item.description}
                         onChange={event => handleItemChange(index, 'description', event.target.value)}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-eok-500 focus:ring-eok-500"
+                        className="mt-1 block w-full rounded-md border border-slate-300 shadow-sm focus:border-slate-500 focus:ring-2 focus:ring-slate-400"
                         placeholder="Hva skal klubben betale for?"
                         required
                       />
@@ -619,7 +675,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
                         step="0.01"
                         value={item.amount}
                         onChange={event => handleItemChange(index, 'amount', event.target.value)}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-eok-500 focus:ring-eok-500"
+                        className="mt-1 block w-full rounded-md border border-slate-300 shadow-sm focus:border-slate-500 focus:ring-2 focus:ring-slate-400"
                         required
                       />
                     </div>
@@ -630,7 +686,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
                         min="1"
                         value={item.quantity}
                         onChange={event => handleItemChange(index, 'quantity', Number(event.target.value))}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-eok-500 focus:ring-eok-500"
+                        className="mt-1 block w-full rounded-md border border-slate-300 shadow-sm focus:border-slate-500 focus:ring-2 focus:ring-slate-400"
                         required
                       />
                     </div>
@@ -683,7 +739,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
       <div className="card">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-            <CreditCard className="h-5 w-5 mr-2 text-eok-600" />
+            <CreditCard className="h-5 w-5 mr-2 text-slate-600" />
             Fakturaer og betalinger
           </h3>
           <span className="text-sm text-gray-500">{invoices.length} faktura(er)</span>
@@ -733,7 +789,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
                               href={invoice.stripe_invoice_url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-sm font-medium text-eok-700 hover:text-eok-800"
+                    className="text-sm font-medium text-slate-700 hover:text-slate-900"
                             >
                               Vis Stripe-faktura →
                             </a>
@@ -813,7 +869,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
                 <select
                   value={invoiceModalSelectedRecipient}
                   onChange={event => handleRecipientSelectionChange(event.target.value)}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-eok-500 focus:ring-eok-500"
+                  className="mt-1 block w-full rounded-md border border-slate-300 shadow-sm focus:border-slate-500 focus:ring-2 focus:ring-slate-400"
                   disabled={recipientsLoading && recipients.length === 0}
                 >
                   <option value="custom">
@@ -839,7 +895,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
                   value={invoiceModalName}
                   onChange={event => setInvoiceModalName(event.target.value)}
                   placeholder="Kartklubben AS"
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-eok-500 focus:ring-eok-500"
+                  className="mt-1 block w-full rounded-md border border-slate-300 shadow-sm focus:border-slate-500 focus:ring-2 focus:ring-slate-400"
                   autoFocus
                   required
                 />
@@ -851,31 +907,30 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
                   value={invoiceModalEmail}
                   onChange={event => setInvoiceModalEmail(event.target.value)}
                   placeholder="epost@klubben.no"
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-eok-500 focus:ring-eok-500"
+                  className="mt-1 block w-full rounded-md border border-slate-300 shadow-sm focus:border-slate-500 focus:ring-2 focus:ring-slate-400"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Telefonnummer (valgfritt)</label>
-                <input
-                  type="tel"
-                  value={invoiceModalPhone}
-                  onChange={event => setInvoiceModalPhone(event.target.value)}
-                  placeholder="+47 12 34 56 78"
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-eok-500 focus:ring-eok-500"
-                />
+              <label className="block text-sm font-medium text-gray-700">Telefonnummer</label>
+              <input
+                type="tel"
+                value={invoiceModalPhone}
+                onChange={event => setInvoiceModalPhone(event.target.value)}
+                placeholder="+47 12 34 56 78"
+                className="mt-1 block w-full rounded-md border border-slate-300 shadow-sm focus:border-slate-500 focus:ring-2 focus:ring-slate-400"
+                required
+              />
+              <p className="text-xs text-gray-500 mt-1">Telefonnummeret deles kun med Stripe og vises på fakturaen.</p>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Adresse (valgfritt)</label>
-                <textarea
-                  value={invoiceModalAddress}
-                  onChange={event => setInvoiceModalAddress(event.target.value)}
-                  rows={3}
-                  placeholder="Eksempelgata 1, 0123 Oslo"
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-eok-500 focus:ring-eok-500"
-                />
-                <p className="text-xs text-gray-500 mt-1">Adresse sendes til Stripe og vises på fakturaen.</p>
-              </div>
+              <AddressAutocompleteInput
+                label="Adresse"
+                value={invoiceModalAddress}
+                onChange={setInvoiceModalAddress}
+                placeholder="Eksempelgata 1, 0123 Oslo"
+                required
+                helperText="Adressen deles med Stripe slik at fakturaen fylles ut korrekt."
+              />
               {isSuperAdmin && (
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-xs text-gray-500">
@@ -885,7 +940,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
                     type="button"
                     onClick={handleSaveRecipientPreset}
                     disabled={recipientSaving}
-                    className="inline-flex items-center px-3 py-2 text-sm font-medium text-eok-700 hover:text-eok-800"
+                    className="inline-flex items-center px-3 py-2 text-sm font-medium text-slate-700 hover:text-slate-900"
                   >
                     {recipientSaving ? (
                       <>
