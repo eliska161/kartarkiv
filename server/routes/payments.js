@@ -850,7 +850,6 @@ router.post('/invoices/:invoiceId/request-invoice', authenticateUser, async (req
       await callStripe('POST', `/customers/${stripeCustomerId}`, customerParams);
 
       const updateInvoiceParams = new URLSearchParams();
-      updateInvoiceParams.append('customer', stripeCustomerId);
       updateInvoiceParams.append('description', invoice.notes || `Kartarkiv ${invoice.month}`);
       updateInvoiceParams.append('metadata[contactAddress]', normalizedAddress);
       if (unixDueDate) {
