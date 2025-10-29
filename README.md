@@ -34,17 +34,23 @@ starter backend-serveren:
 
 Når variablene er satt kan superadministratorer opprette fakturaer, og klubbene kan betale via kort eller be om faktura.
 
-### Google adresse-autoutfylling
+### Mapbox adresse-autoutfylling
 
-Fakturamodalen støtter adresseforslag fra Google Places API for å gjøre utfylling raskere. Legg til API-nøkkelen i klientmiljøet
-dersom du ønsker autoutfylling:
+Fakturamodalen støtter nå Mapbox Address Autofill slik at klubbens fakturaadresse kan hentes fra kartet og kvalitetssikres automatisk. Funksjonen aktiveres ved å legge til en Mapbox Search access token i klientmiljøet:
 
 ```
-REACT_APP_GOOGLE_PLACES_API_KEY=<din Google Places API-nøkkel>
+REACT_APP_MAPBOX_ACCESS_TOKEN=<din Mapbox access token>
 ```
 
-Nøkkelen må ha tilgang til Places API. Hvis variabelen ikke er satt fungerer skjemaet fortsatt, men brukeren må skrive inn
-adressen manuelt.
+Følg disse stegene for å sette opp en token som fungerer både lokalt og i produksjon:
+
+1. Opprett eller logg inn på en Mapbox-konto på [mapbox.com](https://www.mapbox.com/).
+2. Gå til **Account** → **Tokens** og opprett en ny token med "Public" type.
+3. Huk av for "Address Autofill" (eller søk etter `address-autofill` under Scopes) slik at tokenen får tilgang til Search API-et.
+4. Under *URL restrictions* kan du legge til domenene som skal bruke autofyll (for eksempel `http://localhost:3000` og produksjonsdomenet).
+5. Kopier tokenen (starter med `pk.`) og legg den i `client/.env.local` som `REACT_APP_MAPBOX_ACCESS_TOKEN`.
+
+Hvis variabelen ikke er satt fungerer skjemaet fortsatt, men brukeren må skrive inn adressen manuelt.
 
 ## Testing
 

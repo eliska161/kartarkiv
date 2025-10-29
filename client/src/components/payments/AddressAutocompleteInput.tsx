@@ -1,61 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-declare global {
-  interface Window {
-    google?: any;
-  }
-}
-
-type Prediction = {
-  description: string;
-  place_id: string;
-};
-
-const GOOGLE_SCRIPT_ID = 'google-places-sdk';
-let googleScriptPromise: Promise<void> | null = null;
-
-const loadGooglePlacesSdk = () => {
-  if (typeof window === 'undefined') {
-    return Promise.reject(new Error('Ingen tilgang til window-objektet'));
-  }
-
-  if (window.google?.maps?.places) {
-    return Promise.resolve();
-  }
-
-  const apiKey =
-    process.env.REACT_APP_GOOGLE_PLACES_API_KEY || process.env.REACT_APP_GOOGLE_MAPS_API_KEY || '';
-
-  if (!apiKey) {
-    return Promise.reject(new Error('GOOGLE_PLACES_API_KEY mangler'));
-  }
-
-  if (!googleScriptPromise) {
-    googleScriptPromise = new Promise((resolve, reject) => {
-      if (document.getElementById(GOOGLE_SCRIPT_ID)) {
-        resolve();
-        return;
-      }
-
-      const script = document.createElement('script');
-      script.id = GOOGLE_SCRIPT_ID;
-      script.async = true;
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&language=nb&region=NO`;
-      script.onload = () => {
-        if (window.google?.maps?.places) {
-          resolve();
-        } else {
-          reject(new Error('Google Maps Places-biblioteket ble ikke lastet inn'));
-        }
-      };
-      script.onerror = () => reject(new Error('Klarte ikke å laste Google Maps SDK'));
-      document.head.appendChild(script);
-    });
-  }
-
-  return googleScriptPromise;
-};
-
 interface AddressAutocompleteInputProps {
   id?: string;
   label: string;
@@ -67,6 +11,31 @@ interface AddressAutocompleteInputProps {
   helperText?: string;
   error?: string | null;
 }
+
+type MapboxSuggestion = {
+  id: string;
+  name: string;
+  placeFormatted: string;
+  context?: string;
+};
+
+type RetrieveFeature = {
+  properties?: {
+    full_address?: string;
+    name?: string;
+  };
+};
+
+const MAPBOX_SUGGEST_URL = 'https://api.mapbox.com/search/searchbox/v1/suggest';
+const MAPBOX_RETRIEVE_URL = 'https://api.mapbox.com/search/searchbox/v1/retrieve';
+const MAPBOX_SESSION_TTL = 5 * 60 * 1000; // 5 minutter
+
+const createSessionToken = () => {
+  if (typeof window !== 'undefined' && window.crypto?.randomUUID) {
+    return window.crypto.randomUUID();
+  }
+  return Math.random().toString(36).slice(2);
+};
 
 const AddressAutocompleteInput: React.FC<AddressAutocompleteInputProps> = ({
   id,
@@ -80,125 +49,229 @@ const AddressAutocompleteInput: React.FC<AddressAutocompleteInputProps> = ({
   error
 }) => {
   const [query, setQuery] = useState(value);
-  const [predictions, setPredictions] = useState<Prediction[]>([]);
-  const [placesReady, setPlacesReady] = useState(false);
+  const [suggestions, setSuggestions] = useState<MapboxSuggestion[]>([]);
   const [loadingPredictions, setLoadingPredictions] = useState(false);
   const [placesError, setPlacesError] = useState<string | null>(null);
-  const serviceRef = useRef<any>(null);
-  const detailsServiceRef = useRef<any>(null);
-  const sessionTokenRef = useRef<any>(null);
+  const [isFocused, setIsFocused] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const sessionRef = useRef<{ token: string; createdAt: number } | null>(null);
   const blurTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const mapboxToken = useMemo(() => process.env.REACT_APP_MAPBOX_ACCESS_TOKEN || '', []);
 
   useEffect(() => {
     setQuery(value);
   }, [value]);
 
-  useEffect(() => {
-    if (disabled) {
-      setPredictions([]);
-      return;
+  const ensureSessionToken = useCallback(() => {
+    const now = Date.now();
+    if (!sessionRef.current || now - sessionRef.current.createdAt > MAPBOX_SESSION_TTL) {
+      sessionRef.current = { token: createSessionToken(), createdAt: now };
     }
+    return sessionRef.current.token;
+  }, []);
 
-    loadGooglePlacesSdk()
-      .then(() => {
-        if (!window.google?.maps?.places) {
-          throw new Error('Google Places API er ikke tilgjengelig');
-        }
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (!containerRef.current || containerRef.current.contains(event.target as Node)) {
+        return;
+      }
+      setIsFocused(false);
+      setSuggestions([]);
+      setHighlightedIndex(-1);
+    };
 
-        serviceRef.current = new window.google.maps.places.AutocompleteService();
-        const dummyDiv = document.createElement('div');
-        detailsServiceRef.current = new window.google.maps.places.PlacesService(dummyDiv);
-        sessionTokenRef.current = new window.google.maps.places.AutocompleteSessionToken();
-        setPlacesReady(true);
-        setPlacesError(null);
-      })
-      .catch(err => {
-        console.warn('Adresse-autoutfylling er ikke tilgjengelig', err);
-        setPlacesReady(false);
-        setPlacesError('Autoutfylling er midlertidig utilgjengelig');
-      });
-
+    document.addEventListener('mousedown', handleClickOutside);
     return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
       if (blurTimeout.current) {
         clearTimeout(blurTimeout.current);
       }
+      abortControllerRef.current?.abort();
     };
-  }, [disabled]);
+  }, []);
 
   useEffect(() => {
-    if (!placesReady || !serviceRef.current || disabled) {
-      setPredictions([]);
+    if (disabled) {
+      setSuggestions([]);
+      setLoadingPredictions(false);
       return;
     }
 
     const trimmed = query.trim();
-    if (trimmed.length < 3) {
-      setPredictions([]);
+
+    if (!mapboxToken) {
+      setSuggestions([]);
+      if (trimmed.length >= 3) {
+        setPlacesError('Autoutfylling er deaktivert fordi Mapbox-nøkkel mangler.');
+      }
       return;
     }
 
-    let cancelled = false;
-    setLoadingPredictions(true);
+    if (trimmed.length < 3) {
+      setSuggestions([]);
+      setLoadingPredictions(false);
+      setPlacesError(null);
+      return;
+    }
 
-    serviceRef.current.getPlacePredictions(
-      {
-        input: trimmed,
-        sessionToken: sessionTokenRef.current ?? undefined,
-        componentRestrictions: { country: ['no'] },
-        types: ['geocode']
-      },
-      (results: any, status: any) => {
-        if (cancelled) {
+    setLoadingPredictions(true);
+    setPlacesError(null);
+    setIsFocused(true);
+
+    const sessionToken = ensureSessionToken();
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    const timeout = setTimeout(async () => {
+      try {
+        const params = new URLSearchParams({
+          q: trimmed,
+          limit: '5',
+          language: 'nb',
+          session_token: sessionToken,
+          access_token: mapboxToken,
+          country: 'NO',
+          types: 'address'
+        });
+
+        const response = await fetch(`${MAPBOX_SUGGEST_URL}?${params.toString()}`, {
+          signal: controller.signal
+        });
+
+        if (!response.ok) {
+          throw new Error(`Kunne ikke hente adresseforslag (status ${response.status})`);
+        }
+
+        const data = await response.json();
+        const mapped: MapboxSuggestion[] = (data?.suggestions || []).map((item: any) => ({
+          id: item.mapbox_id,
+          name: item.name,
+          placeFormatted: item.place_formatted || item.full_address || item.name,
+          context: Array.isArray(item.context)
+            ? item.context
+                .map((ctx: any) => ctx?.name)
+                .filter((part: string | undefined): part is string => Boolean(part))
+                .join(', ')
+            : undefined
+        }));
+
+        setSuggestions(mapped);
+        setHighlightedIndex(mapped.length > 0 ? 0 : -1);
+      } catch (fetchError) {
+        if (controller.signal.aborted) {
           return;
         }
-
-        if (status === window.google?.maps?.places?.PlacesServiceStatus.OK && results) {
-          setPredictions(results.slice(0, 5));
-        } else {
-          setPredictions([]);
+        console.warn('Kunne ikke hente adresseforslag fra Mapbox', fetchError);
+        setPlacesError('Klarte ikke å hente adresseforslag akkurat nå. Prøv igjen senere.');
+        setSuggestions([]);
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoadingPredictions(false);
         }
-        setLoadingPredictions(false);
       }
-    );
+    }, 250);
 
     return () => {
-      cancelled = true;
+      clearTimeout(timeout);
+      controller.abort();
     };
-  }, [query, placesReady, disabled]);
+  }, [disabled, ensureSessionToken, mapboxToken, query]);
 
-  const closePredictions = useCallback(() => {
-    setPredictions([]);
-  }, []);
-
-  const selectPrediction = useCallback(
-    (prediction: Prediction) => {
-      if (!detailsServiceRef.current || !window.google?.maps?.places) {
-        onChange(prediction.description);
-        setQuery(prediction.description);
-        closePredictions();
+  const handlePredictionSelect = useCallback(
+    async (suggestion: MapboxSuggestion) => {
+      const fallbackAddress = suggestion.placeFormatted || suggestion.name;
+      if (!mapboxToken) {
+        onChange(fallbackAddress);
+        setQuery(fallbackAddress);
+        setSuggestions([]);
+        setHighlightedIndex(-1);
         return;
       }
 
-      detailsServiceRef.current.getDetails(
-        {
-          placeId: prediction.place_id,
-          sessionToken: sessionTokenRef.current ?? undefined,
-          fields: ['formatted_address', 'address_components', 'name']
-        },
-        (details: any, status: any) => {
-          let resolvedAddress = prediction.description;
-          if (status === window.google.maps.places.PlacesServiceStatus.OK && details) {
-            resolvedAddress = details.formatted_address || prediction.description;
-          }
+      try {
+        const token = ensureSessionToken();
+        const response = await fetch(
+          `${MAPBOX_RETRIEVE_URL}/${encodeURIComponent(suggestion.id)}?` +
+            new URLSearchParams({
+              access_token: mapboxToken,
+              session_token: token,
+              language: 'nb'
+            })
+        );
 
-          onChange(resolvedAddress);
-          setQuery(resolvedAddress);
-          closePredictions();
-          sessionTokenRef.current = new window.google.maps.places.AutocompleteSessionToken();
+        if (!response.ok) {
+          throw new Error(`Kunne ikke hente adresse (status ${response.status})`);
         }
-      );
+
+        const data: { features?: RetrieveFeature[] } = await response.json();
+        const details = data.features?.[0]?.properties;
+        const finalAddress = details?.full_address || details?.name || fallbackAddress;
+
+        onChange(finalAddress);
+        setQuery(finalAddress);
+        setSuggestions([]);
+        setHighlightedIndex(-1);
+        setPlacesError(null);
+      } catch (error) {
+        console.warn('Kunne ikke hente detaljert adresse fra Mapbox', error);
+        onChange(fallbackAddress);
+        setQuery(fallbackAddress);
+        setSuggestions([]);
+        setHighlightedIndex(-1);
+        setPlacesError('Kunne ikke hente komplett adresse, men vi har fylt inn det som ble valgt.');
+      }
     },
-    [closePredictions, onChange]
+    [ensureSessionToken, mapboxToken, onChange]
+  );
+
+  const handleBlur = useCallback(() => {
+    if (blurTimeout.current) {
+      clearTimeout(blurTimeout.current);
+    }
+
+    blurTimeout.current = setTimeout(() => {
+      setSuggestions([]);
+      setLoadingPredictions(false);
+      setHighlightedIndex(-1);
+    }, 150);
+  }, []);
+
+  const handleFocus = useCallback(() => {
+    if (disabled) {
+      return;
+    }
+
+    if (query.trim().length >= 3) {
+      setIsFocused(true);
+    }
+  }, [disabled, query]);
+
+  const handleKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLInputElement>) => {
+      if (suggestions.length === 0) {
+        return;
+      }
+
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        setHighlightedIndex(prev => (prev + 1) % suggestions.length);
+      } else if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        setHighlightedIndex(prev => (prev - 1 + suggestions.length) % suggestions.length);
+      } else if (event.key === 'Enter') {
+        if (highlightedIndex >= 0 && highlightedIndex < suggestions.length) {
+          event.preventDefault();
+          handlePredictionSelect(suggestions[highlightedIndex]);
+        }
+      } else if (event.key === 'Escape') {
+        setSuggestions([]);
+        setHighlightedIndex(-1);
+      }
+    },
+    [handlePredictionSelect, highlightedIndex, suggestions]
   );
 
   const helper = useMemo(() => {
@@ -213,18 +286,8 @@ const AddressAutocompleteInput: React.FC<AddressAutocompleteInputProps> = ({
     return helperText;
   }, [error, helperText, placesError]);
 
-  const handleBlur = () => {
-    if (blurTimeout.current) {
-      clearTimeout(blurTimeout.current);
-    }
-
-    blurTimeout.current = setTimeout(() => {
-      closePredictions();
-    }, 150);
-  };
-
   return (
-    <div className="space-y-1">
+    <div className="space-y-1" ref={containerRef}>
       <label htmlFor={id} className="block text-sm font-medium text-slate-700">
         {label}
         {required ? <span className="text-red-500">*</span> : null}
@@ -239,26 +302,35 @@ const AddressAutocompleteInput: React.FC<AddressAutocompleteInputProps> = ({
             const nextValue = event.target.value;
             setQuery(nextValue);
             onChange(nextValue);
+            setPlacesError(null);
+            if (nextValue.trim().length === 0) {
+              setSuggestions([]);
+            }
           }}
           onBlur={handleBlur}
+          onFocus={handleFocus}
+          onKeyDown={handleKeyDown}
           disabled={disabled}
           required={required}
           className={`w-full rounded-md border px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-400 disabled:cursor-not-allowed disabled:bg-slate-100 ${
             error ? 'border-red-400 focus:border-red-400 focus:ring-red-200' : 'border-slate-300'
           }`}
         />
-        {predictions.length > 0 && (
+        {suggestions.length > 0 && isFocused && (
           <ul className="absolute z-20 mt-1 max-h-56 w-full overflow-auto rounded-md border border-slate-200 bg-white shadow-lg">
-            {predictions.map(prediction => (
+            {suggestions.map((suggestion, index) => (
               <li
-                key={prediction.place_id}
-                className="cursor-pointer px-3 py-2 text-sm hover:bg-slate-100"
+                key={suggestion.id}
+                className={`cursor-pointer px-3 py-2 text-sm hover:bg-slate-100 ${
+                  highlightedIndex === index ? 'bg-slate-100' : ''
+                }`}
                 onMouseDown={event => {
                   event.preventDefault();
-                  selectPrediction(prediction);
+                  handlePredictionSelect(suggestion);
                 }}
               >
-                {prediction.description}
+                <div className="text-slate-900">{suggestion.placeFormatted || suggestion.name}</div>
+                {suggestion.context && <div className="text-xs text-slate-500">{suggestion.context}</div>}
               </li>
             ))}
           </ul>
@@ -271,19 +343,8 @@ const AddressAutocompleteInput: React.FC<AddressAutocompleteInputProps> = ({
               fill="none"
               viewBox="0 0 24 24"
             >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              />
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-              />
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
             </svg>
           </div>
         )}
