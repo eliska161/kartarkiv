@@ -15,6 +15,7 @@ const announcementRoutes = require('./routes/announcements');
 const restartRoutes = require('./routes/restart');
 const healthRoutes = require('./routes/health');
 const paymentRoutes = require('./routes/payments');
+const storageRoutes = require('./routes/storage');
 const { requestLogger, getLogs, clearLogs } = require('./middleware/requestLogger');
 
 const app = express();
@@ -352,6 +353,7 @@ console.log('✅ Restart routes registered at /api/restart');
 app.use('/api/health', healthRoutes);
 console.log('✅ Health check routes registered at /api/health');
 app.use('/api/payments', paymentRoutes);
+app.use('/api/storage', storageRoutes);
 console.log('✅ Payments routes registered at /api/payments');
 
 // Test route to verify announcements are working

@@ -36,6 +36,25 @@ const RATE_LIMIT_DELAY = isTestEnvironment ? 0 : 10000; // 10 seconds for rate l
 // Retry function
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+const notifySessionExpired = () => {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('session-expired'));
+  }
+};
+
+const isExpiredTokenError = (error: any) => {
+  if (!error?.response) {
+    return false;
+  }
+
+  if (error.response.data?.code === 'TOKEN_EXPIRED') {
+    return true;
+  }
+
+  const message = String(error.response.data?.message || error.response.data?.error || '').toLowerCase();
+  return error.response.status === 401 && message.includes('token expired');
+};
+
 const retryRequest = async (config: AxiosRequestConfig, retryCount = 0): Promise<AxiosResponse> => {
   try {
     console.log(`🔄 API: Attempting request (${retryCount + 1}/${MAX_RETRIES + 1}):`, config.url);
@@ -86,11 +105,9 @@ const retryRequest = async (config: AxiosRequestConfig, retryCount = 0): Promise
     
     // If it's a token expired error, notify the app so it can route to the
     // dedicated session expiry screen without forcing a full reload.
-    if (error.response?.data?.code === 'TOKEN_EXPIRED') {
+    if (isExpiredTokenError(error)) {
       console.error('🚫 API: Token expired, redirecting to session expiry screen');
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('session-expired'));
-      }
+      notifySessionExpired();
       throw new Error('Token expired - redirecting to session expiry screen');
     }
     

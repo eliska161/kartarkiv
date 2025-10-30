@@ -10,7 +10,8 @@ import AnnouncementManagement from '../components/AnnouncementManagement';
 import ServerRestart from '../components/ServerRestart';
 import PaymentManagement from '../components/PaymentManagement';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Plus, MapPin, BarChart3, Edit, Trash2, Shield, Activity, Megaphone, Server, CreditCard } from 'lucide-react';
+import { Plus, MapPin, BarChart3, Edit, Trash2, Shield, Activity, Megaphone, Server, CreditCard, HardDrive } from 'lucide-react';
+import StorageOverview from '../components/storage/StorageOverview';
 
 type FocusState = {
   focusTab?: string;
@@ -20,7 +21,7 @@ const AdminDashboard: React.FC = () => {
   const { maps, loading, fetchMaps, deleteMap, fetchMap } = useMap();
   const location = useLocation();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'maps' | 'users' | 'announcements' | 'payments' | 'stats' | 'logs' | 'server'>('maps');
+  const [activeTab, setActiveTab] = useState<'maps' | 'users' | 'announcements' | 'payments' | 'storage' | 'stats' | 'logs' | 'server'>('maps');
   const [showAddMapModal, setShowAddMapModal] = useState(false);
   const [editingMap, setEditingMap] = useState<any>(null);
   const [selectedMaps, setSelectedMaps] = useState<Set<number>>(new Set());
@@ -112,6 +113,7 @@ const AdminDashboard: React.FC = () => {
     { id: 'users', label: 'Brukeradministrasjon', icon: Shield },
     { id: 'announcements', label: 'Kunngjøringer', icon: Megaphone },
     { id: 'payments', label: 'Betaling', icon: CreditCard },
+    { id: 'storage', label: 'Lagring', icon: HardDrive },
     { id: 'stats', label: 'Statistikk', icon: BarChart3 },
     { id: 'logs', label: 'API Logs', icon: Activity },
     { id: 'server', label: 'Server', icon: Server }
@@ -347,6 +349,10 @@ const AdminDashboard: React.FC = () => {
             <div className="p-6">
               <PaymentManagement isSuperAdmin={isSuperAdmin} />
             </div>
+          )}
+
+          {activeTab === 'storage' && (
+            <StorageOverview />
           )}
 
           {activeTab === 'stats' && (

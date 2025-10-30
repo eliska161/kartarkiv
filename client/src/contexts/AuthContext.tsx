@@ -52,6 +52,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [sessionExpired, setSessionExpired] = useState(false);
 
+  const broadcastSessionExpired = () => {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('session-expired'));
+    }
+  };
+
   useEffect(() => {
     if (typeof window === 'undefined') {
       return;
@@ -169,6 +175,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             setUser(null);
             setToken(null);
             delete axios.defaults.headers.common['Authorization'];
+            broadcastSessionExpired();
             return Promise.reject(refreshError);
           } finally {
             isRefreshing = false;
