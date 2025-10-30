@@ -132,7 +132,11 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
   const { showSuccess, showError, showInfo, showWarning } = useToast();
   const collator = useMemo(() => new Intl.Collator('nb', { sensitivity: 'base' }), []);
 
-  const [storagePricing, setStoragePricing] = useState<{ basePrice: number; storageCost: number } | null>(null);
+  const [storagePricing, setStoragePricing] = useState<{
+    basePrice: number;
+    storageCost: number;
+    totalStorageGb: number | null;
+  } | null>(null);
   const [storagePricingLoaded, setStoragePricingLoaded] = useState(false);
 
   const [form, setForm] = useState({
@@ -182,8 +186,16 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
         quantity: 1
       };
 
+      const formatter = new Intl.NumberFormat('nb-NO', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2
+      });
+      const usageDescription = storagePricing.totalStorageGb != null
+        ? `Lagring (1 kr/GB) (${formatter.format(storagePricing.totalStorageGb)} GB)`
+        : 'Lagring (1 kr/GB)';
+
       const usageLine = {
-        description: 'Lagring (1 kr/GB)',
+        description: usageDescription,
         amount: formatAmountInput(usageLineAmount),
         quantity: 1
       };
@@ -284,20 +296,25 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
         const { data } = (await apiGet('/api/storage/usage')) as AxiosResponse<{
           basePriceNok?: number;
           storageCostNok?: number;
+          totalBytes?: number;
         }>;
 
         if (typeof data?.basePriceNok === 'number' || typeof data?.storageCostNok === 'number') {
+          const totalStorageGb = typeof data.totalBytes === 'number'
+            ? data.totalBytes / (1024 ** 3)
+            : null;
           setStoragePricing({
             basePrice: typeof data.basePriceNok === 'number' ? data.basePriceNok : 49,
-            storageCost: typeof data.storageCostNok === 'number' ? data.storageCostNok : 0
+            storageCost: typeof data.storageCostNok === 'number' ? data.storageCostNok : 0,
+            totalStorageGb: totalStorageGb != null ? Number(totalStorageGb.toFixed(2)) : null
           });
         } else {
-          setStoragePricing({ basePrice: 49, storageCost: 0 });
+          setStoragePricing({ basePrice: 49, storageCost: 0, totalStorageGb: null });
         }
       } catch (error) {
         console.error('Kunne ikke hente lagringspris', error);
         showWarning('Kunne ikke hente lagringspris', 'Fyll inn beløp manuelt dersom nødvendig.');
-        setStoragePricing({ basePrice: 49, storageCost: 0 });
+        setStoragePricing({ basePrice: 49, storageCost: 0, totalStorageGb: null });
       } finally {
         setStoragePricingLoaded(true);
       }
