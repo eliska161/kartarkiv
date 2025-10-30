@@ -223,7 +223,7 @@ const AnnouncementManagement: React.FC = () => {
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-eok-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600"></div>
       </div>
     );
   }
@@ -242,7 +242,7 @@ const AnnouncementManagement: React.FC = () => {
             setFormData({ title: '', message: '', type: 'info', expires_at: '', priority: 0 });
             setShowModal(true);
           }}
-          className="bg-eok-600 hover:bg-eok-700 text-white px-4 py-2 rounded-md flex items-center"
+          className="bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-md flex items-center"
         >
           <Plus className="h-4 w-4 mr-2" />
           Ny kunngjøring
@@ -333,7 +333,7 @@ const AnnouncementManagement: React.FC = () => {
                         </button>
                         <button
                           onClick={() => handleEdit(announcement)}
-                          className="text-eok-600 hover:text-eok-900"
+                          className="text-brand-600 hover:text-brand-900"
                           title="Rediger"
                         >
                           <Edit className="h-4 w-4" />
@@ -391,7 +391,7 @@ const AnnouncementManagement: React.FC = () => {
                     type="text"
                     value={formData.title}
                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-eok-500 focus:border-eok-500"
+                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-brand-500 focus:border-brand-500"
                     required
                   />
                 </div>
@@ -402,7 +402,7 @@ const AnnouncementManagement: React.FC = () => {
                     value={formData.message}
                     onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                     rows={3}
-                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-eok-500 focus:border-eok-500"
+                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-brand-500 focus:border-brand-500"
                     required
                   />
                 </div>
@@ -413,7 +413,7 @@ const AnnouncementManagement: React.FC = () => {
                     <select
                       value={formData.type}
                       onChange={(e) => setFormData({ ...formData, type: e.target.value as any })}
-                      className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-eok-500 focus:border-eok-500"
+                      className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-brand-500 focus:border-brand-500"
                     >
                       <option value="info">Info</option>
                       <option value="warning">Advarsel</option>
@@ -428,7 +428,7 @@ const AnnouncementManagement: React.FC = () => {
                       type="number"
                       value={formData.priority}
                       onChange={(e) => setFormData({ ...formData, priority: parseInt(e.target.value) || 0 })}
-                      className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-eok-500 focus:border-eok-500"
+                      className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-brand-500 focus:border-brand-500"
                       min="0"
                     />
                   </div>
@@ -440,7 +440,7 @@ const AnnouncementManagement: React.FC = () => {
                     type="date"
                     value={formData.expires_at}
                     onChange={(e) => setFormData({ ...formData, expires_at: e.target.value })}
-                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-eok-500 focus:border-eok-500"
+                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-brand-500 focus:border-brand-500"
                   />
                 </div>
 
@@ -454,7 +454,7 @@ const AnnouncementManagement: React.FC = () => {
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 bg-eok-600 text-white rounded-md text-sm font-medium hover:bg-eok-700"
+                    className="px-4 py-2 bg-brand-600 text-white rounded-md text-sm font-medium hover:bg-brand-700"
                   >
                     {editingAnnouncement ? 'Oppdater' : 'Opprett'}
                   </button>

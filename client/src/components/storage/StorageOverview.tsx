@@ -149,7 +149,7 @@ const StorageOverview: React.FC = () => {
           <button
             onClick={handleRefresh}
             disabled={refreshing}
-            className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-eok-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <RefreshCcw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
             Oppdater
@@ -174,7 +174,7 @@ const StorageOverview: React.FC = () => {
                 {data ? `${numberFormatter.format(data.objectCount)} filer i ${data.bucket}` : '...'}
               </p>
             </div>
-            <div className="rounded-full bg-eok-100 p-3 text-eok-600">
+            <div className="rounded-full bg-brand-100 p-3 text-brand-600">
               <HardDrive className="h-6 w-6" />
             </div>
           </div>

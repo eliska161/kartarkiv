@@ -1,4 +1,5 @@
 const { verifyToken, createClerkClient } = require('@clerk/backend');
+const pool = require('../database/connection');
 
 const authenticateUser = async (req, res, next) => {
   try {
@@ -27,6 +28,17 @@ const authenticateUser = async (req, res, next) => {
       console.log('🔐 CLERK AUTH - User ID:', payload.sub);
       console.log('🔐 CLERK AUTH - Full payload:', JSON.stringify(payload, null, 2));
       
+      const organizationId = payload.org_id || payload.organization_id || payload.orgId || payload.organizationId || req.headers['x-clerk-organization-id'] || null;
+      const organizationRole = payload.org_role || payload.organization_role || payload.orgRole || payload.organizationRole || null;
+      const sessionId = payload.sid || payload.session_id || null;
+
+      req.auth = {
+        userId: payload.sub,
+        organizationId,
+        organizationRole,
+        sessionId
+      };
+
       // Get user data from Clerk API
       try {
         const clerkClient = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY });
@@ -68,6 +80,9 @@ const authenticateUser = async (req, res, next) => {
           isSuperAdmin: isSuperAdmin,
           roles
         };
+        req.user.organizationId = organizationId;
+        req.user.organizationRole = organizationRole;
+        req.user.sessionId = sessionId;
       } catch (clerkApiError) {
         console.error('🔐 CLERK AUTH - Clerk API error:', clerkApiError.message);
         console.log('🔐 CLERK AUTH - Using fallback user data from JWT');
@@ -91,8 +106,37 @@ const authenticateUser = async (req, res, next) => {
           isSuperAdmin: isSuperAdmin,
           roles
         };
+        req.user.organizationId = organizationId;
+        req.user.organizationRole = organizationRole;
+        req.user.sessionId = sessionId;
       }
       
+      if (req.auth?.organizationId) {
+        try {
+          const { rows } = await pool.query(
+            `select id, name, subdomain, logo_url, color, stripe_customer_id, b2_prefix, status
+             from clubs
+             where clerk_org_id = $1
+             limit 1`,
+            [req.auth.organizationId]
+          );
+
+          if (rows.length > 0) {
+            const club = rows[0];
+            req.auth.clubId = club.id;
+            req.auth.club = club;
+            req.user.clubId = club.id;
+            req.user.club = club;
+          }
+        } catch (dbError) {
+          console.error('🔐 CLERK AUTH - Failed to resolve club context:', dbError);
+        }
+      }
+
+      if (!req.auth?.organizationId && !req.user.isSuperAdmin) {
+        return res.status(403).json({ error: 'Organization membership required' });
+      }
+
       console.log('🔐 CLERK AUTH - User object created:', req.user);
       next();
       
@@ -119,6 +163,12 @@ const authenticateUser = async (req, res, next) => {
         isAdmin: true,
         isSuperAdmin: true,
         roles: ['superadmin']
+      };
+      req.auth = {
+        userId: fallbackId,
+        organizationId: null,
+        organizationRole: 'superadmin',
+        sessionId: null
       };
       
       console.log('🔐 CLERK AUTH - Fallback user created:', req.user);

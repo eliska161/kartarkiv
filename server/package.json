@@ -24,7 +24,8 @@
     "pg": "^8.11.3",
     "sharp": "^0.32.6",
     "swagger-jsdoc": "^6.2.8",
-    "swagger-ui-express": "^5.0.1"
+    "swagger-ui-express": "^5.0.1",
+    "stripe": "^12.6.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"

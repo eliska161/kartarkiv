@@ -16,7 +16,11 @@ const restartRoutes = require('./routes/restart');
 const healthRoutes = require('./routes/health');
 const paymentRoutes = require('./routes/payments');
 const storageRoutes = require('./routes/storage');
+const requestRoutes = require('./routes/requests');
+const clubRoutes = require('./routes/club');
+const stripeWebhookRoutes = require('./routes/stripe-webhook');
 const { requestLogger, getLogs, clearLogs } = require('./middleware/requestLogger');
+const pool = require('./database/connection');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -326,6 +330,8 @@ app.use((req, res, next) => {
   next();
 });
 
+app.use('/api/stripe/webhook', stripeWebhookRoutes);
+
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
@@ -354,7 +360,11 @@ app.use('/api/health', healthRoutes);
 console.log('✅ Health check routes registered at /api/health');
 app.use('/api/payments', paymentRoutes);
 app.use('/api/storage', storageRoutes);
+app.use('/api/requests', requestRoutes);
 console.log('✅ Payments routes registered at /api/payments');
+console.log('✅ Access request routes registered at /api/requests');
+app.use('/api/club', clubRoutes);
+console.log('✅ Club routes registered at /api/club');
 
 // Test route to verify announcements are working
 app.get('/api/announcements/test', (req, res) => {

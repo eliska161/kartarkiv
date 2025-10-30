@@ -12,24 +12,23 @@ const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
   if (!isLoaded) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-eok-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-600"></div>
       </div>
     );
   }
 
   if (!isSignedIn) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/auth" replace />;
   }
 
-  // Check if user is admin (from Clerk public metadata)
   const roles = Array.isArray(user?.publicMetadata?.roles)
     ? user?.publicMetadata?.roles.map(role => String(role).toLowerCase())
     : [];
   const isSuperAdmin = roles.includes('superadmin') || Boolean(user?.publicMetadata?.isSuperAdmin);
   const isAdmin = Boolean(user?.publicMetadata?.isAdmin) || isSuperAdmin;
-  
+
   if (!isAdmin) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/app" replace />;
   }
 
   return <>{children}</>;
