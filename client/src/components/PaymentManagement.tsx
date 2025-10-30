@@ -132,6 +132,9 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
   const { showSuccess, showError, showInfo, showWarning } = useToast();
   const collator = useMemo(() => new Intl.Collator('nb', { sensitivity: 'base' }), []);
 
+  const [storagePricing, setStoragePricing] = useState<{ basePrice: number; storageCost: number } | null>(null);
+  const [storagePricingLoaded, setStoragePricingLoaded] = useState(false);
+
   const [form, setForm] = useState({
     month: '',
     dueDate: '',
@@ -154,6 +157,44 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
 
   const formStripeFee = useMemo(() => calculateStripeFee(formBaseTotal), [formBaseTotal]);
   const formTotal = useMemo(() => formBaseTotal + formStripeFee, [formBaseTotal, formStripeFee]);
+
+  const formatAmountInput = useCallback((amount: number) => {
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return amount === 0 ? '0' : '';
+    }
+
+    const rounded = Math.round(amount * 100) / 100;
+    return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(2);
+  }, []);
+
+  const applyStoragePricing = useCallback(
+    (draft: typeof form) => {
+      if (!storagePricing) {
+        return draft;
+      }
+
+      const baseLineAmount = Math.max(storagePricing.basePrice, 0);
+      const usageLineAmount = Math.max(storagePricing.storageCost, 0);
+
+      const baseLine = {
+        description: 'Grunnpris',
+        amount: formatAmountInput(baseLineAmount),
+        quantity: 1
+      };
+
+      const usageLine = {
+        description: 'Lagring (1 kr/GB)',
+        amount: formatAmountInput(usageLineAmount),
+        quantity: 1
+      };
+
+      return {
+        ...draft,
+        items: [baseLine, usageLine]
+      };
+    },
+    [formatAmountInput, storagePricing]
+  );
 
   const sortRecipients = useCallback(
     (list: InvoiceRecipient[]) =>
@@ -236,6 +277,34 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
   useEffect(() => {
     fetchRecipients();
   }, [fetchRecipients]);
+
+  useEffect(() => {
+    const fetchStoragePricing = async () => {
+      try {
+        const { data } = (await apiGet('/api/storage/usage')) as AxiosResponse<{
+          basePriceNok?: number;
+          storageCostNok?: number;
+        }>;
+
+        if (typeof data?.basePriceNok === 'number' || typeof data?.storageCostNok === 'number') {
+          setStoragePricing({
+            basePrice: typeof data.basePriceNok === 'number' ? data.basePriceNok : 49,
+            storageCost: typeof data.storageCostNok === 'number' ? data.storageCostNok : 0
+          });
+        } else {
+          setStoragePricing({ basePrice: 49, storageCost: 0 });
+        }
+      } catch (error) {
+        console.error('Kunne ikke hente lagringspris', error);
+        showWarning('Kunne ikke hente lagringspris', 'Fyll inn beløp manuelt dersom nødvendig.');
+        setStoragePricing({ basePrice: 49, storageCost: 0 });
+      } finally {
+        setStoragePricingLoaded(true);
+      }
+    };
+
+    fetchStoragePricing();
+  }, [showWarning]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -321,6 +390,26 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
           quantity: 1
         }
       ]
+    });
+  };
+
+  useEffect(() => {
+    if (!storagePricingLoaded || !storagePricing || form.month === '') {
+      return;
+    }
+
+    setForm(prev => {
+      if (prev.month) {
+        return applyStoragePricing(prev);
+      }
+      return prev;
+    });
+  }, [applyStoragePricing, form.month, storagePricing, storagePricingLoaded]);
+
+  const handleMonthChange = (value: string) => {
+    setForm(prev => {
+      const next = { ...prev, month: value };
+      return storagePricing ? applyStoragePricing(next) : next;
     });
   };
 
@@ -610,7 +699,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
                 <input
                   type="month"
                   value={form.month}
-                  onChange={event => setForm(prev => ({ ...prev, month: event.target.value }))}
+                  onChange={event => handleMonthChange(event.target.value)}
                   className="mt-1 block w-full rounded-md border border-slate-300 shadow-sm focus:border-slate-500 focus:ring-2 focus:ring-slate-400"
                   required
                 />
