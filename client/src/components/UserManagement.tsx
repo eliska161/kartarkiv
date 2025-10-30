@@ -16,11 +16,27 @@ interface ClerkUser {
   emailAddresses: Array<{ emailAddress: string }>;
   publicMetadata: {
     isAdmin?: boolean;
+    isSuperAdmin?: boolean;
+    roles?: string[];
   };
   createdAt: string;
   lastSignInAt: string | null;
   status?: 'active' | 'banned' | 'locked';
 }
+
+const hasSuperAdminRole = (metadata: ClerkUser['publicMetadata'] | undefined) => {
+  if (!metadata) return false;
+  if (metadata.isSuperAdmin) return true;
+  if (Array.isArray(metadata.roles)) {
+    return metadata.roles.map(role => String(role).toLowerCase()).includes('superadmin');
+  }
+  return false;
+};
+
+const isAdminRole = (metadata: ClerkUser['publicMetadata'] | undefined) => {
+  if (!metadata) return false;
+  return Boolean(metadata.isAdmin) || hasSuperAdminRole(metadata);
+};
 
 const UserManagement: React.FC = () => {
   const [users, setUsers] = useState<ClerkUser[]>([]);
@@ -68,7 +84,7 @@ const UserManagement: React.FC = () => {
           id: u.id,
           name: `${u.firstName} ${u.lastName}`,
           email: u.emailAddresses?.[0]?.emailAddress,
-          isAdmin: u.publicMetadata?.isAdmin
+          isAdmin: isAdminRole(u.publicMetadata)
         })));
         if (showRefreshSpinner) {
           showSuccess('Brukerliste oppdatert');
@@ -104,13 +120,18 @@ const UserManagement: React.FC = () => {
 
   const handleToggleAdmin = async (user: ClerkUser) => {
     try {
-      const newAdminStatus = !user.publicMetadata?.isAdmin;
+      if (hasSuperAdminRole(user.publicMetadata)) {
+        showError('Superadministrator-roller kan ikke endres fra dette panelet.');
+        return;
+      }
+
+      const newAdminStatus = !isAdminRole(user.publicMetadata);
       await apiPut(`/api/admin/users/${user.id}/role`, {
         isAdmin: newAdminStatus
       });
-      
-      setUsers(prev => prev.map(u => 
-        u.id === user.id 
+
+      setUsers(prev => prev.map(u =>
+        u.id === user.id
           ? { ...u, publicMetadata: { ...u.publicMetadata, isAdmin: newAdminStatus } }
           : u
       ));
@@ -177,8 +198,8 @@ const UserManagement: React.FC = () => {
     
     const matchesRole = 
       filterRole === 'all' ||
-      (filterRole === 'admin' && user.publicMetadata?.isAdmin) ||
-      (filterRole === 'user' && !user.publicMetadata?.isAdmin);
+      (filterRole === 'admin' && isAdminRole(user.publicMetadata)) ||
+      (filterRole === 'user' && !isAdminRole(user.publicMetadata));
     
     return matchesSearch && matchesRole;
   });
@@ -187,8 +208,8 @@ const UserManagement: React.FC = () => {
     const matchesSearch = invitation.emailAddress?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesRole = 
       filterRole === 'all' ||
-      (filterRole === 'admin' && invitation.publicMetadata?.isAdmin) ||
-      (filterRole === 'user' && !invitation.publicMetadata?.isAdmin);
+      (filterRole === 'admin' && isAdminRole(invitation.publicMetadata)) ||
+      (filterRole === 'user' && !isAdminRole(invitation.publicMetadata));
     
     return matchesSearch && matchesRole;
   });
@@ -277,8 +298,12 @@ const UserManagement: React.FC = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredUsers.map((user) => (
-                <tr key={user.id} className="hover:bg-gray-50">
+              {filteredUsers.map((user) => {
+                const userIsAdmin = isAdminRole(user.publicMetadata);
+                const userIsSuperAdmin = hasSuperAdminRole(user.publicMetadata);
+
+                return (
+                  <tr key={user.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <div className="flex-shrink-0 h-10 w-10">
@@ -327,12 +352,12 @@ const UserManagement: React.FC = () => {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex flex-col space-y-1">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        user.publicMetadata?.isAdmin
+                        userIsAdmin
                           ? 'bg-red-100 text-red-800'
                           : 'bg-green-100 text-green-800'
                       }`}>
                         <Shield className="h-3 w-3 mr-1" />
-                        {user.publicMetadata?.isAdmin ? 'Administrator' : 'Bruker'}
+                        {userIsSuperAdmin ? 'Superadministrator' : userIsAdmin ? 'Administrator' : 'Bruker'}
                       </span>
                       {user.status && (
                         <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs ${
@@ -357,13 +382,16 @@ const UserManagement: React.FC = () => {
                     <div className="flex space-x-2">
                       <button
                         onClick={() => handleToggleAdmin(user)}
+                        disabled={userIsSuperAdmin}
                         className={`text-sm px-3 py-1 rounded-md ${
-                          user.publicMetadata?.isAdmin
-                            ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                            : 'bg-red-100 text-red-700 hover:bg-red-200'
+                          userIsSuperAdmin
+                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                            : userIsAdmin
+                              ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                              : 'bg-red-100 text-red-700 hover:bg-red-200'
                         }`}
                       >
-                        {user.publicMetadata?.isAdmin ? 'Fjern admin' : 'Gjør admin'}
+                        {userIsSuperAdmin ? 'Superadmin' : userIsAdmin ? 'Fjern admin' : 'Gjør admin'}
                       </button>
                       <button
                         onClick={() => handleDeleteUser(user)}
@@ -374,12 +402,17 @@ const UserManagement: React.FC = () => {
                       </button>
                     </div>
                   </td>
-                </tr>
-              ))}
+                  </tr>
+                );
+              })}
               
               {/* Invitations */}
-              {filteredInvitations.map((invitation) => (
-                <tr key={`invitation-${invitation.id}`} className="hover:bg-gray-50 bg-yellow-50">
+              {filteredInvitations.map((invitation) => {
+                const invitationIsAdmin = isAdminRole(invitation.publicMetadata);
+                const invitationIsSuperAdmin = hasSuperAdminRole(invitation.publicMetadata);
+
+                return (
+                  <tr key={`invitation-${invitation.id}`} className="hover:bg-gray-50 bg-yellow-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <div className="flex-shrink-0 h-10 w-10">
@@ -408,12 +441,12 @@ const UserManagement: React.FC = () => {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex flex-col space-y-1">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        invitation.publicMetadata?.isAdmin
+                        invitationIsAdmin
                           ? 'bg-red-100 text-red-800'
                           : 'bg-green-100 text-green-800'
                       }`}>
                         <Shield className="h-3 w-3 mr-1" />
-                        {invitation.publicMetadata?.isAdmin ? 'Administrator' : 'Bruker'}
+                        {invitationIsSuperAdmin ? 'Superadministrator' : invitationIsAdmin ? 'Administrator' : 'Bruker'}
                       </span>
                       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-yellow-100 text-yellow-800">
                         <UserPlus className="h-3 w-3 mr-1" />
@@ -431,8 +464,9 @@ const UserManagement: React.FC = () => {
                       </span>
                     </div>
                   </td>
-                </tr>
-              ))}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -468,7 +502,7 @@ const UserManagement: React.FC = () => {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Administratorer</p>
               <p className="text-2xl font-bold text-gray-900">
-                {users.filter(u => u.publicMetadata?.isAdmin).length}
+                {users.filter(u => isAdminRole(u.publicMetadata)).length}
               </p>
             </div>
           </div>
@@ -479,7 +513,7 @@ const UserManagement: React.FC = () => {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Vanlige brukere</p>
               <p className="text-2xl font-bold text-gray-900">
-                {users.filter(u => !u.publicMetadata?.isAdmin).length}
+                {users.filter(u => !isAdminRole(u.publicMetadata)).length}
               </p>
             </div>
           </div>
