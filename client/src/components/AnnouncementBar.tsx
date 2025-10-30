@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, AlertCircle, Info, CheckCircle, AlertTriangle, ChevronDown, ChevronUp, History } from 'lucide-react';
+import { useUser } from '@clerk/clerk-react';
 import apiClient from '../utils/apiClient';
 
 interface Announcement {
@@ -31,6 +32,7 @@ interface AnnouncementVersion {
 }
 
 const AnnouncementBar: React.FC = () => {
+  const { isSignedIn } = useUser();
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [dismissedAnnouncements, setDismissedAnnouncements] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(true);
@@ -38,8 +40,13 @@ const AnnouncementBar: React.FC = () => {
   const [versions, setVersions] = useState<Map<number, AnnouncementVersion[]>>(new Map());
 
   useEffect(() => {
+    if (!isSignedIn) {
+      setAnnouncements([]);
+      return;
+    }
+
     fetchAnnouncements();
-  }, []);
+  }, [isSignedIn]);
 
   const fetchAnnouncements = async () => {
     try {
@@ -105,6 +112,10 @@ const AnnouncementBar: React.FC = () => {
         return 'bg-blue-50 border-blue-200 text-blue-800';
     }
   };
+
+  if (!isSignedIn) {
+    return null;
+  }
 
   if (loading) {
     return null;
