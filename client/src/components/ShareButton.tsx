@@ -74,7 +74,7 @@ const ShareButton: React.FC<ShareButtonProps> = ({ mapId, mapName, className = '
       <button
         onClick={handleShare}
         disabled={isLoading}
-        className={`flex items-center space-x-2 px-3 py-2 text-sm text-gray-600 hover:text-eok-600 hover:bg-eok-50 rounded-lg transition-colors disabled:opacity-50 ${className}`}
+        className={`flex items-center space-x-2 px-3 py-2 text-sm text-gray-600 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors disabled:opacity-50 ${className}`}
         title="Del kart"
       >
         <Share2 className="h-4 w-4" />
@@ -111,7 +111,7 @@ const ShareButton: React.FC<ShareButtonProps> = ({ mapId, mapName, className = '
                   </div>
                   <button
                     onClick={handleCopyLink}
-                    className="ml-2 p-2 text-gray-500 hover:text-eok-600 transition-colors"
+                    className="ml-2 p-2 text-gray-500 hover:text-brand-600 transition-colors"
                     title="Kopier lenke"
                   >
                     {copied ? (
@@ -146,7 +146,7 @@ const ShareButton: React.FC<ShareButtonProps> = ({ mapId, mapName, className = '
             <div className="flex justify-end mt-6">
               <button
                 onClick={() => setShowModal(false)}
-                className="px-4 py-2 bg-eok-600 text-white rounded-lg hover:bg-eok-700 transition-colors"
+                className="px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 transition-colors"
               >
                 Lukk
               </button>

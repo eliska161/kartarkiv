@@ -16,7 +16,9 @@ const restartRoutes = require('./routes/restart');
 const healthRoutes = require('./routes/health');
 const paymentRoutes = require('./routes/payments');
 const storageRoutes = require('./routes/storage');
+const requestRoutes = require('./routes/requests');
 const { requestLogger, getLogs, clearLogs } = require('./middleware/requestLogger');
+const pool = require('./database/connection');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -354,7 +356,9 @@ app.use('/api/health', healthRoutes);
 console.log('✅ Health check routes registered at /api/health');
 app.use('/api/payments', paymentRoutes);
 app.use('/api/storage', storageRoutes);
+app.use('/api/requests', requestRoutes);
 console.log('✅ Payments routes registered at /api/payments');
+console.log('✅ Access request routes registered at /api/requests');
 
 // Test route to verify announcements are working
 app.get('/api/announcements/test', (req, res) => {

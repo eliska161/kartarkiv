@@ -145,8 +145,8 @@ const AdminDashboard: React.FC = () => {
         <div className="grid grid-cols-1 gap-6 mb-8">
           <div className="card">
             <div className="flex items-center">
-              <div className="bg-eok-100 p-3 rounded-lg">
-                <MapPin className="h-6 w-6 text-eok-600" />
+              <div className="bg-brand-100 p-3 rounded-lg">
+                <MapPin className="h-6 w-6 text-brand-600" />
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Totalt antall kart</p>
@@ -168,7 +168,7 @@ const AdminDashboard: React.FC = () => {
                     onClick={() => setActiveTab(tab.id)}
                     className={`flex items-center py-2 px-1 border-b-2 font-medium text-sm ${
                       activeTab === tab.id
-                        ? 'border-eok-500 text-eok-600'
+                        ? 'border-brand-500 text-brand-600'
                         : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                     }`}
                   >
@@ -195,7 +195,7 @@ const AdminDashboard: React.FC = () => {
                     onClick={() => setBulkActionMode(!bulkActionMode)}
                     className={`px-3 py-1 text-sm rounded-lg ${
                       bulkActionMode
-                        ? 'bg-eok-100 text-eok-700'
+                        ? 'bg-brand-100 text-brand-700'
                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                   >
@@ -225,7 +225,7 @@ const AdminDashboard: React.FC = () => {
 
               {loading ? (
                 <div className="flex justify-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-eok-600"></div>
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600"></div>
                 </div>
               ) : maps.length === 0 ? (
                 <div className="text-center py-12">
@@ -251,7 +251,7 @@ const AdminDashboard: React.FC = () => {
                               type="checkbox"
                               checked={selectedMaps.size === maps.length && maps.length > 0}
                               onChange={handleSelectAll}
-                              className="h-4 w-4 text-eok-600 focus:ring-eok-500 border-gray-300 rounded"
+                              className="h-4 w-4 text-brand-600 focus:ring-brand-500 border-gray-300 rounded"
                             />
                           </th>
                         )}
@@ -283,7 +283,7 @@ const AdminDashboard: React.FC = () => {
                                 type="checkbox"
                                 checked={selectedMaps.has(map.id)}
                                 onChange={() => handleSelectMap(map.id)}
-                                className="h-4 w-4 text-eok-600 focus:ring-eok-500 border-gray-300 rounded"
+                                className="h-4 w-4 text-brand-600 focus:ring-brand-500 border-gray-300 rounded"
                               />
                             </td>
                           )}
@@ -311,7 +311,7 @@ const AdminDashboard: React.FC = () => {
                               <div className="flex space-x-2">
                                 <button
                                   onClick={() => handleEditMap(map)}
-                                  className="text-eok-600 hover:text-eok-900 flex items-center"
+                                  className="text-brand-600 hover:text-brand-900 flex items-center"
                                 >
                                   <Edit className="h-4 w-4 mr-1" />
                                   Rediger

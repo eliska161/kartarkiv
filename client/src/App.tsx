@@ -11,6 +11,7 @@ import AnnouncementBar from './components/AnnouncementBar';
 import SessionExpiredScreen from './components/SessionExpiredScreen';
 
 // Pages
+import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import MapPage from './pages/MapPage';
 import AdminDashboard from './pages/AdminDashboard';
@@ -38,7 +39,7 @@ const SessionExpiryHandler: React.FC = () => {
       if (location.pathname !== '/session-expired') {
         navigate('/session-expired', {
           replace: true,
-          state: { from: location.pathname }
+          state: { from: location.pathname },
         });
       }
       return;
@@ -46,7 +47,7 @@ const SessionExpiryHandler: React.FC = () => {
 
     if (location.pathname === '/session-expired') {
       const state = (location.state as LocationState) || {};
-      const from = state.from && state.from !== '/session-expired' ? state.from : '/';
+      const from = state.from && state.from !== '/session-expired' ? state.from : '/app';
       navigate(from, { replace: true });
     }
   }, [sessionExpired, location, navigate]);
@@ -56,12 +57,13 @@ const SessionExpiryHandler: React.FC = () => {
 
 const AppContent: React.FC = () => {
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-brandSurface">
       <AnnouncementBar />
       <SessionExpiryHandler />
       <Routes>
         {/* Public routes */}
-        <Route path="/login" element={<LoginPage />} />
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/auth" element={<LoginPage />} />
         <Route path="/session-expired" element={<SessionExpiredScreen />} />
         <Route path="/download/:token" element={<PublicDownloadPage />} />
         <Route path="/terms-of-service" element={<TermsOfService />} />
@@ -70,7 +72,7 @@ const AppContent: React.FC = () => {
 
         {/* Protected routes */}
         <Route
-          path="/"
+          path="/app"
           element={
             <ProtectedRoute>
               <MapPage />

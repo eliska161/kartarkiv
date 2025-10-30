@@ -217,7 +217,7 @@ const UserManagement: React.FC = () => {
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-eok-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600"></div>
       </div>
     );
   }
@@ -259,14 +259,14 @@ const UserManagement: React.FC = () => {
               placeholder="Søk etter brukere..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-eok-500 focus:border-eok-500"
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
             />
           </div>
         </div>
         <select
           value={filterRole}
           onChange={(e) => setFilterRole(e.target.value as 'all' | 'admin' | 'user')}
-          className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-eok-500 focus:border-eok-500"
+          className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
         >
           <option value="all">Alle roller</option>
           <option value="admin">Administratorer</option>
@@ -318,13 +318,13 @@ const UserManagement: React.FC = () => {
                               target.style.display = 'none';
                               const parent = target.parentElement;
                               if (parent) {
-                                parent.innerHTML = '<div class="h-10 w-10 rounded-full bg-eok-100 flex items-center justify-center"><svg class="h-5 w-5 text-eok-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg></div>';
+                                parent.innerHTML = '<div class="h-10 w-10 rounded-full bg-brand-100 flex items-center justify-center"><svg class="h-5 w-5 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg></div>';
                               }
                             }}
                           />
                         ) : (
-                          <div className="h-10 w-10 rounded-full bg-eok-100 flex items-center justify-center">
-                            <User className="h-5 w-5 text-eok-600" />
+                          <div className="h-10 w-10 rounded-full bg-brand-100 flex items-center justify-center">
+                            <User className="h-5 w-5 text-brand-600" />
                           </div>
                         )}
                       </div>
@@ -489,7 +489,7 @@ const UserManagement: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white p-4 rounded-lg shadow">
           <div className="flex items-center">
-            <User className="h-8 w-8 text-eok-600" />
+            <User className="h-8 w-8 text-brand-600" />
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Totalt antall brukere</p>
               <p className="text-2xl font-bold text-gray-900">{users.length}</p>
@@ -543,7 +543,7 @@ const UserManagement: React.FC = () => {
                   type="email"
                   value={inviteEmail}
                   onChange={(e) => setInviteEmail(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-eok-500 focus:border-eok-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                   placeholder="bruker@example.com"
                   required
                 />
@@ -556,7 +556,7 @@ const UserManagement: React.FC = () => {
                 <select
                   value={inviteRole}
                   onChange={(e) => setInviteRole(e.target.value as 'user' | 'admin')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-eok-500 focus:border-eok-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                 >
                   <option value="user">Bruker</option>
                   <option value="admin">Administrator</option>

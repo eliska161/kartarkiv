@@ -347,7 +347,7 @@ const AddMapModal: React.FC<AddMapModalProps> = ({ isOpen, onClose, mapToEdit, o
                     setEditMode('polygon');
                     setStep(2);
                   }}
-                  className="p-6 border-2 border-gray-200 rounded-lg hover:border-eok-500 hover:bg-eok-50 transition-colors text-left"
+                  className="p-6 border-2 border-gray-200 rounded-lg hover:border-brand-500 hover:bg-brand-50 transition-colors text-left"
                 >
                   <div className="flex items-center mb-2">
                     <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
@@ -366,7 +366,7 @@ const AddMapModal: React.FC<AddMapModalProps> = ({ isOpen, onClose, mapToEdit, o
                     setEditMode('files');
                     setStep(3);
                   }}
-                  className="p-6 border-2 border-gray-200 rounded-lg hover:border-eok-500 hover:bg-eok-50 transition-colors text-left"
+                  className="p-6 border-2 border-gray-200 rounded-lg hover:border-brand-500 hover:bg-brand-50 transition-colors text-left"
                 >
                   <div className="flex items-center mb-2">
                     <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mr-3">
@@ -387,7 +387,7 @@ const AddMapModal: React.FC<AddMapModalProps> = ({ isOpen, onClose, mapToEdit, o
                     setEditMode('info');
                     setStep(1);
                   }}
-                  className="text-eok-600 hover:text-eok-700 font-medium text-sm"
+                  className="text-brand-600 hover:text-brand-700 font-medium text-sm"
                 >
                   Fortsett med grunnleggende informasjon →
                 </button>
@@ -403,7 +403,7 @@ const AddMapModal: React.FC<AddMapModalProps> = ({ isOpen, onClose, mapToEdit, o
                   <div
                     className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
                       step >= stepNumber
-                        ? 'bg-eok-600 text-white'
+                        ? 'bg-brand-600 text-white'
                         : 'bg-gray-200 text-gray-600'
                     }`}
                   >
@@ -412,7 +412,7 @@ const AddMapModal: React.FC<AddMapModalProps> = ({ isOpen, onClose, mapToEdit, o
                   {stepNumber < 3 && (
                     <div
                       className={`w-16 h-1 mx-2 ${
-                        step > stepNumber ? 'bg-eok-600' : 'bg-gray-200'
+                        step > stepNumber ? 'bg-brand-600' : 'bg-gray-200'
                       }`}
                     />
                   )}
@@ -454,8 +454,8 @@ const AddMapModal: React.FC<AddMapModalProps> = ({ isOpen, onClose, mapToEdit, o
                     type="text"
                     value={mapData.name}
                     onChange={(e) => setMapData(prev => ({ ...prev, name: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-eok-500 focus:border-eok-500 text-base"
-                    placeholder="F.eks. Elverum Sentrum"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 text-base"
+                    placeholder="F.eks. Hovedkart 2024"
                     required
                   />
                 </div>
@@ -467,7 +467,7 @@ const AddMapModal: React.FC<AddMapModalProps> = ({ isOpen, onClose, mapToEdit, o
                   <textarea
                     value={mapData.description}
                     onChange={(e) => setMapData(prev => ({ ...prev, description: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-eok-500 focus:border-eok-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                     rows={3}
                     placeholder="Beskrivelse av kartet..."
                   />
@@ -487,7 +487,7 @@ const AddMapModal: React.FC<AddMapModalProps> = ({ isOpen, onClose, mapToEdit, o
                           setCustomScale('');
                         }
                       }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-eok-500 focus:border-eok-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                       required
                     >
                       <option value="">Velg målestokk</option>
@@ -507,7 +507,7 @@ const AddMapModal: React.FC<AddMapModalProps> = ({ isOpen, onClose, mapToEdit, o
                           setCustomScale(e.target.value);
                           setMapData(prev => ({ ...prev, scale: e.target.value }));
                         }}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-eok-500 focus:border-eok-500 mt-2"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 mt-2"
                         placeholder="F.eks. 1:15000"
                         required
                       />
@@ -527,7 +527,7 @@ const AddMapModal: React.FC<AddMapModalProps> = ({ isOpen, onClose, mapToEdit, o
                           setCustomContour('');
                         }
                       }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-eok-500 focus:border-eok-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                       required
                     >
                       <option value="">Velg ekvidistanse</option>
@@ -545,7 +545,7 @@ const AddMapModal: React.FC<AddMapModalProps> = ({ isOpen, onClose, mapToEdit, o
                         step="0.5"
                         value={customContour}
                         onChange={(e) => handleCustomContourChange(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-eok-500 focus:border-eok-500 mt-2"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 mt-2"
                         placeholder="F.eks. 3.0"
                         required
                       />
@@ -746,7 +746,7 @@ const AddMapModal: React.FC<AddMapModalProps> = ({ isOpen, onClose, mapToEdit, o
                     type="text"
                     value={fileVersion}
                     onChange={(e) => setFileVersion(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-eok-500 focus:border-eok-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                     placeholder="F.eks. 1.0"
                   />
                 </div>
@@ -757,7 +757,7 @@ const AddMapModal: React.FC<AddMapModalProps> = ({ isOpen, onClose, mapToEdit, o
                     id="isPrimary"
                     checked={isPrimaryFile}
                     onChange={(e) => setIsPrimaryFile(e.target.checked)}
-                    className="h-4 w-4 text-eok-600 focus:ring-eok-500 border-gray-300 rounded"
+                    className="h-4 w-4 text-brand-600 focus:ring-brand-500 border-gray-300 rounded"
                   />
                   <label htmlFor="isPrimary" className="ml-2 block text-sm text-gray-700">
                     Dette er hovedfilen for kartet
@@ -825,15 +825,15 @@ const AddMapModal: React.FC<AddMapModalProps> = ({ isOpen, onClose, mapToEdit, o
               <div
                 className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
                   isDragOver
-                    ? 'border-eok-500 bg-eok-50'
+                    ? 'border-brand-500 bg-brand-50'
                     : 'border-gray-300 hover:border-gray-400'
                 }`}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
               >
-                <Upload className={`h-8 w-8 mx-auto mb-2 ${isDragOver ? 'text-eok-500' : 'text-gray-400'}`} />
-                <p className={`text-sm mb-2 ${isDragOver ? 'text-eok-700' : 'text-gray-600'}`}>
+                <Upload className={`h-8 w-8 mx-auto mb-2 ${isDragOver ? 'text-brand-500' : 'text-gray-400'}`} />
+                <p className={`text-sm mb-2 ${isDragOver ? 'text-brand-700' : 'text-gray-600'}`}>
                   {isDragOver
                     ? 'Slipp filene her...'
                     : mapToEdit

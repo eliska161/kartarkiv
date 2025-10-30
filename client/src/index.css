@@ -4,6 +4,27 @@
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
+:root {
+  --brand-primary-50: 241 251 247;
+  --brand-primary-100: 220 245 236;
+  --brand-primary-200: 189 234 218;
+  --brand-primary-300: 155 219 195;
+  --brand-primary-400: 120 203 171;
+  --brand-primary-500: 16 151 113;
+  --brand-primary-600: 15 135 102;
+  --brand-primary-700: 11 92 70;
+  --brand-primary-800: 9 75 57;
+  --brand-primary-900: 6 57 43;
+  --brand-primary-foreground: 255 255 255;
+  --brand-surface: 236 247 243;
+  --brand-text: 15 23 42;
+}
+
+body {
+  background-color: rgb(var(--brand-surface));
+  color: rgb(var(--brand-text));
+}
+
 /* Leaflet overrides */
 .leaflet-container {
   font-family: 'Inter', system-ui, sans-serif;
@@ -40,7 +61,7 @@
 /* Custom components */
 @layer components {
   .btn-primary {
-    @apply bg-eok-600 hover:bg-eok-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-eok-500 focus:ring-offset-2;
+    @apply bg-brand-600 hover:bg-brand-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2;
   }
   
   .btn-secondary {
@@ -52,7 +73,7 @@
   }
   
   .input-field {
-    @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-eok-500 focus:border-transparent transition-colors duration-200;
+    @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-colors duration-200;
   }
   
   .card {
