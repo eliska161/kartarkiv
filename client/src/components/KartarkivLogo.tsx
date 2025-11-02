@@ -1,5 +1,4 @@
 import React from 'react';
-import logo from '../assets/kartarkiv-logo.svg';
 
 type LogoSize = 'sm' | 'md' | 'lg';
 
@@ -14,10 +13,12 @@ const sizeClasses: Record<LogoSize, string> = {
   lg: 'h-12',
 };
 
+const logoSrc = `${process.env.PUBLIC_URL || ''}/uploads/logo/kartarkiv.png`;
+
 const KartarkivLogo: React.FC<KartarkivLogoProps> = ({ size = 'md', className = '' }) => {
   return (
     <img
-      src={logo}
+      src={logoSrc}
       alt="Kartarkiv"
       className={['w-auto', sizeClasses[size], className].filter(Boolean).join(' ')}
     />

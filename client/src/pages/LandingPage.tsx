@@ -23,7 +23,7 @@ const LandingPage: React.FC = () => {
     const message = String(formData.get('message') || '').trim();
 
     const emailBody = `Navn: ${name}\nE-post: ${email}\nKlubb: ${club}\n\nMelding:\n${message}`;
-    const mailtoLink = `mailto:elias@kartarkiv.co?subject=${encodeURIComponent('Kartarkiv – kontaktforespørsel')}&body=${encodeURIComponent(
+    const mailtoLink = `mailto:hei@kartarkiv.co?subject=${encodeURIComponent('Kartarkiv – kontaktforespørsel')}&body=${encodeURIComponent(
       emailBody
     )}`;
 
@@ -217,8 +217,8 @@ const LandingPage: React.FC = () => {
                     </div>
                     <div>
                       <p className="font-semibold text-gray-900">E-post</p>
-                      <a href="mailto:elias@kartarkiv.co" className="text-brand-600 hover:text-brand-700">
-                        elias@kartarkiv.co
+                      <a href="mailto:hei@kartarkiv.co" className="text-brand-600 hover:text-brand-700">
+                        hei@kartarkiv.co
                       </a>
                     </div>
                   </div>
@@ -312,8 +312,8 @@ const LandingPage: React.FC = () => {
             <Link to="/terms-of-service" className="hover:text-white transition">
               Vilkår
             </Link>
-            <a href="mailto:elias@kartarkiv.co" className="hover:text-white transition">
-              elias@kartarkiv.co
+            <a href="mailto:hei@kartarkiv.co" className="hover:text-white transition">
+              hei@kartarkiv.co
             </a>
           </div>
         </div>

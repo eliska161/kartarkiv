@@ -126,7 +126,7 @@ const PrivacyPolicy = () => {
                 rettigheter, kan du kontakte oss på:
               </p>
               <p className="text-gray-700 mb-4">
-                E-post: <a href="mailto:elias@kartarkiv.co" className="text-blue-600 hover:underline">elias@kartarkiv.co</a>
+                E-post: <a href="mailto:hei@kartarkiv.co" className="text-blue-600 hover:underline">hei@kartarkiv.co</a>
               </p>
               <p className="text-gray-700">
                 Du kan også klage til Datatilsynet hvis du mener vi behandler dine 
