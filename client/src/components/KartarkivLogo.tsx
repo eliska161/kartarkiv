@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 type LogoSize = 'sm' | 'md' | 'lg';
 
@@ -9,20 +9,29 @@ interface KartarkivLogoProps {
 }
 
 const sizeClasses: Record<LogoSize, string> = {
-  sm: 'h-8',
-  md: 'h-10',
-  lg: 'h-12',
+  sm: 'h-8 object-contain',
+  md: 'h-10 object-contain',
+  lg: 'h-12 object-contain',
 };
 
-export const DEFAULT_KARTARKIV_LOGO_SRC = `${process.env.PUBLIC_URL || ''}/uploads/logo/kartarkiv.png`;
+const publicBase = (process.env.PUBLIC_URL || '').replace(/\/$/, '');
+export const DEFAULT_KARTARKIV_LOGO_SRC = `${publicBase}/uploads/logo/kartarkiv.png`;
 
 const KartarkivLogo: React.FC<KartarkivLogoProps> = ({ size = 'md', className = '', src }) => {
-  const resolvedSrc = src || DEFAULT_KARTARKIV_LOGO_SRC;
+  const [hasError, setHasError] = useState(false);
+  const fallbackSrc = DEFAULT_KARTARKIV_LOGO_SRC;
+  const requestedSrc = src || fallbackSrc;
+  const resolvedSrc = hasError ? fallbackSrc : requestedSrc;
   return (
     <img
       src={resolvedSrc}
       alt="Kartarkiv"
       className={['w-auto', sizeClasses[size], className].filter(Boolean).join(' ')}
+      onError={() => {
+        if (!hasError && resolvedSrc !== fallbackSrc) {
+          setHasError(true);
+        }
+      }}
     />
   );
 };

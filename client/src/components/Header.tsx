@@ -55,9 +55,7 @@ const Header: React.FC = () => {
             {/* Logo */}
             <div className="flex items-center">
               <div className="flex items-center space-x-3">
-                <div className="bg-brandDark-500 p-2 rounded-lg">
-                  <KartarkivLogo size="md" src={customLogo || DEFAULT_KARTARKIV_LOGO_SRC} />
-                </div>
+                <KartarkivLogo size="md" className="flex-shrink-0" src={customLogo || DEFAULT_KARTARKIV_LOGO_SRC} />
                 <div>
                   <h1 className="text-xl font-bold text-gray-900">Kartarkiv</h1>
                   <p className="text-sm text-gray-500">Kart for klubben, samlet på ett sted</p>
