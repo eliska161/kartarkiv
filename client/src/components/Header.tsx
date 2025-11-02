@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useUser, useClerk } from '@clerk/clerk-react';
 import { useNavigate } from 'react-router-dom';
 import { Settings, LogOut, User, UserCircle } from 'lucide-react';
-import KartarkivLogo from './KartarkivLogo';
+import KartarkivLogo, { DEFAULT_KARTARKIV_LOGO_SRC } from './KartarkivLogo';
 
 const Header: React.FC = () => {
   const { user } = useUser();
@@ -18,27 +18,27 @@ const Header: React.FC = () => {
   const isAdmin = Boolean(metadata.isAdmin) || isSuperAdmin;
 
   useEffect(() => {
-    // Try to load custom logo from static files
     const loadCustomLogo = async () => {
-      try {
-        // Check if logo exists in static files
-        const logoExtensions = ['png', 'jpg', 'jpeg', 'svg', 'gif'];
+      const logoExtensions = ['png', 'jpg', 'jpeg', 'svg', 'gif'];
+      const logoBaseNames = ['logo', 'kartarkiv'];
+
+      for (const baseName of logoBaseNames) {
         for (const ext of logoExtensions) {
+          const candidatePath = `/uploads/logo/${baseName}.${ext}`;
           try {
-            const response = await fetch(`/uploads/logo/logo.${ext}`);
+            const response = await fetch(candidatePath, { cache: 'no-store' });
             if (response.ok) {
-              setCustomLogo(`/uploads/logo/logo.${ext}`);
+              const resolvedPath = `${process.env.PUBLIC_URL || ''}${candidatePath}`;
+              setCustomLogo(resolvedPath);
               return;
             }
           } catch (error) {
-            // Continue to next extension
+            // Continue to next candidate
           }
         }
-      } catch (error) {
-        // No custom logo, use default
       }
     };
-    
+
     loadCustomLogo();
   }, []);
 
@@ -56,15 +56,7 @@ const Header: React.FC = () => {
             <div className="flex items-center">
               <div className="flex items-center space-x-3">
                 <div className="bg-brandDark-500 p-2 rounded-lg">
-                  {customLogo ? (
-                    <img
-                      src={customLogo}
-                      alt="Kartarkiv logo"
-                      className="w-8 h-8 object-contain"
-                    />
-                  ) : (
-                    <KartarkivLogo size="md" />
-                  )}
+                  <KartarkivLogo size="md" src={customLogo || DEFAULT_KARTARKIV_LOGO_SRC} />
                 </div>
                 <div>
                   <h1 className="text-xl font-bold text-gray-900">Kartarkiv</h1>

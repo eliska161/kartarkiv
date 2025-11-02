@@ -5,6 +5,7 @@ type LogoSize = 'sm' | 'md' | 'lg';
 interface KartarkivLogoProps {
   size?: LogoSize;
   className?: string;
+  src?: string;
 }
 
 const sizeClasses: Record<LogoSize, string> = {
@@ -13,12 +14,13 @@ const sizeClasses: Record<LogoSize, string> = {
   lg: 'h-12',
 };
 
-const logoSrc = `${process.env.PUBLIC_URL || ''}/uploads/logo/kartarkiv.png`;
+export const DEFAULT_KARTARKIV_LOGO_SRC = `${process.env.PUBLIC_URL || ''}/uploads/logo/kartarkiv.png`;
 
-const KartarkivLogo: React.FC<KartarkivLogoProps> = ({ size = 'md', className = '' }) => {
+const KartarkivLogo: React.FC<KartarkivLogoProps> = ({ size = 'md', className = '', src }) => {
+  const resolvedSrc = src || DEFAULT_KARTARKIV_LOGO_SRC;
   return (
     <img
-      src={logoSrc}
+      src={resolvedSrc}
       alt="Kartarkiv"
       className={['w-auto', sizeClasses[size], className].filter(Boolean).join(' ')}
     />
