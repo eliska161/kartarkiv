@@ -101,21 +101,20 @@ const LandingPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="relative">
-            <div className="absolute -top-10 -left-10 w-32 h-32 bg-brand-100 rounded-full opacity-70 blur-2xl" />
-            <div className="absolute -bottom-12 -right-12 w-40 h-40 bg-sky-100 rounded-full opacity-70 blur-3xl" />
-            <div className="relative bg-white border border-gray-100 rounded-3xl shadow-xl overflow-hidden">
-              <div className="aspect-[4/3] bg-gradient-to-br from-brand-50 via-white to-sky-50 flex flex-col items-center justify-center text-center p-8">
-                <Cloud className="h-12 w-12 text-brand-500 mb-4" />
-                <p className="text-xl font-semibold text-gray-900">Plass til produktbilde</p>
-                <p className="text-sm text-gray-500 max-w-sm">
-                  Legg inn skjermbilder av løsningen her for å vise klubbene hvordan Kartarkiv fungerer i praksis.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
+        <div className="relative">
+  <div className="absolute -top-10 -left-10 w-32 h-32 bg-brand-100 rounded-full opacity-70 blur-2xl" />
+  <div className="absolute -bottom-12 -right-12 w-40 h-40 bg-sky-100 rounded-full opacity-70 blur-3xl" />
+  <div className="relative bg-white border border-gray-100 rounded-3xl shadow-xl overflow-hidden">
+    <div className="aspect-[4/3] bg-gradient-to-br from-brand-50 via-white to-sky-50 flex items-center justify-center p-0">
+      <img
+        src="https://i.ibb.co/0pgbgn25/google-pixelbook-mockup.png"
+        alt="Kartarkiv illustrasjon"
+        className="object-cover w-full h-full"
+      />
+    </div>
+  </div>
+</div>
+
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 pb-24">
         <section className="py-16">
