@@ -49,7 +49,7 @@ const MapPage: React.FC = () => {
         <Header />
         <div className="flex items-center justify-center h-96">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-eok-600 mx-auto mb-4"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-600 mx-auto mb-4"></div>
             <p className="text-gray-600">Henter kart...</p>
           </div>
         </div>
@@ -78,7 +78,7 @@ const MapPage: React.FC = () => {
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <button
                 onClick={() => fetchMaps()}
-                className="bg-eok-600 text-white px-6 py-2 rounded-lg hover:bg-eok-700 transition-colors"
+                className="bg-brand-600 text-white px-6 py-2 rounded-lg hover:bg-brand-700 transition-colors"
               >
                 Prøv igjen
               </button>
@@ -118,7 +118,7 @@ const MapPage: React.FC = () => {
                   onClick={() => setViewMode('map')}
                   className={`p-2 rounded-lg ${
                     viewMode === 'map' 
-                      ? 'bg-eok-100 text-eok-600' 
+                      ? 'bg-brand-100 text-brand-600' 
                       : 'text-gray-400 hover:text-gray-600'
                   }`}
                 >
@@ -128,7 +128,7 @@ const MapPage: React.FC = () => {
                   onClick={() => setViewMode('list')}
                   className={`p-2 rounded-lg ${
                     viewMode === 'list' 
-                      ? 'bg-eok-100 text-eok-600' 
+                      ? 'bg-brand-100 text-brand-600' 
                       : 'text-gray-400 hover:text-gray-600'
                   }`}
                 >
@@ -155,7 +155,7 @@ const MapPage: React.FC = () => {
                   placeholder="Søk i kart..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-eok-500 focus:border-transparent text-base"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent text-base"
                 />
               </div>
             </div>
@@ -183,7 +183,7 @@ const MapPage: React.FC = () => {
                   <select
                     value={filters.scale}
                     onChange={(e) => setFilters(prev => ({ ...prev, scale: e.target.value }))}
-                    className="w-full px-3 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-eok-500"
+                    className="w-full px-3 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-brand-500"
                   >
                     <option value="">Alle målestokker</option>
                     {uniqueScales.map(scale => (
@@ -194,7 +194,7 @@ const MapPage: React.FC = () => {
                   <select
                     value={filters.contourInterval}
                     onChange={(e) => setFilters(prev => ({ ...prev, contourInterval: e.target.value }))}
-                    className="w-full px-3 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-eok-500"
+                    className="w-full px-3 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-brand-500"
                   >
                     <option value="">Alle ekvidistanse</option>
                     {uniqueContours.map(contour => (
@@ -215,7 +215,7 @@ const MapPage: React.FC = () => {
           <div className="p-4">
             {loading ? (
               <div className="flex justify-center py-8">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-eok-600"></div>
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-brand-600"></div>
               </div>
             ) : (
               <MapList 
@@ -247,7 +247,7 @@ const MapPage: React.FC = () => {
                   >
                     <div className="flex items-start justify-between mb-3">
                       <h3 className="font-semibold text-gray-900">{map.name}</h3>
-                      <span className="text-xs bg-eok-100 text-eok-600 px-2 py-1 rounded">
+                      <span className="text-xs bg-brand-100 text-brand-600 px-2 py-1 rounded">
                         {map.file_count} filer
                       </span>
                     </div>

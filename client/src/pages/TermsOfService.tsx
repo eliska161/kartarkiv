@@ -100,7 +100,7 @@ const TermsOfService = () => {
                 Hvis du har spørsmål om disse vilkårene, kan du kontakte oss på:
               </p>
               <p className="text-gray-700">
-                E-post: <a href="mailto:elias@kartarkiv.co" className="text-blue-600 hover:underline">elias@kartarkiv.co</a>
+                E-post: <a href="mailto:hei@kartarkiv.co" className="text-blue-600 hover:underline">hei@kartarkiv.co</a>
               </p>
             </section>
 

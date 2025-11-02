@@ -117,7 +117,7 @@ const PublicDownloadPage: React.FC = () => {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-eok-600 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Laster ned kart...</p>
         </div>
       </div>
@@ -134,7 +134,7 @@ const PublicDownloadPage: React.FC = () => {
             <p className="text-gray-600 mb-4">{error}</p>
             <button
               onClick={() => navigate('/')}
-              className="px-4 py-2 bg-eok-600 text-white rounded-lg hover:bg-eok-700 transition-colors"
+              className="px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 transition-colors"
             >
               Gå til hjemmeside
             </button>
@@ -205,7 +205,7 @@ const PublicDownloadPage: React.FC = () => {
                   <button
                     onClick={() => handleDownload(file)}
                     disabled={downloading === file.id}
-                    className="flex items-center space-x-2 px-4 py-2 bg-eok-600 text-white rounded-lg hover:bg-eok-700 transition-colors disabled:opacity-50"
+                    className="flex items-center space-x-2 px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 transition-colors disabled:opacity-50"
                   >
                     <Download className="h-4 w-4" />
                     <span>{downloading === file.id ? 'Laster ned...' : 'Last ned'}</span>
