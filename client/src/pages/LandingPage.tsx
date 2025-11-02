@@ -107,7 +107,7 @@ const LandingPage: React.FC = () => {
             <div className="relative bg-white border border-gray-100 rounded-3xl shadow-xl overflow-hidden">
               <div className="aspect-[4/3] bg-gradient-to-br from-brand-50 via-white to-sky-50 flex flex-col items-center justify-center text-center p-8">
                 <img
-                  src="https://i.ibb.co/ZR9dqdXk/google-pixelbook-mockup-1.png"
+                  src="https://i.ibb.co/Kz5SwXN6/google-pixelbook-mockup-2.png"
                   alt="Forhåndsvisning av Kartarkiv på laptop"
                   className="object-cover w-full h-full"
                 />
