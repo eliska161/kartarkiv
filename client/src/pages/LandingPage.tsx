@@ -109,7 +109,7 @@ const LandingPage: React.FC = () => {
                 <img
                   src="https://i.ibb.co/Kz5SwXN6/google-pixelbook-mockup-2.png"
                   alt="Forhåndsvisning av Kartarkiv på laptop"
-                  className="object-cover w-full h-full"
+                  className="object-contain w-full h-full"
                 />
               </div>
             </div>
