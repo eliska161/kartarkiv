@@ -101,14 +101,14 @@ const LandingPage: React.FC = () => {
             </div>
           </div>
 
-        <div className="relative">
+          <div className="relative">
   <div className="absolute -top-10 -left-10 w-32 h-32 bg-brand-100 rounded-full opacity-70 blur-2xl" />
   <div className="absolute -bottom-12 -right-12 w-40 h-40 bg-sky-100 rounded-full opacity-70 blur-3xl" />
   <div className="relative bg-white border border-gray-100 rounded-3xl shadow-xl overflow-hidden">
-    <div className="aspect-[4/3] bg-gradient-to-br from-brand-50 via-white to-sky-50 flex items-center justify-center p-0">
+    <div className="aspect-[4/3] bg-gradient-to-br from-brand-50 via-white to-sky-50">
       <img
         src="https://i.ibb.co/0pgbgn25/google-pixelbook-mockup.png"
-        alt="Kartarkiv illustrasjon"
+        alt="Forhåndsvisning av Kartarkiv"
         className="object-cover w-full h-full"
       />
     </div>
