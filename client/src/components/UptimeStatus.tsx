@@ -218,7 +218,7 @@ const UptimeStatus: React.FC<UptimeStatusProps> = ({ className = '', showDetails
   return (
     <div className={`bg-white rounded-lg border border-gray-200 p-4 ${className}`}>
       <div className="flex items-center space-x-2 mb-3">
-        <Activity className="h-5 w-5 text-eok-600" />
+        <Activity className="h-5 w-5 text-brand-600" />
         <h3 className="text-sm font-medium text-gray-900">Systemstatus</h3>
       </div>
       
@@ -252,7 +252,7 @@ const UptimeStatus: React.FC<UptimeStatusProps> = ({ className = '', showDetails
             href="https://stats.uptimerobot.com/jcONK7VXFW" 
             target="_blank" 
             rel="noopener noreferrer"
-            className="text-eok-600 hover:text-eok-700"
+            className="text-brand-600 hover:text-brand-700"
           >
             Se full status side →
           </a>

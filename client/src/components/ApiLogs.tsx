@@ -116,7 +116,7 @@ const ApiLogs: React.FC = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-eok-500"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-500"></div>
       </div>
     );
   }
@@ -126,7 +126,7 @@ const ApiLogs: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
-          <Activity className="h-6 w-6 text-eok-500" />
+          <Activity className="h-6 w-6 text-brand-500" />
           <h2 className="text-2xl font-bold text-gray-900">API Logs</h2>
         </div>
         <div className="flex items-center space-x-3">
@@ -136,7 +136,7 @@ const ApiLogs: React.FC = () => {
               id="autoRefresh"
               checked={autoRefresh}
               onChange={(e) => setAutoRefresh(e.target.checked)}
-              className="h-4 w-4 text-eok-600 focus:ring-eok-500 border-gray-300 rounded"
+              className="h-4 w-4 text-brand-600 focus:ring-brand-500 border-gray-300 rounded"
             />
             <label htmlFor="autoRefresh" className="text-sm font-medium text-gray-700">
               Auto-oppdater (5s)
@@ -151,7 +151,7 @@ const ApiLogs: React.FC = () => {
           <button
             onClick={handleRefresh}
             disabled={isRefreshing}
-            className="flex items-center space-x-2 px-4 py-2 bg-eok-500 text-white rounded-lg hover:bg-eok-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="flex items-center space-x-2 px-4 py-2 bg-brand-500 text-white rounded-lg hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
             <span>Oppdater nå</span>
@@ -170,7 +170,7 @@ const ApiLogs: React.FC = () => {
               placeholder="Søk i logs..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-eok-500 focus:border-eok-500"
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
             />
           </div>
 
@@ -178,7 +178,7 @@ const ApiLogs: React.FC = () => {
           <select
             value={methodFilter}
             onChange={(e) => setMethodFilter(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-eok-500 focus:border-eok-500"
+            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
           >
             <option value="all">Alle metoder</option>
             <option value="GET">GET</option>
@@ -192,7 +192,7 @@ const ApiLogs: React.FC = () => {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-eok-500 focus:border-eok-500"
+            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
           >
             <option value="all">Alle statuser</option>
             <option value="success">Suksess (2xx)</option>

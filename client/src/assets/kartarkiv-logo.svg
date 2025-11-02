@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 120" role="img" aria-labelledby="title desc">
+  <title id="title">Kartarkiv logo</title>
+  <desc id="desc">Cloud with map marker icon and the word Kartarkiv</desc>
+  <defs>
+    <linearGradient id="cloudGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#25a25a" />
+      <stop offset="100%" stop-color="#1b7f45" />
+    </linearGradient>
+  </defs>
+  <g transform="translate(10,18)">
+    <path fill="url(#cloudGradient)" d="M118 12c-20.5 0-38 14.3-42.3 33.3C72.4 43.2 66.8 42 61 42 38.8 42 20.7 60.1 20.7 82.3c0 1.6.1 3.1.3 4.7C9 87.7 0 98.4 0 111c0 16.1 13 29.1 29.1 29.1h171.6c26.7 0 48.4-21.7 48.4-48.4 0-25.1-19-45.7-43.4-48.2C198.1 25.5 179.9 12 158.7 12c-4.4 0-8.6.6-12.7 1.7C140.7 21.8 130 28 118 28c-4 0-7.9-.6-11.6-1.8C109.3 19.4 114.1 12 118 12z" />
+    <g transform="translate(70,32)">
+      <path fill="#ffffff" d="M66 0C45.1 0 28 17.1 28 38c0 22.1 29.6 54.4 31 55.9.5.5 1.2.8 1.9.8s1.4-.3 1.9-.8c1.4-1.5 31-33.8 31-55.9C93.8 17.1 76.7 0 55.8 0z" opacity="0.2" />
+      <path fill="#ffffff" d="M55.8 11.2c-15.1 0-27.3 12.2-27.3 27.3 0 15.1 12.2 27.3 27.3 27.3 15.1 0 27.3-12.2 27.3-27.3 0-15.1-12.2-27.3-27.3-27.3zm0 43.7c-9 0-16.4-7.4-16.4-16.4S46.8 22 55.8 22 72.2 29.4 72.2 38.4 64.8 54.9 55.8 54.9z" />
+      <circle cx="55.8" cy="38.4" r="11" fill="#17834c" />
+    </g>
+  </g>
+  <text x="210" y="80" font-family="'Inter', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="60" font-weight="600" fill="#17834c">Kartarkiv</text>
+</svg>

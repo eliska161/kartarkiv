@@ -71,7 +71,7 @@ const VersionHistory: React.FC<VersionHistoryProps> = ({ mapId, isOpen, onClose 
       <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div className="flex items-center">
-            <History className="h-6 w-6 text-eok-600 mr-3" />
+            <History className="h-6 w-6 text-brand-600 mr-3" />
             <h2 className="text-xl font-semibold text-gray-900">Versjonshistorikk</h2>
           </div>
           <button
@@ -87,7 +87,7 @@ const VersionHistory: React.FC<VersionHistoryProps> = ({ mapId, isOpen, onClose 
         <div className="p-6">
           {loading ? (
             <div className="flex justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-eok-600"></div>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600"></div>
             </div>
           ) : versions.length === 0 ? (
             <div className="text-center py-12">
@@ -102,8 +102,8 @@ const VersionHistory: React.FC<VersionHistoryProps> = ({ mapId, isOpen, onClose 
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center">
                       <div className="flex-shrink-0">
-                        <div className="w-8 h-8 bg-eok-100 rounded-full flex items-center justify-center">
-                          <span className="text-sm font-medium text-eok-600">
+                        <div className="w-8 h-8 bg-brand-100 rounded-full flex items-center justify-center">
+                          <span className="text-sm font-medium text-brand-600">
                             v{version.version_number}
                           </span>
                         </div>
