@@ -16,7 +16,7 @@ const ProfilePage: React.FC = () => {
         {/* Back button */}
         <div className="mb-6">
           <button
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/kart')}
             className="flex items-center text-gray-600 hover:text-gray-900 transition-colors"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />

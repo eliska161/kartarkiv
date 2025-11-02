@@ -160,7 +160,7 @@ const MapDetailPage: React.FC = () => {
           <h2 className="text-xl font-semibold text-gray-900 mb-2">Kart ikke funnet</h2>
           <p className="text-gray-600 mb-4">{error}</p>
           <button
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/kart')}
             className="btn-primary"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -179,7 +179,7 @@ const MapDetailPage: React.FC = () => {
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center">
               <button
-                onClick={() => navigate('/')}
+                onClick={() => navigate('/kart')}
                 className="mr-4 p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
               >
                 <ArrowLeft className="h-5 w-5" />

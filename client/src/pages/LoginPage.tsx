@@ -52,7 +52,7 @@ const LoginPage: React.FC = () => {
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
           <div className="flex justify-center">
-            <SignIn 
+            <SignIn
               appearance={{
                 elements: {
                   formButtonPrimary: 'bg-eok-600 hover:bg-eok-700 text-white text-sm normal-case',
@@ -68,7 +68,7 @@ const LoginPage: React.FC = () => {
                   dividerText: 'text-gray-500'
                 }
               }}
-              fallbackRedirectUrl="/"
+              fallbackRedirectUrl="/kart"
             />
           </div>
         </div>

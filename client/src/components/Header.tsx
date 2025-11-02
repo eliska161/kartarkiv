@@ -76,7 +76,7 @@ const Header: React.FC = () => {
             <nav className="flex items-center space-x-4">
               <>
                 <button
-                  onClick={() => navigate('/')}
+                  onClick={() => navigate('/kart')}
                   className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
                 >
                   Kart

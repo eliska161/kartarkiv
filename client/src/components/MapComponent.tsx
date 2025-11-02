@@ -205,7 +205,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ maps, selectedMap, onSelect
                   
                   <div className="flex space-x-2">
                     <button
-                      onClick={() => navigate(`/map/${map.id}`)}
+                      onClick={() => navigate(`/kart/${map.id}`)}
                       className="flex items-center text-xs bg-eok-600 text-white px-2 py-1 rounded hover:bg-eok-700"
                     >
                       <Eye className="h-3 w-3 mr-1" />
@@ -213,7 +213,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ maps, selectedMap, onSelect
                     </button>
                     {map.file_count > 0 && (
                       <button
-                        onClick={() => navigate(`/map/${map.id}`)}
+                        onClick={() => navigate(`/kart/${map.id}`)}
                         className="flex items-center text-sm bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 font-medium"
                       >
                         <Download className="h-4 w-4 mr-2" />

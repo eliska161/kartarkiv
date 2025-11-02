@@ -102,7 +102,7 @@ const MapList: React.FC<MapListProps> = ({ maps, selectedMap, onSelectMap, viewM
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  navigate(`/map/${map.id}`);
+                  navigate(`/kart/${map.id}`);
                 }}
                 className="p-2 text-gray-400 hover:text-eok-600 transition-colors"
                 title="Se detaljer"
@@ -113,7 +113,7 @@ const MapList: React.FC<MapListProps> = ({ maps, selectedMap, onSelectMap, viewM
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    navigate(`/map/${map.id}`);
+                    navigate(`/kart/${map.id}`);
                   }}
                   className="p-2 text-gray-400 hover:text-eok-600 transition-colors"
                   title="Last ned"

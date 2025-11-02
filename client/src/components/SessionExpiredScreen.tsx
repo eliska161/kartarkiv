@@ -33,7 +33,7 @@ const SessionExpiredScreen: React.FC = () => {
                 dividerText: 'text-gray-500'
               }
             }}
-            fallbackRedirectUrl="/"
+            fallbackRedirectUrl="/kart"
             redirectUrl="/admin"
           />
         </div>
