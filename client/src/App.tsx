@@ -12,6 +12,7 @@ import SessionExpiredScreen from './components/SessionExpiredScreen';
 
 // Pages
 import LoginPage from './pages/LoginPage';
+import LandingPage from './pages/LandingPage';
 import MapPage from './pages/MapPage';
 import AdminDashboard from './pages/AdminDashboard';
 import PaymentCompletePage from './pages/PaymentCompletePage';
@@ -61,6 +62,7 @@ const AppContent: React.FC = () => {
       <SessionExpiryHandler />
       <Routes>
         {/* Public routes */}
+        <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/session-expired" element={<SessionExpiredScreen />} />
         <Route path="/download/:token" element={<PublicDownloadPage />} />
@@ -70,7 +72,7 @@ const AppContent: React.FC = () => {
 
         {/* Protected routes */}
         <Route
-          path="/"
+          path="/kart"
           element={
             <ProtectedRoute>
               <MapPage />
@@ -79,7 +81,7 @@ const AppContent: React.FC = () => {
         />
 
         <Route
-          path="/map/:id"
+          path="/kart/:id"
           element={
             <ProtectedRoute>
               <MapDetailPage />

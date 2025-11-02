@@ -147,7 +147,7 @@ const MapDetailPage: React.FC = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center pb-16">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-eok-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-600"></div>
       </div>
     );
   }
@@ -160,7 +160,7 @@ const MapDetailPage: React.FC = () => {
           <h2 className="text-xl font-semibold text-gray-900 mb-2">Kart ikke funnet</h2>
           <p className="text-gray-600 mb-4">{error}</p>
           <button
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/kart')}
             className="btn-primary"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -179,7 +179,7 @@ const MapDetailPage: React.FC = () => {
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center">
               <button
-                onClick={() => navigate('/')}
+                onClick={() => navigate('/kart')}
                 className="mr-4 p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
               >
                 <ArrowLeft className="h-5 w-5" />
@@ -249,7 +249,7 @@ const MapDetailPage: React.FC = () => {
                           <div className="text-sm text-gray-500">
                             {file.file_type} • {formatFileSize(file.file_size)} • v{file.version}
                             {file.is_primary && (
-                              <span className="ml-2 bg-eok-100 text-eok-600 px-2 py-1 rounded-full text-xs">
+                              <span className="ml-2 bg-brand-100 text-brand-600 px-2 py-1 rounded-full text-xs">
                                 Primær
                               </span>
                             )}
