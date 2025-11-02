@@ -97,7 +97,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ maps, selectedMap, onSelect
   const mapIcon = L.divIcon({
     className: 'custom-map-icon',
     html: `
-      <div class="bg-eok-600 text-white rounded-full p-2 shadow-lg border-2 border-white">
+      <div class="bg-brand-600 text-white rounded-full p-2 shadow-lg border-2 border-white">
         <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
           <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"></path>
         </svg>
@@ -206,7 +206,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ maps, selectedMap, onSelect
                   <div className="flex space-x-2">
                     <button
                       onClick={() => navigate(`/kart/${map.id}`)}
-                      className="flex items-center text-xs bg-eok-600 text-white px-2 py-1 rounded hover:bg-eok-700"
+                      className="flex items-center text-xs bg-brand-600 text-white px-2 py-1 rounded hover:bg-brand-700"
                     >
                       <Eye className="h-3 w-3 mr-1" />
                       Se detaljer
@@ -275,7 +275,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ maps, selectedMap, onSelect
       {/* Map info overlay */}
       <div className="absolute top-2 left-2 right-2 lg:top-4 lg:left-4 lg:right-auto bg-white rounded-lg shadow-lg p-3 lg:p-4 z-[1000] max-w-sm lg:max-w-sm">
         <div className="flex items-center mb-2">
-          <MapPin className="h-4 w-4 text-eok-600 mr-2" />
+          <MapPin className="h-4 w-4 text-brand-600 mr-2" />
           <h3 className="font-semibold text-gray-900">Instruksjoner</h3>
         </div>
         <div className="text-xs text-gray-500 space-y-1">
@@ -284,11 +284,11 @@ const MapComponent: React.FC<MapComponentProps> = ({ maps, selectedMap, onSelect
             Tilgjengelige kart
           </div>
           <div className="flex items-center">
-            <div className="w-3 h-3 bg-eok-600 rounded-full mr-2"></div>
+            <div className="w-3 h-3 bg-brand-600 rounded-full mr-2"></div>
             Valgt kart
           </div>
           <div className="flex items-center">
-            <div className="w-3 h-3 border-2 border-eok-600 rounded-full mr-2"></div>
+            <div className="w-3 h-3 border-2 border-brand-600 rounded-full mr-2"></div>
             Kartområde
           </div>
         </div>

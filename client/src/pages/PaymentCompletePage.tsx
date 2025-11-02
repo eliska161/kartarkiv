@@ -98,7 +98,7 @@ const PaymentCompletePage: React.FC = () => {
         <div className="bg-white shadow rounded-2xl p-8">
           {status === 'loading' && (
             <div className="flex flex-col items-center text-center space-y-4">
-              <Loader2 className="h-12 w-12 text-eok-600 animate-spin" />
+              <Loader2 className="h-12 w-12 text-brand-600 animate-spin" />
               <div>
                 <h1 className="text-xl font-semibold text-gray-900">Bekrefter Stripe-betaling</h1>
                 <p className="text-gray-600 mt-2">
@@ -139,7 +139,7 @@ const PaymentCompletePage: React.FC = () => {
                           href={invoice.stripe_invoice_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center text-eok-700 hover:text-eok-800"
+                          className="inline-flex items-center text-brand-700 hover:text-brand-800"
                         >
                           Åpne kvittering
                           <ExternalLink className="h-4 w-4 ml-2" />

@@ -147,7 +147,7 @@ const MapDetailPage: React.FC = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center pb-16">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-eok-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-600"></div>
       </div>
     );
   }
@@ -249,7 +249,7 @@ const MapDetailPage: React.FC = () => {
                           <div className="text-sm text-gray-500">
                             {file.file_type} • {formatFileSize(file.file_size)} • v{file.version}
                             {file.is_primary && (
-                              <span className="ml-2 bg-eok-100 text-eok-600 px-2 py-1 rounded-full text-xs">
+                              <span className="ml-2 bg-brand-100 text-brand-600 px-2 py-1 rounded-full text-xs">
                                 Primær
                               </span>
                             )}

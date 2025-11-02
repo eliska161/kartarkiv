@@ -7,8 +7,8 @@ const SessionExpiredScreen: React.FC = () => {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
       <div className="bg-white shadow-lg rounded-2xl max-w-md w-full p-8 text-center space-y-6">
         <div className="flex justify-center">
-          <div className="bg-eok-100 rounded-full p-4">
-            <LogOut className="h-10 w-10 text-eok-600" />
+          <div className="bg-brand-100 rounded-full p-4">
+            <LogOut className="h-10 w-10 text-brand-600" />
           </div>
         </div>
         <div className="space-y-2">
@@ -25,9 +25,9 @@ const SessionExpiredScreen: React.FC = () => {
                 headerSubtitle: 'hidden',
                 formButtonPrimary: 'btn-primary w-full',
                 formFieldInput:
-                  'border border-gray-300 rounded-md focus:border-eok-500 focus:ring-eok-500',
+                  'border border-gray-300 rounded-md focus:border-brand-500 focus:ring-brand-500',
                 formFieldLabel: 'text-gray-700',
-                footerActionLink: 'text-eok-600 hover:text-eok-700',
+                footerActionLink: 'text-brand-600 hover:text-brand-700',
                 socialButtonsBlockButton: 'border border-gray-300 hover:bg-gray-50',
                 dividerLine: 'bg-gray-300',
                 dividerText: 'text-gray-500'

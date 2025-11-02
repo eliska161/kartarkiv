@@ -1,6 +1,6 @@
 {
-  "short_name": "EOK Kartarkiv",
-  "name": "EOK Kartarkiv - Elverum Orienteringsklubb",
+  "short_name": "Kartarkiv",
+  "name": "Kartarkiv",
   "icons": [
     {
       "src": "favicon.ico",
@@ -20,6 +20,6 @@
   ],
   "start_url": ".",
   "display": "standalone",
-  "theme_color": "#059669",
+  "theme_color": "#17834c",
   "background_color": "#ffffff"
 }
