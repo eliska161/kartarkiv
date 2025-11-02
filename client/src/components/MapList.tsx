@@ -46,7 +46,7 @@ const MapList: React.FC<MapListProps> = ({ maps, selectedMap, onSelectMap, viewM
           key={map.id}
           className={`p-4 rounded-lg border cursor-pointer transition-all duration-200 ${
             selectedMap === map.id
-              ? 'border-eok-500 bg-eok-50 shadow-md ring-2 ring-eok-200'
+              ? 'border-brand-500 bg-brand-50 shadow-md ring-2 ring-brand-200'
               : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm'
           }`}
           onClick={() => onSelectMap(map.id)}
@@ -57,7 +57,7 @@ const MapList: React.FC<MapListProps> = ({ maps, selectedMap, onSelectMap, viewM
             </h3>
             <span className={`text-xs px-2 py-1 rounded-full ${
               selectedMap === map.id
-                ? 'bg-eok-100 text-eok-700'
+                ? 'bg-brand-100 text-brand-700'
                 : 'bg-gray-100 text-gray-600'
             }`}>
               {map.file_count} filer
@@ -97,14 +97,14 @@ const MapList: React.FC<MapListProps> = ({ maps, selectedMap, onSelectMap, viewM
               <ShareButton 
                 mapId={map.id} 
                 mapName={map.name}
-                className="p-2 text-gray-400 hover:text-eok-600 transition-colors"
+                className="p-2 text-gray-400 hover:text-brand-600 transition-colors"
               />
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  navigate(`/map/${map.id}`);
+                  navigate(`/kart/${map.id}`);
                 }}
-                className="p-2 text-gray-400 hover:text-eok-600 transition-colors"
+                className="p-2 text-gray-400 hover:text-brand-600 transition-colors"
                 title="Se detaljer"
               >
                 <Eye className="h-5 w-5" />
@@ -113,9 +113,9 @@ const MapList: React.FC<MapListProps> = ({ maps, selectedMap, onSelectMap, viewM
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    navigate(`/map/${map.id}`);
+                    navigate(`/kart/${map.id}`);
                   }}
-                  className="p-2 text-gray-400 hover:text-eok-600 transition-colors"
+                  className="p-2 text-gray-400 hover:text-brand-600 transition-colors"
                   title="Last ned"
                 >
                   <Download className="h-5 w-5" />
