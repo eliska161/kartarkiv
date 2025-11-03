@@ -31,6 +31,15 @@ const authenticateUser = async (req, res, next) => {
       try {
         const clerkClient = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY });
         const clerkUser = await clerkClient.users.getUser(payload.sub);
+        const membershipsResponse = await clerkClient.users.getOrganizationMembershipList({ userId: clerkUser.id });
+        const organizationMemberships = Array.isArray(membershipsResponse?.data)
+          ? membershipsResponse.data.map(membership => ({
+              organizationId: membership.organization?.id,
+              organizationSlug: membership.organization?.slug,
+              organizationName: membership.organization?.name,
+              role: membership.role,
+            }))
+          : [];
         
         console.log('🔐 CLERK AUTH - Clerk user data:', {
           id: clerkUser.id,
@@ -53,7 +62,8 @@ const authenticateUser = async (req, res, next) => {
           ? clerkUser.publicMetadata.roles.map(role => String(role).toLowerCase())
           : [];
         const isSuperAdmin = Boolean(clerkUser.publicMetadata?.isSuperAdmin) || roles.includes('superadmin');
-        const isAdmin = Boolean(clerkUser.publicMetadata?.isAdmin) || isSuperAdmin;
+        const isWebmaster = roles.includes('webmaster') || isSuperAdmin;
+        const isAdmin = Boolean(clerkUser.publicMetadata?.isAdmin) || roles.includes('clubadmin') || isWebmaster;
 
         console.log('🔐 CLERK AUTH - Extracted user data:', { email, username, firstName, lastName, isAdmin });
 
@@ -66,7 +76,9 @@ const authenticateUser = async (req, res, next) => {
           lastName: lastName,
           isAdmin: isAdmin,
           isSuperAdmin: isSuperAdmin,
-          roles
+          isWebmaster: isWebmaster,
+          roles,
+          organizationMemberships
         };
       } catch (clerkApiError) {
         console.error('🔐 CLERK AUTH - Clerk API error:', clerkApiError.message);
@@ -79,7 +91,8 @@ const authenticateUser = async (req, res, next) => {
           ? (payload.public_metadata?.roles || payload.publicMetadata?.roles).map(role => String(role).toLowerCase())
           : [];
         const isSuperAdmin = Boolean(payload.public_metadata?.isSuperAdmin || payload.publicMetadata?.isSuperAdmin) || roles.includes('superadmin');
-        const isAdmin = Boolean(payload.public_metadata?.isAdmin || payload.publicMetadata?.isAdmin) || isSuperAdmin;
+        const isWebmaster = roles.includes('webmaster') || isSuperAdmin;
+        const isAdmin = Boolean(payload.public_metadata?.isAdmin || payload.publicMetadata?.isAdmin) || roles.includes('clubadmin') || isWebmaster;
 
         req.user = {
           id: payload.sub,
@@ -89,7 +102,9 @@ const authenticateUser = async (req, res, next) => {
           lastName: null,
           isAdmin: isAdmin,
           isSuperAdmin: isSuperAdmin,
-          roles
+          isWebmaster: isWebmaster,
+          roles,
+          organizationMemberships: []
         };
       }
       
@@ -118,7 +133,9 @@ const authenticateUser = async (req, res, next) => {
         username: 'FallbackUser',
         isAdmin: true,
         isSuperAdmin: true,
-        roles: ['superadmin']
+        isWebmaster: true,
+        roles: ['superadmin'],
+        organizationMemberships: []
       };
       
       console.log('🔐 CLERK AUTH - Fallback user created:', req.user);
@@ -150,7 +167,10 @@ const requireAdmin = (req, res, next) => {
 };
 
 const requireSuperAdmin = (req, res, next) => {
-  if (!req.user?.isSuperAdmin) {
+  const roles = Array.isArray(req.user?.roles) ? req.user.roles.map(role => String(role).toLowerCase()) : [];
+  const hasWebmasterRole = roles.includes('webmaster') || req.user?.isWebmaster;
+
+  if (!req.user?.isSuperAdmin && !hasWebmasterRole) {
     return res.status(403).json({ error: 'Superadmin access required' });
   }
   next();
