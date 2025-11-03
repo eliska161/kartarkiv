@@ -66,9 +66,45 @@ interface TenantProviderProps {
   children: React.ReactNode;
 }
 
+const STORAGE_KEYS = {
+  organizationId: 'kartarkiv.activeOrganizationId',
+  clubSlug: 'kartarkiv.activeClubSlug',
+};
+
+const readStorageValue = (key: string): string | null => {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+  try {
+    const value = window.localStorage.getItem(key);
+    return value ? value : null;
+  } catch (error) {
+    console.warn(`⚠️ Failed to read ${key} from localStorage:`, error);
+    return null;
+  }
+};
+
+const writeStorageValue = (key: string, value: string | null) => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+  try {
+    if (value === null) {
+      window.localStorage.removeItem(key);
+    } else {
+      window.localStorage.setItem(key, value);
+    }
+  } catch (error) {
+    console.warn(`⚠️ Failed to persist ${key} to localStorage:`, error);
+  }
+};
+
 export const TenantProvider: React.FC<TenantProviderProps> = ({ children }) => {
-  const [organizationId, setOrganizationId] = useState<string | null>(null);
-  const [clubSlugOverride, setClubSlugOverride] = useState<string | null | undefined>(undefined);
+  const [organizationId, setOrganizationIdState] = useState<string | null>(() => readStorageValue(STORAGE_KEYS.organizationId));
+  const [clubSlugOverride, setClubSlugOverride] = useState<string | null | undefined>(() => {
+    const stored = readStorageValue(STORAGE_KEYS.clubSlug);
+    return stored === null ? undefined : stored;
+  });
   const host = typeof window !== 'undefined' ? window.location.host : '';
 
   const derivedTenant = useMemo(() => {
@@ -94,18 +130,34 @@ export const TenantProvider: React.FC<TenantProviderProps> = ({ children }) => {
     if (headerValue) {
       axios.defaults.headers.common['X-Club-Slug'] = headerValue;
       apiClient.defaults.headers.common['X-Club-Slug'] = headerValue;
+      writeStorageValue(STORAGE_KEYS.clubSlug, headerValue);
     } else {
       delete axios.defaults.headers.common['X-Club-Slug'];
       delete apiClient.defaults.headers.common['X-Club-Slug'];
+      writeStorageValue(STORAGE_KEYS.clubSlug, null);
     }
   }, [derivedTenant.clubSlug]);
+
+  useEffect(() => {
+    if (organizationId) {
+      axios.defaults.headers.common['X-Organization-Id'] = organizationId;
+      apiClient.defaults.headers.common['X-Organization-Id'] = organizationId;
+      writeStorageValue(STORAGE_KEYS.organizationId, organizationId);
+    } else {
+      delete axios.defaults.headers.common['X-Organization-Id'];
+      delete apiClient.defaults.headers.common['X-Organization-Id'];
+      writeStorageValue(STORAGE_KEYS.organizationId, null);
+    }
+  }, [organizationId]);
 
   const value = useMemo<TenantContextValue>(() => ({
     clubSlug: derivedTenant.clubSlug,
     isDefaultTenant: derivedTenant.isDefaultTenant,
     host: derivedTenant.host,
     organizationId,
-    setOrganizationId,
+    setOrganizationId: (nextOrganizationId: string | null) => {
+      setOrganizationIdState(nextOrganizationId);
+    },
     setClubSlug: (slug) => {
       if (typeof slug === 'undefined') {
         setClubSlugOverride(undefined);

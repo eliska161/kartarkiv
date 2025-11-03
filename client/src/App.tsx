@@ -25,6 +25,7 @@ import PublicDownloadPage from './pages/PublicDownloadPage';
 import TermsOfService from './pages/TermsOfService';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import ApiDocPage from './pages/ApiDocPage';
+import SelectClubPage from './pages/SelectClubPage';
 
 const clerkPubKey = process.env.REACT_APP_CLERK_PUBLISHABLE_KEY;
 
@@ -68,6 +69,14 @@ const AppContent: React.FC = () => {
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/session-expired" element={<SessionExpiredScreen />} />
+        <Route
+          path="/select-club"
+          element={(
+            <ProtectedRoute requireOrganization={false}>
+              <SelectClubPage />
+            </ProtectedRoute>
+          )}
+        />
         <Route path="/download/:token" element={<PublicDownloadPage />} />
         <Route path="/terms-of-service" element={<TermsOfService />} />
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />

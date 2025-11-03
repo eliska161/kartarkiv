@@ -3,6 +3,7 @@ import { useUser, useClerk } from '@clerk/clerk-react';
 import { useNavigate } from 'react-router-dom';
 import { Settings, LogOut, User, UserCircle } from 'lucide-react';
 import KartarkivLogo, { DEFAULT_KARTARKIV_LOGO_SRC } from './KartarkivLogo';
+import OrganizationSwitcher from './OrganizationSwitcher';
 import { useTenant } from '../contexts/TenantContext';
 
 const formatTenantName = (clubSlug: string | null, isDefaultTenant: boolean) => {
@@ -124,6 +125,10 @@ const Header: React.FC = () => {
                 )}
               </>
             </nav>
+
+            <div className="hidden sm:flex items-center ml-4">
+              <OrganizationSwitcher allowPlatform={isWebmaster} />
+            </div>
 
             {/* User menu */}
             <div className="flex items-center space-x-4">

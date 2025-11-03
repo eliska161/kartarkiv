@@ -8,6 +8,7 @@ interface Club {
   name: string;
   slug: string;
   subdomain: string;
+  organizationId: string | null;
   contactName: string;
   contactEmail: string;
   contactPhone: string | null;
@@ -370,6 +371,11 @@ const ClubManagementPanel: React.FC = () => {
                       <div>
                         <p className="text-sm font-semibold text-gray-900">{club.name}</p>
                         <p className="text-xs text-gray-500">{club.subdomain}.{DOMAIN_SUFFIX}</p>
+                        {club.organizationId && (
+                          <p className="mt-1 text-[11px] text-gray-400 break-all">
+                            Clerk organisasjon: {club.organizationId}
+                          </p>
+                        )}
                       </div>
                       <span className="rounded-full bg-brand-50 px-3 py-1 text-xs font-medium text-brand-700">
                         Opprettet {new Date(club.createdAt).toLocaleDateString('nb-NO')}
