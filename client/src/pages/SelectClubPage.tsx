@@ -46,6 +46,11 @@ const SelectClubPage: React.FC = () => {
       return;
     }
 
+    if (!setActive) {
+      setError('Kunne ikke aktivere klubben. Oppdater siden og prøv igjen.');
+      return;
+    }
+
     try {
       await setActive({ organization: membership.organization });
       setOrganizationId(membership.organization?.id || null);
@@ -58,6 +63,11 @@ const SelectClubPage: React.FC = () => {
   };
 
   const handleContinueWithoutClub = async () => {
+    if (!setActive) {
+      setError('Kunne ikke velge plattformvisning. Oppdater siden og prøv igjen.');
+      return;
+    }
+
     try {
       await setActive({ organization: null });
       setOrganizationId(null);
