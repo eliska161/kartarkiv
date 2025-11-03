@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode, useMemo } from 'react';
 import axios from 'axios';
+import { useTenant } from './TenantContext';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
@@ -82,12 +83,19 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
   const [maps, setMaps] = useState<Map[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { clubSlug } = useTenant();
+
+  const tenantParams = useMemo(() => (
+    clubSlug ? { club: clubSlug } : undefined
+  ), [clubSlug]);
 
   const fetchMaps = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.get(`${API_BASE_URL}/api/maps`);
+      const response = await axios.get(`${API_BASE_URL}/api/maps`, {
+        params: tenantParams,
+      });
       setMaps(response.data.maps);
     } catch (error: any) {
       console.error('Error fetching maps:', error);
@@ -105,11 +113,13 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [tenantParams]);
 
   const fetchMap = async (id: number): Promise<Map | null> => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/api/maps/${id}`);
+      const response = await axios.get(`${API_BASE_URL}/api/maps/${id}`, {
+        params: tenantParams,
+      });
       return response.data.map;
     } catch (error: any) {
       console.error('Error fetching map:', error);
@@ -126,7 +136,10 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
 
   const createMap = async (mapData: CreateMapData): Promise<Map> => {
     try {
-      const response = await axios.post(`${API_BASE_URL}/api/maps`, mapData);
+      const payload = clubSlug ? { ...mapData, clubSlug } : mapData;
+      const response = await axios.post(`${API_BASE_URL}/api/maps`, payload, {
+        params: tenantParams,
+      });
       const newMap = response.data.map;
       setMaps(prev => [newMap, ...prev]);
       return newMap;
@@ -137,7 +150,10 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
 
   const updateMap = async (id: number, mapData: Partial<Map>): Promise<Map> => {
     try {
-      const response = await axios.put(`${API_BASE_URL}/api/maps/${id}`, mapData);
+      const payload = clubSlug ? { ...mapData, clubSlug } : mapData;
+      const response = await axios.put(`${API_BASE_URL}/api/maps/${id}`, payload, {
+        params: tenantParams,
+      });
       const updatedMap = response.data.map;
       setMaps(prev => prev.map(map => map.id === id ? updatedMap : map));
       return updatedMap;
@@ -148,7 +164,9 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
 
   const deleteMap = async (id: number): Promise<void> => {
     try {
-      await axios.delete(`${API_BASE_URL}/api/maps/${id}`);
+      await axios.delete(`${API_BASE_URL}/api/maps/${id}`, {
+        params: tenantParams,
+      });
       setMaps(prev => prev.filter(map => map.id !== id));
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Kunne ikke slette kart');
@@ -169,6 +187,7 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
+        params: tenantParams,
       });
       return response.data.files;
     } catch (error: any) {
@@ -185,6 +204,7 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
+        params: tenantParams,
       });
       return response.data.preview;
     } catch (error: any) {
@@ -195,7 +215,7 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children }) => {
   // Fetch maps on mount
   useEffect(() => {
     fetchMaps();
-  }, [fetchMaps]);
+  }, [fetchMaps, clubSlug]);
 
   const value: MapContextType = {
     maps,

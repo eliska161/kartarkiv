@@ -4,6 +4,7 @@ import { apiGet, apiPost } from '../utils/apiClient';
 import { CreditCard, FileText, Loader2, PlusCircle, Send, Wallet, X } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 import AddressAutocompleteInput from './payments/AddressAutocompleteInput';
+import { useTenant } from '../contexts/TenantContext';
 
 interface PaymentManagementProps {
   isSuperAdmin: boolean;
@@ -112,6 +113,18 @@ const formatDate = (value: string | null) => {
   }).format(new Date(value));
 };
 
+const formatTenantName = (clubSlug: string | null, isDefaultTenant: boolean) => {
+  if (!clubSlug || isDefaultTenant) {
+    return 'kartarkivet';
+  }
+
+  return clubSlug
+    .replace(/[-_]/g, ' ')
+    .split(' ')
+    .map(segment => segment ? segment.charAt(0).toUpperCase() + segment.slice(1) : segment)
+    .join(' ');
+};
+
 const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) => {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
@@ -131,6 +144,11 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
   const hasHandledCheckoutRef = useRef(false);
   const { showSuccess, showError, showInfo, showWarning } = useToast();
   const collator = useMemo(() => new Intl.Collator('nb', { sensitivity: 'base' }), []);
+  const { clubSlug, isDefaultTenant } = useTenant();
+  const tenantName = useMemo(() => formatTenantName(clubSlug, isDefaultTenant), [clubSlug, isDefaultTenant]);
+  const introDescription = isDefaultTenant
+    ? 'Hold oversikt over kostnader og sørg for enkel betaling for hele plattformen.'
+    : `Hold oversikt over kostnader for ${tenantName} og sørg for enkel betaling via Stripe eller faktura.`;
 
   const [storagePricing, setStoragePricing] = useState<{
     basePrice: number;
@@ -657,7 +675,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
           <Wallet className="h-5 w-5 mr-2 text-slate-600" />
           Betalingsoversikt
         </h2>
-        <p className="text-gray-600">Hold oversikt over kostnader og sørg for enkel betaling via Stripe eller faktura.</p>
+        <p className="text-gray-600">{introDescription}</p>
       </div>
 
       {paymentConfirmation && (
