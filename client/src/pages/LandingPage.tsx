@@ -96,7 +96,7 @@ const LandingPage: React.FC = () => {
               </div>
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
                 <p className="font-semibold text-gray-900">Alt i skyen</p>
-                <p>Oppdater kartene én gang – alle ser siste versjon.</p>
+                <p>Oppdateringer skjer i sanntid og alle kan se endringer forløpende.</p>
               </div>
             </div>
           </div>
