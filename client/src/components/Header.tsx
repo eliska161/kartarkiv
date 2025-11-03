@@ -1,21 +1,41 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useUser, useClerk } from '@clerk/clerk-react';
 import { useNavigate } from 'react-router-dom';
 import { Settings, LogOut, User, UserCircle } from 'lucide-react';
 import KartarkivLogo, { DEFAULT_KARTARKIV_LOGO_SRC } from './KartarkivLogo';
+import { useTenant } from '../contexts/TenantContext';
+
+const formatTenantName = (clubSlug: string | null, isDefaultTenant: boolean) => {
+  if (!clubSlug || isDefaultTenant) {
+    return 'Kartarkiv';
+  }
+
+  return clubSlug
+    .replace(/[-_]/g, ' ')
+    .split(' ')
+    .map(segment => segment ? segment.charAt(0).toUpperCase() + segment.slice(1) : segment)
+    .join(' ');
+};
 
 const Header: React.FC = () => {
   const { user } = useUser();
   const { signOut } = useClerk();
   const navigate = useNavigate();
   const [customLogo, setCustomLogo] = useState<string | null>(null);
+  const { clubSlug, isDefaultTenant } = useTenant();
 
   const metadata = (user?.publicMetadata || {}) as { isAdmin?: boolean; isSuperAdmin?: boolean; roles?: any[] };
   const roles = Array.isArray(metadata.roles)
     ? metadata.roles.map((role) => String(role).toLowerCase())
     : [];
   const isSuperAdmin = roles.includes('superadmin') || Boolean(metadata.isSuperAdmin);
-  const isAdmin = Boolean(metadata.isAdmin) || isSuperAdmin;
+  const isWebmaster = roles.includes('webmaster') || isSuperAdmin;
+  const isAdmin = Boolean(metadata.isAdmin) || roles.includes('clubadmin') || roles.includes('admin') || isWebmaster;
+
+  const tenantDisplayName = useMemo(
+    () => formatTenantName(clubSlug, isDefaultTenant),
+    [clubSlug, isDefaultTenant]
+  );
 
   useEffect(() => {
     const loadCustomLogo = async () => {
@@ -57,8 +77,10 @@ const Header: React.FC = () => {
               <div className="flex items-center space-x-3">
                 <KartarkivLogo size="md" className="flex-shrink-0" src={customLogo || DEFAULT_KARTARKIV_LOGO_SRC} />
                 <div>
-                  <h1 className="text-xl font-bold text-gray-900">Kartarkiv</h1>
-                  <p className="text-sm text-gray-500">Kart for klubben, samlet på ett sted</p>
+                  <h1 className="text-xl font-bold text-gray-900">{tenantDisplayName}</h1>
+                  <p className="text-sm text-gray-500">
+                    {isDefaultTenant ? 'Kart for hele plattformen' : 'Klubbens kart samlet på ett sted'}
+                  </p>
                 </div>
               </div>
             </div>
@@ -87,7 +109,17 @@ const Header: React.FC = () => {
                     className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium flex items-center"
                   >
                     <Settings className="h-4 w-4 mr-1" />
-                    Admin
+                    Klubbadmin
+                  </button>
+                )}
+
+                {isWebmaster && (
+                  <button
+                    onClick={() => navigate('/webmaster')}
+                    className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium flex items-center"
+                  >
+                    <Settings className="h-4 w-4 mr-1" />
+                    Webmaster
                   </button>
                 )}
               </>

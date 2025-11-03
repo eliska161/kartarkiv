@@ -3,10 +3,12 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavig
 import { ClerkProvider } from '@clerk/clerk-react';
 import { nbNO } from '@clerk/localizations';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { TenantProvider } from './contexts/TenantContext';
 import { MapProvider } from './contexts/MapContext';
 import { ToastProvider } from './contexts/ToastContext';
 import ProtectedRoute from './components/ProtectedRoute';
-import AdminRoute from './components/AdminRoute';
+import ClubAdminRoute from './components/ClubAdminRoute';
+import WebmasterRoute from './components/WebmasterRoute';
 import AnnouncementBar from './components/AnnouncementBar';
 import SessionExpiredScreen from './components/SessionExpiredScreen';
 
@@ -14,7 +16,8 @@ import SessionExpiredScreen from './components/SessionExpiredScreen';
 import LoginPage from './pages/LoginPage';
 import LandingPage from './pages/LandingPage';
 import MapPage from './pages/MapPage';
-import AdminDashboard from './pages/AdminDashboard';
+import ClubAdminDashboard from './pages/ClubAdminDashboard';
+import WebmasterDashboard from './pages/WebmasterDashboard';
 import PaymentCompletePage from './pages/PaymentCompletePage';
 import MapDetailPage from './pages/MapDetailPage';
 import ProfilePage from './pages/ProfilePage';
@@ -102,9 +105,18 @@ const AppContent: React.FC = () => {
         <Route
           path="/admin"
           element={
-            <AdminRoute>
-              <AdminDashboard />
-            </AdminRoute>
+            <ClubAdminRoute>
+              <ClubAdminDashboard />
+            </ClubAdminRoute>
+          }
+        />
+
+        <Route
+          path="/webmaster"
+          element={
+            <WebmasterRoute>
+              <WebmasterDashboard />
+            </WebmasterRoute>
           }
         />
 
@@ -134,15 +146,17 @@ function App() {
       publishableKey={clerkPubKey}
       localization={nbNO}
     >
-      <AuthProvider>
-        <MapProvider>
-          <ToastProvider>
-            <Router>
-              <AppContent />
-            </Router>
-          </ToastProvider>
-        </MapProvider>
-      </AuthProvider>
+      <TenantProvider>
+        <AuthProvider>
+          <MapProvider>
+            <ToastProvider>
+              <Router>
+                <AppContent />
+              </Router>
+            </ToastProvider>
+          </MapProvider>
+        </AuthProvider>
+      </TenantProvider>
     </ClerkProvider>
   );
 }
