@@ -150,7 +150,10 @@ const requireAdmin = (req, res, next) => {
 };
 
 const requireSuperAdmin = (req, res, next) => {
-  if (!req.user?.isSuperAdmin) {
+  const roles = Array.isArray(req.user?.roles) ? req.user.roles.map(role => String(role).toLowerCase()) : [];
+  const hasWebmasterRole = roles.includes('webmaster');
+
+  if (!req.user?.isSuperAdmin && !hasWebmasterRole) {
     return res.status(403).json({ error: 'Superadmin access required' });
   }
   next();
