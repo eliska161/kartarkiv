@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { User, Mail, Shield, Trash2, Edit, Plus, Search, Filter, UserPlus, X, RefreshCw } from 'lucide-react';
 import { apiGet, apiPut, apiDelete, apiPost } from '../utils/apiClient';
 import { useConfirmation } from '../hooks/useConfirmation';
 import { useToast } from '../contexts/ToastContext';
 import ConfirmationModal from './ConfirmationModal';
 import axios from 'axios';
+import { useTenant } from '../contexts/TenantContext';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
@@ -52,6 +53,18 @@ const UserManagement: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const confirmation = useConfirmation();
   const { showSuccess, showError } = useToast();
+  const { clubSlug, isDefaultTenant } = useTenant();
+  const tenantName = useMemo(() => {
+    if (!clubSlug || isDefaultTenant) {
+      return 'kartarkivet';
+    }
+
+    return clubSlug
+      .replace(/[-_]/g, ' ')
+      .split(' ')
+      .map(segment => segment ? segment.charAt(0).toUpperCase() + segment.slice(1) : segment)
+      .join(' ');
+  }, [clubSlug, isDefaultTenant]);
 
   useEffect(() => {
     // Only fetch users on component mount
@@ -228,7 +241,7 @@ const UserManagement: React.FC = () => {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Brukeradministrasjon</h2>
-          <p className="text-gray-600">Administrer brukere og tilganger</p>
+          <p className="text-gray-600">Administrer brukere og tilganger for {tenantName}</p>
         </div>
         <div className="flex space-x-3">
           <button
@@ -535,6 +548,9 @@ const UserManagement: React.FC = () => {
             </div>
 
             <form onSubmit={handleInviteUser} className="p-6">
+              <p className="text-sm text-gray-600 mb-4">
+                Personen får tilgang til {tenantName} og får en invitasjon via e-post.
+              </p>
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   E-postadresse

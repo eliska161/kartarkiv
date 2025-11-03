@@ -1,31 +1,43 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useUser } from '@clerk/clerk-react';
 import { useMap } from '../contexts/MapContext';
+import { useTenant } from '../contexts/TenantContext';
 import Header from '../components/Header';
 import AddMapModal from '../components/AddMapModal';
 import UserManagement from '../components/UserManagement';
-import UptimeStatus from '../components/UptimeStatus';
-import ApiLogs from '../components/ApiLogs';
-import AnnouncementManagement from '../components/AnnouncementManagement';
-import ServerRestart from '../components/ServerRestart';
 import PaymentManagement from '../components/PaymentManagement';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { Plus, MapPin, BarChart3, Edit, Trash2, Shield, Activity, Megaphone, Server, CreditCard, HardDrive } from 'lucide-react';
 import StorageOverview from '../components/storage/StorageOverview';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Plus, MapPin, BarChart3, Edit, Trash2, Shield, CreditCard, HardDrive } from 'lucide-react';
 
-type FocusState = {
-  focusTab?: string;
-} | null;
+interface FocusState {
+  focusTab?: 'payments';
+}
 
-const AdminDashboard: React.FC = () => {
+type ClubAdminTab = 'maps' | 'users' | 'payments' | 'storage' | 'stats';
+
+const formatClubName = (clubSlug: string | null, isDefault: boolean) => {
+  if (!clubSlug || isDefault) {
+    return 'Kartarkiv';
+  }
+
+  const spaced = clubSlug.replace(/[-_]/g, ' ');
+  return spaced
+    .split(' ')
+    .map(segment => segment ? segment.charAt(0).toUpperCase() + segment.slice(1) : segment)
+    .join(' ');
+};
+
+const ClubAdminDashboard: React.FC = () => {
   const { maps, loading, fetchMaps, deleteMap, fetchMap } = useMap();
   const location = useLocation();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'maps' | 'users' | 'announcements' | 'payments' | 'storage' | 'stats' | 'logs' | 'server'>('maps');
+  const [activeTab, setActiveTab] = useState<ClubAdminTab>('maps');
   const [showAddMapModal, setShowAddMapModal] = useState(false);
   const [editingMap, setEditingMap] = useState<any>(null);
   const [selectedMaps, setSelectedMaps] = useState<Set<number>>(new Set());
   const [bulkActionMode, setBulkActionMode] = useState(false);
+  const { clubSlug, isDefaultTenant } = useTenant();
 
   const { user } = useUser();
   const metadata = (user?.publicMetadata || {}) as { isAdmin?: boolean; isSuperAdmin?: boolean; roles?: any[] };
@@ -35,25 +47,28 @@ const AdminDashboard: React.FC = () => {
   const isSuperAdmin = roles.includes('superadmin') || Boolean(metadata.isSuperAdmin);
 
   useEffect(() => {
-    const state = (location.state as FocusState) || null;
+    const state = (location.state as FocusState | null) || null;
     if (state?.focusTab === 'payments') {
       setActiveTab('payments');
       navigate(location.pathname, { replace: true, state: null });
     }
   }, [location, navigate]);
 
+  const clubDisplayName = useMemo(
+    () => formatClubName(clubSlug, isDefaultTenant),
+    [clubSlug, isDefaultTenant]
+  );
+
   const stats = {
-    totalMaps: maps.length
+    totalMaps: maps.length,
   };
 
   const handleEditMap = async (map: any) => {
     try {
-      // Fetch full map details including files
       const fullMapData = await fetchMap(map.id);
       setEditingMap(fullMapData);
     } catch (error) {
       console.error('Error fetching map details:', error);
-      // Fallback to basic map data
       setEditingMap(map);
     }
   };
@@ -62,7 +77,7 @@ const AdminDashboard: React.FC = () => {
     if (window.confirm(`Er du sikker på at du vil slette kartet "${mapName}"? Dette kan ikke angres.`)) {
       try {
         await deleteMap(mapId);
-        fetchMaps(); // Refresh the list
+        fetchMaps();
       } catch (error) {
         console.error('Error deleting map:', error);
         alert('Kunne ikke slette kartet. Prøv igjen.');
@@ -99,7 +114,7 @@ const AdminDashboard: React.FC = () => {
         }
         setSelectedMaps(new Set());
         setBulkActionMode(false);
-        fetchMaps(); // Refresh the list
+        fetchMaps();
         alert(`${selectedMaps.size} kart ble slettet!`);
       } catch (error) {
         console.error('Error deleting maps:', error);
@@ -108,28 +123,24 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  const tabs = [
+  const tabs: Array<{ id: ClubAdminTab; label: string; icon: React.ComponentType<{ className?: string }> }> = [
     { id: 'maps', label: 'Kart', icon: MapPin },
     { id: 'users', label: 'Brukeradministrasjon', icon: Shield },
-    { id: 'announcements', label: 'Kunngjøringer', icon: Megaphone },
     { id: 'payments', label: 'Betaling', icon: CreditCard },
     { id: 'storage', label: 'Lagring', icon: HardDrive },
     { id: 'stats', label: 'Statistikk', icon: BarChart3 },
-    { id: 'logs', label: 'API Logs', icon: Activity },
-    { id: 'server', label: 'Server', icon: Server }
-  ] as const;
+  ];
 
   return (
     <div className="min-h-screen bg-gray-50 pb-16">
       <Header />
 
       <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-4 lg:py-8">
-        {/* Page header */}
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
-              <p className="text-gray-600">Administrer kartarkiv og brukere</p>
+              <h1 className="text-2xl font-bold text-gray-900">{clubDisplayName} admin</h1>
+              <p className="text-gray-600">Administrer kartarkiv, brukere og fakturaer for klubben</p>
             </div>
             <button
               onClick={() => setShowAddMapModal(true)}
@@ -141,7 +152,6 @@ const AdminDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Stats cards */}
         <div className="grid grid-cols-1 gap-6 mb-8">
           <div className="card">
             <div className="flex items-center">
@@ -156,7 +166,6 @@ const AdminDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Tabs */}
         <div className="mb-6">
           <div className="border-b border-gray-200">
             <nav className="-mb-px flex space-x-8">
@@ -181,7 +190,6 @@ const AdminDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Tab content */}
         <div className="bg-white rounded-lg shadow">
           {activeTab === 'maps' && (
             <div className="p-6">
@@ -204,7 +212,6 @@ const AdminDashboard: React.FC = () => {
                 </div>
               </div>
 
-              {/* Bulk actions */}
               {bulkActionMode && selectedMaps.size > 0 && (
                 <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                   <div className="flex items-center justify-between">
@@ -339,12 +346,6 @@ const AdminDashboard: React.FC = () => {
             <UserManagement key="user-management" />
           )}
 
-          {activeTab === 'announcements' && (
-            <div className="p-6">
-              <AnnouncementManagement />
-            </div>
-          )}
-
           {activeTab === 'payments' && (
             <div className="p-6">
               <PaymentManagement isSuperAdmin={isSuperAdmin} />
@@ -383,29 +384,11 @@ const AdminDashboard: React.FC = () => {
                   </div>
                 </div>
               </div>
-
-              {/* UptimeRobot Status */}
-              <div className="mt-6">
-                <UptimeStatus showDetails={true} />
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'logs' && (
-            <div className="p-6">
-              <ApiLogs />
-            </div>
-          )}
-
-          {activeTab === 'server' && (
-            <div className="p-6">
-              <ServerRestart />
             </div>
           )}
         </div>
       </div>
 
-      {/* Add/Edit Map Modal */}
       {(showAddMapModal || editingMap) && (
         <AddMapModal
           isOpen={showAddMapModal || !!editingMap}
@@ -417,7 +400,7 @@ const AdminDashboard: React.FC = () => {
           onSuccess={() => {
             setShowAddMapModal(false);
             setEditingMap(null);
-            fetchMaps(); // Refresh maps list
+            fetchMaps();
           }}
         />
       )}
@@ -425,4 +408,4 @@ const AdminDashboard: React.FC = () => {
   );
 };
 
-export default AdminDashboard;
+export default ClubAdminDashboard;

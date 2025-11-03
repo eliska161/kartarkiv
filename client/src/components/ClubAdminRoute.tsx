@@ -1,0 +1,40 @@
+import React from 'react';
+import { Navigate } from 'react-router-dom';
+import { useUser } from '@clerk/clerk-react';
+
+interface ClubAdminRouteProps {
+  children: React.ReactNode;
+}
+
+const ClubAdminRoute: React.FC<ClubAdminRouteProps> = ({ children }) => {
+  const { isSignedIn, isLoaded, user } = useUser();
+
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-600"></div>
+      </div>
+    );
+  }
+
+  if (!isSignedIn) {
+    return <Navigate to="/login" replace />;
+  }
+
+  const metadata = (user?.publicMetadata || {}) as { isAdmin?: boolean; isSuperAdmin?: boolean; roles?: any[] };
+  const roles = Array.isArray(metadata.roles)
+    ? metadata.roles.map(role => String(role).toLowerCase())
+    : [];
+
+  const isSuperAdmin = roles.includes('superadmin') || Boolean(metadata.isSuperAdmin);
+  const isWebmaster = roles.includes('webmaster') || isSuperAdmin;
+  const isClubAdmin = Boolean(metadata.isAdmin) || roles.includes('clubadmin') || roles.includes('admin') || isWebmaster;
+
+  if (!isClubAdmin) {
+    return <Navigate to="/" replace />;
+  }
+
+  return <>{children}</>;
+};
+
+export default ClubAdminRoute;
