@@ -5,6 +5,7 @@ import { CreditCard, FileText, Loader2, PlusCircle, Send, Wallet, X } from 'luci
 import { useToast } from '../contexts/ToastContext';
 import AddressAutocompleteInput from './payments/AddressAutocompleteInput';
 import { useTenant } from '../contexts/TenantContext';
+import { useAuth } from '../contexts/AuthContext';
 
 interface PaymentManagementProps {
   isSuperAdmin: boolean;
@@ -143,9 +144,11 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
   const [recipientSaving, setRecipientSaving] = useState(false);
   const hasHandledCheckoutRef = useRef(false);
   const { showSuccess, showError, showInfo, showWarning } = useToast();
+  const { loading: authLoading, token } = useAuth();
   const collator = useMemo(() => new Intl.Collator('nb', { sensitivity: 'base' }), []);
   const { clubSlug, isDefaultTenant } = useTenant();
   const tenantName = useMemo(() => formatTenantName(clubSlug, isDefaultTenant), [clubSlug, isDefaultTenant]);
+  const authReady = useMemo(() => !authLoading && Boolean(token), [authLoading, token]);
   const introDescription = isDefaultTenant
     ? 'Hold oversikt over kostnader og sørg for enkel betaling for hele plattformen.'
     : `Hold oversikt over kostnader for ${tenantName} og sørg for enkel betaling via Stripe eller faktura.`;
@@ -301,15 +304,27 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
   }, [showError]);
 
   useEffect(() => {
+    if (!authReady) {
+      return;
+    }
+
     fetchInvoices();
-  }, [fetchInvoices]);
+  }, [authReady, fetchInvoices]);
 
   useEffect(() => {
+    if (!authReady) {
+      return;
+    }
+
     fetchRecipients();
-  }, [fetchRecipients]);
+  }, [authReady, fetchRecipients]);
 
   useEffect(() => {
     const fetchStoragePricing = async () => {
+      if (!authReady) {
+        return;
+      }
+
       try {
         const { data } = (await apiGet('/api/storage/usage')) as AxiosResponse<{
           basePriceNok?: number;
@@ -339,7 +354,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
     };
 
     fetchStoragePricing();
-  }, [showWarning]);
+  }, [authReady, showWarning]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);

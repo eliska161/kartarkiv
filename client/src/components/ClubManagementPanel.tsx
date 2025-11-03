@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import { apiGet, apiPost } from '../utils/apiClient';
 import { Building2, Loader2, Mail, Phone, PlusCircle } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 interface Club {
   id: number;
@@ -50,6 +51,7 @@ const emptyFormState: ClubFormState = {
 const DOMAIN_SUFFIX = 'kartarkiv.co';
 
 const ClubManagementPanel: React.FC = () => {
+  const { loading: authLoading, token } = useAuth();
   const [clubs, setClubs] = useState<Club[]>([]);
   const [loadingClubs, setLoadingClubs] = useState(true);
   const [formState, setFormState] = useState<ClubFormState>(emptyFormState);
@@ -70,9 +72,15 @@ const ClubManagementPanel: React.FC = () => {
     }
   }, []);
 
+  const authReady = useMemo(() => !authLoading && Boolean(token), [authLoading, token]);
+
   useEffect(() => {
+    if (!authReady) {
+      return;
+    }
+
     fetchClubs();
-  }, [fetchClubs]);
+  }, [authReady, fetchClubs]);
 
   const handleChange = (field: keyof ClubFormState) => (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const value = event.target.value;

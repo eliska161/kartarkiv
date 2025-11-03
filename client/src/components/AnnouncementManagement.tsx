@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Plus, Edit, Trash2, Eye, EyeOff, Calendar, AlertCircle, Info, CheckCircle, AlertTriangle, History, RotateCcw, X } from 'lucide-react';
 import apiClient from '../utils/apiClient';
 import { useToast } from '../contexts/ToastContext';
 import { useConfirmation } from '../hooks/useConfirmation';
 import ConfirmationModal from './ConfirmationModal';
+import { useAuth } from '../contexts/AuthContext';
 
 interface Announcement {
   id: number;
@@ -34,6 +35,7 @@ interface AnnouncementVersion {
 }
 
 const AnnouncementManagement: React.FC = () => {
+  const { loading: authLoading, token } = useAuth();
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -53,11 +55,9 @@ const AnnouncementManagement: React.FC = () => {
     priority: 0
   });
 
-  useEffect(() => {
-    fetchAnnouncements();
-  }, []);
+  const authReady = useMemo(() => !authLoading && Boolean(token), [authLoading, token]);
 
-  const fetchAnnouncements = async () => {
+  const fetchAnnouncements = useCallback(async () => {
     try {
       const response = await apiClient.get('/api/announcements/admin');
       setAnnouncements(response.data);
@@ -67,7 +67,15 @@ const AnnouncementManagement: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [showError]);
+
+  useEffect(() => {
+    if (!authReady) {
+      return;
+    }
+
+    fetchAnnouncements();
+  }, [authReady, fetchAnnouncements]);
 
   const fetchVersionHistory = async (announcementId: number) => {
     try {
