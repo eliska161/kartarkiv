@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { X, Upload, File, HelpCircle } from 'lucide-react';
 import { MapContainer, TileLayer, Polygon, Polyline, CircleMarker, useMap as useLeafletMap } from 'react-leaflet';
 import { useMap } from '../contexts/MapContext';
@@ -7,6 +7,7 @@ import { handleApiError, validateFile, validateMapForm } from '../utils/errorHan
 import { useConfirmation } from '../hooks/useConfirmation';
 import { useToast } from '../contexts/ToastContext';
 import ConfirmationModal from './ConfirmationModal';
+import { useTenant } from '../contexts/TenantContext';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
@@ -44,6 +45,19 @@ const MapClickHandler: React.FC<MapClickHandlerProps> = ({ isDrawing, onPointAdd
 
 const AddMapModal: React.FC<AddMapModalProps> = ({ isOpen, onClose, mapToEdit, onSuccess }) => {
   const { createMap } = useMap();
+  const { clubSlug, isDefaultTenant } = useTenant();
+  const tenantParams = useMemo(() => (clubSlug ? { club: clubSlug } : undefined), [clubSlug]);
+  const tenantName = useMemo(() => {
+    if (!clubSlug || isDefaultTenant) {
+      return 'klubben';
+    }
+
+    return clubSlug
+      .replace(/[-_]/g, ' ')
+      .split(' ')
+      .map(segment => segment ? segment.charAt(0).toUpperCase() + segment.slice(1) : segment)
+      .join(' ');
+  }, [clubSlug, isDefaultTenant]);
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -247,7 +261,9 @@ const AddMapModal: React.FC<AddMapModalProps> = ({ isOpen, onClose, mapToEdit, o
       if (mapToEdit) {
         // Update existing map - only send data if we're editing info
         if (editMode === 'info') {
-          await axios.put(`${API_BASE_URL}/api/maps/${mapToEdit.id}`, mapData);
+          await axios.put(`${API_BASE_URL}/api/maps/${mapToEdit.id}`, mapData, {
+            params: tenantParams,
+          });
         }
         
         // Upload new files if any
@@ -261,6 +277,7 @@ const AddMapModal: React.FC<AddMapModalProps> = ({ isOpen, onClose, mapToEdit, o
 
           await axios.post(`${API_BASE_URL}/api/maps/${mapToEdit.id}/files`, formData, {
             headers: { 'Content-Type': 'multipart/form-data' },
+            params: tenantParams,
           });
         }
       } else {
@@ -278,6 +295,7 @@ const AddMapModal: React.FC<AddMapModalProps> = ({ isOpen, onClose, mapToEdit, o
 
           await axios.post(`${API_BASE_URL}/api/maps/${newMap.id}/files`, formData, {
             headers: { 'Content-Type': 'multipart/form-data' },
+            params: tenantParams,
           });
         }
       }
@@ -326,6 +344,9 @@ const AddMapModal: React.FC<AddMapModalProps> = ({ isOpen, onClose, mapToEdit, o
                 Fyll ut grunnleggende informasjon og tegn kartområdet
               </p>
             )}
+            <p className="text-xs text-gray-500 mt-2">
+              Kartet knyttes til {tenantName}.
+            </p>
           </div>
           <button
             onClick={onClose}
@@ -792,7 +813,9 @@ const AddMapModal: React.FC<AddMapModalProps> = ({ isOpen, onClose, mapToEdit, o
 
                             setIsDeletingFile(file.id);
                             try {
-                              const response = await axios.delete(`${API_BASE_URL}/api/maps/files/${file.id}`);
+                              const response = await axios.delete(`${API_BASE_URL}/api/maps/files/${file.id}`, {
+                                params: tenantParams,
+                              });
                               if (response.status === 200) {
                                 // File deleted successfully - refresh the map data
                                 showSuccess('Filen ble slettet!');
