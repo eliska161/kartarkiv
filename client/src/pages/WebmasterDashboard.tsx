@@ -4,6 +4,7 @@ import AnnouncementManagement from '../components/AnnouncementManagement';
 import ApiLogs from '../components/ApiLogs';
 import ServerRestart from '../components/ServerRestart';
 import PaymentManagement from '../components/PaymentManagement';
+import ClubManagementPanel from '../components/ClubManagementPanel';
 import { useTenant } from '../contexts/TenantContext';
 import { Shield, Megaphone, Server, Activity, CreditCard } from 'lucide-react';
 
@@ -32,6 +33,10 @@ const WebmasterDashboard: React.FC = () => {
               )}
             </div>
           </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-6 mb-8">
+          <ClubManagementPanel />
         </div>
 
         <div className="grid grid-cols-1 gap-6 mb-8">
