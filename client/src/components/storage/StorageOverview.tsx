@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertCircle, HardDrive, RefreshCcw, Cloud } from 'lucide-react';
+import { AlertCircle, HardDrive, RefreshCcw, Cloud, Loader2 } from 'lucide-react';
 
 import { apiGet } from '../../utils/apiClient';
 
@@ -127,6 +127,18 @@ const StorageOverview: React.FC = () => {
   }, [data]);
 
   const handleRefresh = () => fetchUsage({ silent: true });
+
+  if (loading && !data) {
+    return (
+      <div className="p-10 flex flex-col items-center justify-center gap-4 text-gray-600">
+        <Loader2 className="h-10 w-10 animate-spin text-brand-600" />
+        <div className="text-center">
+          <p className="text-base font-medium text-gray-900">Laster lagringsstatistikk ...</p>
+          <p className="text-sm text-gray-500">Henter oppdatert Backblaze-data, vennligst vent.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-8">
