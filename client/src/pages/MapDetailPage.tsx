@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useMap } from '../contexts/MapContext';
 import { useToast } from '../contexts/ToastContext';
@@ -46,6 +46,56 @@ const MapBoundsFitter: React.FC<{ coords: [number, number][] }> = ({ coords }) =
   return null;
 };
 
+const computePolygonCentroid = (coords: [number, number][]): { lat: number; lng: number } | null => {
+  if (!coords || coords.length === 0) {
+    return null;
+  }
+
+  const cleanedCoords = coords
+    .map(([lat, lng]) => [Number(lat), Number(lng)] as [number, number])
+    .filter(([lat, lng]) => !Number.isNaN(lat) && !Number.isNaN(lng));
+
+  if (cleanedCoords.length === 0) {
+    return null;
+  }
+
+  let twiceArea = 0;
+  let cx = 0;
+  let cy = 0;
+
+  for (let i = 0; i < cleanedCoords.length; i++) {
+    const [lat1, lng1] = cleanedCoords[i];
+    const [lat2, lng2] = cleanedCoords[(i + 1) % cleanedCoords.length];
+    const factor = lng1 * lat2 - lng2 * lat1;
+    twiceArea += factor;
+    cx += (lng1 + lng2) * factor;
+    cy += (lat1 + lat2) * factor;
+  }
+
+  if (Math.abs(twiceArea) < 1e-12) {
+    const avg = cleanedCoords.reduce(
+      (acc, [lat, lng]) => {
+        acc.lat += lat;
+        acc.lng += lng;
+        return acc;
+      },
+      { lat: 0, lng: 0 }
+    );
+
+    return {
+      lat: avg.lat / cleanedCoords.length,
+      lng: avg.lng / cleanedCoords.length,
+    };
+  }
+
+  const area = twiceArea / 2;
+
+  return {
+    lat: cy / (6 * area),
+    lng: cx / (6 * area),
+  };
+};
+
 const MapDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -58,6 +108,33 @@ const MapDetailPage: React.FC = () => {
   const [downloadingFileId, setDownloadingFileId] = useState<number | null>(null);
   const [downloadProgress, setDownloadProgress] = useState<number>(0);
   const [currentDownloadName, setCurrentDownloadName] = useState<string | null>(null);
+
+  const polygonCoords = useMemo<[number, number][] | null>(() => {
+    const coords = map?.area_bounds?.coordinates?.[0];
+    if (!Array.isArray(coords)) {
+      return null;
+    }
+
+    return coords.filter((point: any) => Array.isArray(point) && point.length >= 2) as [number, number][];
+  }, [map]);
+
+  const mapCenter = useMemo(() => {
+    if (polygonCoords && polygonCoords.length > 0) {
+      const centroid = computePolygonCentroid(polygonCoords);
+      if (centroid) {
+        return centroid;
+      }
+    }
+
+    const fallbackLat = Number(map?.center_lat);
+    const fallbackLng = Number(map?.center_lng);
+
+    if (!Number.isNaN(fallbackLat) && !Number.isNaN(fallbackLng)) {
+      return { lat: fallbackLat, lng: fallbackLng };
+    }
+
+    return { lat: 59.9139, lng: 10.7522 };
+  }, [polygonCoords, map]);
 
   useEffect(() => {
     const loadMap = async () => {
@@ -83,16 +160,39 @@ const MapDetailPage: React.FC = () => {
     loadMap();
   }, [id, fetchMap]);
 
-
   const handleDownload = async (file: any) => {
+    const resetDownloadState = () => {
+      setTimeout(() => setDownloadProgress(0), 300);
+      setDownloadingFileId(null);
+      setCurrentDownloadName(null);
+    };
+
     try {
       setDownloadingFileId(file.id);
       setCurrentDownloadName(file.original_filename || file.filename);
-      setDownloadProgress(5);
+      setDownloadProgress(10);
+
+      try {
+        const directResponse = await axios.get(`${API_BASE_URL}/api/maps/files/${file.id}/download`, {
+          params: { direct: true },
+          withCredentials: true,
+        });
+
+        if (directResponse.data?.downloadUrl) {
+          resetDownloadState();
+          window.location.href = directResponse.data.downloadUrl;
+          return;
+        }
+      } catch (directError: any) {
+        if (directError?.response?.status && directError.response.status !== 409) {
+          console.warn('Direkte nedlasting feilet, faller tilbake til proxy:', directError);
+        }
+        // Fortsett til fallback-strømmen nedenfor
+      }
 
       const response = await axios.get(`${API_BASE_URL}/api/maps/files/${file.id}/download`, {
-        params: { direct: true },
         responseType: 'arraybuffer',
+        withCredentials: true,
         onDownloadProgress: (progressEvent) => {
           if (progressEvent.total) {
             const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
@@ -105,32 +205,6 @@ const MapDetailPage: React.FC = () => {
 
       const contentType = response.headers['content-type'] || '';
       const arrayBuffer = response.data as ArrayBuffer;
-
-      if (contentType.includes('application/json')) {
-        try {
-          const decodedText = new TextDecoder().decode(arrayBuffer);
-          const payload = JSON.parse(decodedText);
-
-          if (payload?.downloadUrl) {
-            setDownloadProgress((prev) => (prev < 95 ? 95 : prev));
-
-            const link = document.createElement('a');
-            link.href = payload.downloadUrl;
-            link.rel = 'noopener noreferrer';
-            link.download = file.original_filename || file.filename;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-
-            setDownloadProgress(100);
-            showSuccess('Fil lastet ned', `Filen "${file.original_filename || file.filename}" ble lastet ned!`);
-            return;
-          }
-        } catch (parseError) {
-          console.error('Feil ved tolkning av direkte nedlastingsrespons:', parseError);
-          // Fall back to treating the response as binary data below
-        }
-      }
 
       const blob = new Blob([arrayBuffer], { type: contentType || 'application/octet-stream' });
       const url = window.URL.createObjectURL(blob);
@@ -148,9 +222,7 @@ const MapDetailPage: React.FC = () => {
       console.error('Download error:', error);
       showError('Nedlasting feilet', 'Kunne ikke laste ned filen. Sjekk at filen eksisterer og prøv igjen.');
     } finally {
-      setTimeout(() => setDownloadProgress(0), 300);
-      setDownloadingFileId(null);
-      setCurrentDownloadName(null);
+      resetDownloadState();
     }
   };
 
@@ -353,7 +425,7 @@ const MapDetailPage: React.FC = () => {
                   <div>
                     <div className="text-sm font-medium text-gray-900">Posisjon</div>
                     <div className="text-sm text-gray-500">
-                      {parseFloat(map.center_lat).toFixed(6)}, {parseFloat(map.center_lng).toFixed(6)}
+                      {mapCenter.lat.toFixed(6)}, {mapCenter.lng.toFixed(6)}
                     </div>
                   </div>
                 </div>
@@ -379,24 +451,24 @@ const MapDetailPage: React.FC = () => {
             </div>
 
             {/* Polygon Area */}
-            {map.area_bounds && map.area_bounds.coordinates && map.area_bounds.coordinates[0] && (
+            {polygonCoords && polygonCoords.length > 0 && (
               <div className="card">
                 <h2 className="text-lg font-semibold text-gray-900 mb-4">Kartområde</h2>
                 <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden">
                   <MapContainer
-                    center={[map.center_lat || 59.9139, map.center_lng || 10.7522]}
+                    center={[mapCenter.lat, mapCenter.lng]}
                     zoom={13}
                     style={{ height: '100%', width: '100%' }}
                     zoomControl={false}
                     attributionControl={false}
                   >
-                    <MapBoundsFitter coords={map.area_bounds.coordinates[0]} />
+                    <MapBoundsFitter coords={polygonCoords} />
                     <TileLayer
                       url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                       attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                     />
                     <Polygon
-                      positions={map.area_bounds.coordinates[0]}
+                      positions={polygonCoords}
                       color="#059669"
                       fillColor="#10b981"
                       fillOpacity={0.3}

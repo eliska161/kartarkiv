@@ -278,24 +278,27 @@ router.get('/download/:token/file/:fileId', async (req, res) => {
     const wantsDirectDownload = req.query.direct === 'true';
     const hasB2Credentials = Boolean(process.env.B2_KEY_ID && process.env.B2_APPLICATION_KEY && process.env.B2_BUCKET);
 
-    if (wantsDirectDownload && hasB2Credentials && file.file_path.startsWith('maps/')) {
-      try {
-        const signedUrl = getSignedUrl(file.file_path, 120);
+    if (wantsDirectDownload) {
+      res.header('Access-Control-Allow-Origin', '*');
+      res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
+      res.header('Access-Control-Allow-Headers', 'Content-Type');
 
-        // Allow public clients to follow redirects or fetch the signed URL JSON payload
-        res.header('Access-Control-Allow-Origin', '*');
-        res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
-        res.header('Access-Control-Allow-Headers', 'Content-Type');
+      if (hasB2Credentials && file.file_path.startsWith('maps/')) {
+        try {
+          const signedUrl = getSignedUrl(file.file_path, 120);
 
-        return res.json({
-          downloadUrl: signedUrl,
-          filename: file.filename,
-          expiresIn: 120
-        });
-      } catch (error) {
-        console.error('Error generating signed download URL for share link:', error);
-        // Fall back to proxying the file below
+          return res.json({
+            downloadUrl: signedUrl,
+            filename: file.filename,
+            expiresIn: 120
+          });
+        } catch (error) {
+          console.error('Error generating signed download URL for share link:', error);
+          return res.status(500).json({ message: 'Kunne ikke generere direkte nedlastingslenke' });
+        }
       }
+
+      return res.status(409).json({ message: 'Direkte nedlasting er ikke tilgjengelig for denne filen' });
     }
 
     // Handle file download (same logic as authenticated download)
@@ -458,18 +461,22 @@ router.get('/files/:fileId/download', authenticateUser, async (req, res) => {
     const wantsDirectDownload = req.query.direct === 'true';
     const hasB2Credentials = Boolean(process.env.B2_KEY_ID && process.env.B2_APPLICATION_KEY && process.env.B2_BUCKET);
 
-    if (wantsDirectDownload && hasB2Credentials && filePath.startsWith('maps/')) {
-      try {
-        const signedUrl = getSignedUrl(filePath, 120);
-        return res.json({
-          downloadUrl: signedUrl,
-          filename: file.original_filename || file.filename,
-          expiresIn: 120
-        });
-      } catch (error) {
-        console.error('Error generating signed download URL for authenticated request:', error);
-        // Fall through to proxying logic
+    if (wantsDirectDownload) {
+      if (hasB2Credentials && filePath.startsWith('maps/')) {
+        try {
+          const signedUrl = getSignedUrl(filePath, 120);
+          return res.json({
+            downloadUrl: signedUrl,
+            filename: file.original_filename || file.filename,
+            expiresIn: 120
+          });
+        } catch (error) {
+          console.error('Error generating signed download URL for authenticated request:', error);
+          return res.status(500).json({ message: 'Kunne ikke generere direkte nedlastingslenke' });
+        }
       }
+
+      return res.status(409).json({ message: 'Direkte nedlasting er ikke tilgjengelig for denne filen' });
     }
 
     // Check if it's a Backblaze key, full remote URL, or local file

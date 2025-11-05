@@ -77,13 +77,35 @@ const PublicDownloadPage: React.FC = () => {
   };
 
   const handleDownload = async (file: MapFile) => {
+    const resetDownloadState = () => {
+      setDownloading(null);
+      setCurrentDownloadName(null);
+      setTimeout(() => setDownloadProgress(0), 300);
+    };
+
     try {
       setDownloading(file.id);
       setCurrentDownloadName(file.filename);
-      setDownloadProgress(0);
+      setDownloadProgress(10);
+
+      try {
+        const directResponse = await axios.get(`${API_BASE_URL}/api/maps/download/${token}/file/${file.id}`, {
+          params: { direct: true },
+        });
+
+        if (directResponse.data?.downloadUrl) {
+          resetDownloadState();
+          window.location.href = directResponse.data.downloadUrl;
+          return;
+        }
+      } catch (directError: any) {
+        if (directError?.response?.status && directError.response.status !== 409) {
+          console.warn('Direkte nedlasting for offentlig lenke feilet, faller tilbake til proxy:', directError);
+        }
+        // Fortsett til fallback-nedlasting nedenfor
+      }
 
       const response = await axios.get(`${API_BASE_URL}/api/maps/download/${token}/file/${file.id}`, {
-        params: { direct: true },
         responseType: 'arraybuffer',
         onDownloadProgress: (progressEvent) => {
           if (progressEvent.total) {
@@ -97,31 +119,6 @@ const PublicDownloadPage: React.FC = () => {
 
       const contentType = response.headers['content-type'] || '';
       const arrayBuffer = response.data as ArrayBuffer;
-
-      if (contentType.includes('application/json')) {
-        try {
-          const decodedText = new TextDecoder().decode(arrayBuffer);
-          const payload = JSON.parse(decodedText);
-
-          if (payload?.downloadUrl) {
-            setDownloadProgress((prev) => (prev < 95 ? 95 : prev));
-
-            const link = document.createElement('a');
-            link.href = payload.downloadUrl;
-            link.rel = 'noopener noreferrer';
-            link.download = file.filename;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-
-            setDownloadProgress(100);
-            return;
-          }
-        } catch (parseError) {
-          console.error('Feil ved tolkning av direkte nedlastingsrespons:', parseError);
-          // Fortsett med standard nedlastingsflyt nedenfor
-        }
-      }
 
       const blob = new Blob([arrayBuffer], { type: contentType || 'application/octet-stream' });
       const url = window.URL.createObjectURL(blob);
@@ -139,9 +136,7 @@ const PublicDownloadPage: React.FC = () => {
       console.error('Error downloading file:', err);
       alert('Kunne ikke laste ned fil: ' + err.message);
     } finally {
-      setDownloading(null);
-      setTimeout(() => setDownloadProgress(0), 300);
-      setCurrentDownloadName(null);
+      resetDownloadState();
     }
   };
 
