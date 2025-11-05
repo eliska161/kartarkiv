@@ -3,10 +3,12 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useMap } from '../contexts/MapContext';
 import { useToast } from '../contexts/ToastContext';
 import axios from 'axios';
-import { ArrowLeft, Download, MapPin, RulerDimensionLine, Spline, Calendar, User, FileText, Image, File, History, Maximize2 } from 'lucide-react';
+import { ArrowLeft, Download, MapPin, RulerDimensionLine, Spline, Calendar, User, Image, File, History, Loader2 } from 'lucide-react';
 import { MapContainer, TileLayer, Polygon, useMap as useLeafletMap } from 'react-leaflet';
 import L from 'leaflet';
 import VersionHistory from '../components/VersionHistory';
+import PdfIcon from '../assets/icon-pdf.svg';
+import OcadIcon from '../assets/icon-ocad.svg';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
@@ -53,6 +55,9 @@ const MapDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
+  const [downloadingFileId, setDownloadingFileId] = useState<number | null>(null);
+  const [downloadProgress, setDownloadProgress] = useState<number>(0);
+  const [currentDownloadName, setCurrentDownloadName] = useState<string | null>(null);
 
   useEffect(() => {
     const loadMap = async () => {
@@ -79,20 +84,25 @@ const MapDetailPage: React.FC = () => {
   }, [id, fetchMap]);
 
 
-  const handleDownload = async (file: any, event?: React.MouseEvent<HTMLButtonElement>) => {
+  const handleDownload = async (file: any) => {
     try {
-      // Show loading state
-      const button = event?.currentTarget as HTMLButtonElement;
-      if (button) {
-        button.textContent = 'Laster ned...';
-        button.disabled = true;
-      }
+      setDownloadingFileId(file.id);
+      setCurrentDownloadName(file.original_filename || file.filename);
+      setDownloadProgress(0);
 
       // Download file via server-side proxy (handles both Wasabi and local files)
       const response = await axios.get(`${API_BASE_URL}/api/maps/files/${file.id}/download`, {
         responseType: 'blob',
+        onDownloadProgress: (progressEvent) => {
+          if (progressEvent.total) {
+            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            setDownloadProgress(percentCompleted);
+          } else {
+            setDownloadProgress((prev) => (prev >= 90 ? prev : prev + 5));
+          }
+        },
       });
-      
+
       // Create blob URL and download
       const blob = new Blob([response.data]);
       const url = window.URL.createObjectURL(blob);
@@ -110,12 +120,9 @@ const MapDetailPage: React.FC = () => {
       console.error('Download error:', error);
       showError('Nedlasting feilet', 'Kunne ikke laste ned filen. Sjekk at filen eksisterer og prøv igjen.');
     } finally {
-      // Reset button state
-      const button = event?.currentTarget as HTMLButtonElement;
-      if (button) {
-        button.textContent = 'Last ned';
-        button.disabled = false;
-      }
+      setDownloadProgress(0);
+      setDownloadingFileId(null);
+      setCurrentDownloadName(null);
     }
   };
 
@@ -127,20 +134,21 @@ const MapDetailPage: React.FC = () => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
+  const getFileIcon = (fileType?: string) => {
+    const normalizedType = fileType?.toLowerCase();
 
-  const getFileIcon = (fileType: string) => {
-    switch (fileType.toLowerCase()) {
+    switch (normalizedType) {
       case 'pdf':
-        return <FileText className="h-5 w-5 text-red-500" />;
+        return <img src={PdfIcon} alt="PDF" className="h-6 w-6" />;
       case 'jpg':
       case 'jpeg':
       case 'png':
       case 'gif':
-        return <Image className="h-5 w-5 text-green-500" />;
+        return <Image className="h-6 w-6 text-green-500" />;
       case 'ocd':
-        return <File className="h-5 w-5 text-green-600" />;
+        return <img src={OcadIcon} alt="OCAD" className="h-6 w-6" />;
       default:
-        return <File className="h-5 w-5 text-gray-500" />;
+        return <File className="h-6 w-6 text-gray-500" />;
     }
   };
 
@@ -257,11 +265,21 @@ const MapDetailPage: React.FC = () => {
                         </div>
                       </div>
                       <button
-                        onClick={(e) => handleDownload(file, e)}
+                        onClick={() => handleDownload(file)}
                         className="btn-primary flex items-center"
+                        disabled={downloadingFileId === file.id}
                       >
-                        <Download className="h-4 w-4 mr-2" />
-                        Last ned
+                        {downloadingFileId === file.id ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            {downloadProgress > 0 ? `Laster ned ${downloadProgress}%` : 'Forbereder...'}
+                          </>
+                        ) : (
+                          <>
+                            <Download className="h-4 w-4 mr-2" />
+                            Last ned
+                          </>
+                        )}
                       </button>
                     </div>
                   ))}
@@ -368,6 +386,22 @@ const MapDetailPage: React.FC = () => {
       </div>
 
       {/* Version History Modal */}
+      {downloadingFileId && currentDownloadName && (
+        <div className="fixed bottom-6 right-6 z-30 max-w-sm w-full bg-white border border-gray-200 shadow-xl rounded-lg p-4 flex items-start space-x-3">
+          <Loader2 className="h-6 w-6 text-brand-600 animate-spin" />
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-gray-900">Nedlasting pågår</p>
+            <p className="text-xs text-gray-500 truncate">{currentDownloadName}</p>
+            <div className="mt-2 h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-brand-600 transition-all duration-200"
+                style={{ width: `${Math.min(downloadProgress || 10, 100)}%` }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       <VersionHistory
         mapId={parseInt(id!)}
         isOpen={showVersionHistory}
