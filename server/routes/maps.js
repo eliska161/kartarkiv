@@ -6,7 +6,7 @@ const { body, validationResult } = require('express-validator');
 const rateLimit = require('express-rate-limit');
 const pool = require('../database/connection');
 const { authenticateUser, requireAdmin } = require('../middleware/auth-clerk-fixed');
-const { uploadToB2, b2Client, bucketName: b2BucketName } = require('../config/backblaze');
+const { uploadToB2, getSignedUrl, b2Client, bucketName: b2BucketName } = require('../config/backblaze');
 
 // Function to convert Norwegian characters to ASCII-friendly equivalents
 function sanitizeFilename(filename) {
@@ -275,6 +275,29 @@ router.get('/download/:token/file/:fileId', async (req, res) => {
     
     const file = fileResult.rows[0];
     
+    const wantsDirectDownload = req.query.direct === 'true';
+    const hasB2Credentials = Boolean(process.env.B2_KEY_ID && process.env.B2_APPLICATION_KEY && process.env.B2_BUCKET);
+
+    if (wantsDirectDownload && hasB2Credentials && file.file_path.startsWith('maps/')) {
+      try {
+        const signedUrl = getSignedUrl(file.file_path, 120);
+
+        // Allow public clients to follow redirects or fetch the signed URL JSON payload
+        res.header('Access-Control-Allow-Origin', '*');
+        res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
+        res.header('Access-Control-Allow-Headers', 'Content-Type');
+
+        return res.json({
+          downloadUrl: signedUrl,
+          filename: file.filename,
+          expiresIn: 120
+        });
+      } catch (error) {
+        console.error('Error generating signed download URL for share link:', error);
+        // Fall back to proxying the file below
+      }
+    }
+
     // Handle file download (same logic as authenticated download)
     if (file.file_path.startsWith('maps/')) {
       // Backblaze B2 file
@@ -432,6 +455,23 @@ router.get('/files/:fileId/download', authenticateUser, async (req, res) => {
     const file = fileResult.rows[0];
     const filePath = file.file_path;
     
+    const wantsDirectDownload = req.query.direct === 'true';
+    const hasB2Credentials = Boolean(process.env.B2_KEY_ID && process.env.B2_APPLICATION_KEY && process.env.B2_BUCKET);
+
+    if (wantsDirectDownload && hasB2Credentials && filePath.startsWith('maps/')) {
+      try {
+        const signedUrl = getSignedUrl(filePath, 120);
+        return res.json({
+          downloadUrl: signedUrl,
+          filename: file.original_filename || file.filename,
+          expiresIn: 120
+        });
+      } catch (error) {
+        console.error('Error generating signed download URL for authenticated request:', error);
+        // Fall through to proxying logic
+      }
+    }
+
     // Check if it's a Backblaze key, full remote URL, or local file
     if (filePath.startsWith('maps/')) {
       // It's a Backblaze B2 key, download via server-side proxy

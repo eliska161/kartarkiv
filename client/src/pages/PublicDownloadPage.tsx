@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import { Download, MapPin, RulerDimensionLine, Spline, Calendar, User, FileText, AlertCircle, CheckCircle, Loader2, Image } from 'lucide-react';
 import PdfIcon from '../assets/icon-pdf.svg';
 import OcadIcon from '../assets/icon-ocad.svg';
+
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://kartarkiv-production.up.railway.app';
 
 interface MapFile {
   id: number;
@@ -56,7 +59,7 @@ const PublicDownloadPage: React.FC = () => {
 
   const fetchDownloadData = async () => {
     try {
-      const response = await fetch(`https://kartarkiv-production.up.railway.app/api/maps/download/${token}`);
+      const response = await fetch(`${API_BASE_URL}/api/maps/download/${token}`);
       
       if (!response.ok) {
         const errorData = await response.json();
@@ -79,44 +82,48 @@ const PublicDownloadPage: React.FC = () => {
       setCurrentDownloadName(file.filename);
       setDownloadProgress(0);
 
-      const response = await fetch(`https://kartarkiv-production.up.railway.app/api/maps/download/${token}/file/${file.id}`);
-
-      if (!response.ok) {
-        throw new Error('Kunne ikke laste ned fil');
-      }
-
-      const contentLength = response.headers.get('Content-Length');
-      const total = contentLength ? parseInt(contentLength, 10) : undefined;
-      let blob: Blob;
-
-      if (response.body && 'getReader' in response.body) {
-        const reader = response.body.getReader();
-        const chunks: Uint8Array[] = [];
-        let receivedLength = 0;
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          if (value) {
-            chunks.push(value);
-            receivedLength += value.length;
-            if (total) {
-              setDownloadProgress(Math.round((receivedLength / total) * 100));
-            } else {
-              setDownloadProgress((prev) => (prev >= 95 ? prev : prev + 5));
-            }
+      const response = await axios.get(`${API_BASE_URL}/api/maps/download/${token}/file/${file.id}`, {
+        params: { direct: true },
+        responseType: 'arraybuffer',
+        onDownloadProgress: (progressEvent) => {
+          if (progressEvent.total) {
+            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            setDownloadProgress(percentCompleted);
+          } else {
+            setDownloadProgress((prev) => (prev >= 95 ? prev : prev + 5));
           }
         }
+      });
 
-        blob = new Blob(chunks);
-      } else {
-        blob = await response.blob();
+      const contentType = response.headers['content-type'] || '';
+      const arrayBuffer = response.data as ArrayBuffer;
+
+      if (contentType.includes('application/json')) {
+        try {
+          const decodedText = new TextDecoder().decode(arrayBuffer);
+          const payload = JSON.parse(decodedText);
+
+          if (payload?.downloadUrl) {
+            setDownloadProgress((prev) => (prev < 95 ? 95 : prev));
+
+            const link = document.createElement('a');
+            link.href = payload.downloadUrl;
+            link.rel = 'noopener noreferrer';
+            link.download = file.filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            setDownloadProgress(100);
+            return;
+          }
+        } catch (parseError) {
+          console.error('Feil ved tolkning av direkte nedlastingsrespons:', parseError);
+          // Fortsett med standard nedlastingsflyt nedenfor
+        }
       }
 
-      if (total) {
-        setDownloadProgress(100);
-      }
-
+      const blob = new Blob([arrayBuffer], { type: contentType || 'application/octet-stream' });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -126,12 +133,14 @@ const PublicDownloadPage: React.FC = () => {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
 
+      setDownloadProgress(100);
+
     } catch (err: any) {
       console.error('Error downloading file:', err);
       alert('Kunne ikke laste ned fil: ' + err.message);
     } finally {
       setDownloading(null);
-      setDownloadProgress(0);
+      setTimeout(() => setDownloadProgress(0), 300);
       setCurrentDownloadName(null);
     }
   };

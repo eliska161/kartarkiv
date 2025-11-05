@@ -88,23 +88,51 @@ const MapDetailPage: React.FC = () => {
     try {
       setDownloadingFileId(file.id);
       setCurrentDownloadName(file.original_filename || file.filename);
-      setDownloadProgress(0);
+      setDownloadProgress(5);
 
-      // Download file via server-side proxy (handles both Wasabi and local files)
       const response = await axios.get(`${API_BASE_URL}/api/maps/files/${file.id}/download`, {
-        responseType: 'blob',
+        params: { direct: true },
+        responseType: 'arraybuffer',
         onDownloadProgress: (progressEvent) => {
           if (progressEvent.total) {
             const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
             setDownloadProgress(percentCompleted);
           } else {
-            setDownloadProgress((prev) => (prev >= 90 ? prev : prev + 5));
+            setDownloadProgress((prev) => (prev >= 95 ? prev : prev + 5));
           }
         },
       });
 
-      // Create blob URL and download
-      const blob = new Blob([response.data]);
+      const contentType = response.headers['content-type'] || '';
+      const arrayBuffer = response.data as ArrayBuffer;
+
+      if (contentType.includes('application/json')) {
+        try {
+          const decodedText = new TextDecoder().decode(arrayBuffer);
+          const payload = JSON.parse(decodedText);
+
+          if (payload?.downloadUrl) {
+            setDownloadProgress((prev) => (prev < 95 ? 95 : prev));
+
+            const link = document.createElement('a');
+            link.href = payload.downloadUrl;
+            link.rel = 'noopener noreferrer';
+            link.download = file.original_filename || file.filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            setDownloadProgress(100);
+            showSuccess('Fil lastet ned', `Filen "${file.original_filename || file.filename}" ble lastet ned!`);
+            return;
+          }
+        } catch (parseError) {
+          console.error('Feil ved tolkning av direkte nedlastingsrespons:', parseError);
+          // Fall back to treating the response as binary data below
+        }
+      }
+
+      const blob = new Blob([arrayBuffer], { type: contentType || 'application/octet-stream' });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -114,13 +142,13 @@ const MapDetailPage: React.FC = () => {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
 
-      // Show success message
+      setDownloadProgress(100);
       showSuccess('Fil lastet ned', `Filen "${file.original_filename || file.filename}" ble lastet ned!`);
     } catch (error) {
       console.error('Download error:', error);
       showError('Nedlasting feilet', 'Kunne ikke laste ned filen. Sjekk at filen eksisterer og prøv igjen.');
     } finally {
-      setDownloadProgress(0);
+      setTimeout(() => setDownloadProgress(0), 300);
       setDownloadingFileId(null);
       setCurrentDownloadName(null);
     }
