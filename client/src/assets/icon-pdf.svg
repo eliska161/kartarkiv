@@ -1,0 +1,6 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="128" height="128" rx="28" fill="#E73C3C" />
+  <path d="M40 24C33.3726 24 28 29.3726 28 36V92C28 98.6274 33.3726 104 40 104H88C94.6274 104 100 98.6274 100 92V50L74 24H40Z" fill="white" fill-opacity="0.15" />
+  <path d="M74 24V46C74 48.2091 75.7909 50 78 50H100" fill="#E73C3C" />
+  <text x="50%" y="72%" text-anchor="middle" font-family="'Inter', 'Segoe UI', sans-serif" font-size="44" font-weight="700" fill="white">PDF</text>
+</svg>

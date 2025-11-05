@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Download, MapPin, RulerDimensionLine, Spline, Calendar, User, FileText, AlertCircle, CheckCircle } from 'lucide-react';
+import axios from 'axios';
+import { Download, MapPin, RulerDimensionLine, Spline, Calendar, User, FileText, AlertCircle, CheckCircle, Loader2, Image } from 'lucide-react';
+import PdfIcon from '../assets/icon-pdf.svg';
+import OcadIcon from '../assets/icon-ocad.svg';
+
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://kartarkiv-production.up.railway.app';
 
 interface MapFile {
   id: number;
@@ -39,6 +44,8 @@ const PublicDownloadPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState<number | null>(null);
+  const [downloadProgress, setDownloadProgress] = useState<number>(0);
+  const [currentDownloadName, setCurrentDownloadName] = useState<string | null>(null);
 
   useEffect(() => {
     if (!token) {
@@ -52,7 +59,7 @@ const PublicDownloadPage: React.FC = () => {
 
   const fetchDownloadData = async () => {
     try {
-      const response = await fetch(`https://kartarkiv-production.up.railway.app/api/maps/download/${token}`);
+      const response = await fetch(`${API_BASE_URL}/api/maps/download/${token}`);
       
       if (!response.ok) {
         const errorData = await response.json();
@@ -72,14 +79,51 @@ const PublicDownloadPage: React.FC = () => {
   const handleDownload = async (file: MapFile) => {
     try {
       setDownloading(file.id);
-      
-      const response = await fetch(`https://kartarkiv-production.up.railway.app/api/maps/download/${token}/file/${file.id}`);
-      
-      if (!response.ok) {
-        throw new Error('Kunne ikke laste ned fil');
+      setCurrentDownloadName(file.filename);
+      setDownloadProgress(0);
+
+      const response = await axios.get(`${API_BASE_URL}/api/maps/download/${token}/file/${file.id}`, {
+        params: { direct: true },
+        responseType: 'arraybuffer',
+        onDownloadProgress: (progressEvent) => {
+          if (progressEvent.total) {
+            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            setDownloadProgress(percentCompleted);
+          } else {
+            setDownloadProgress((prev) => (prev >= 95 ? prev : prev + 5));
+          }
+        }
+      });
+
+      const contentType = response.headers['content-type'] || '';
+      const arrayBuffer = response.data as ArrayBuffer;
+
+      if (contentType.includes('application/json')) {
+        try {
+          const decodedText = new TextDecoder().decode(arrayBuffer);
+          const payload = JSON.parse(decodedText);
+
+          if (payload?.downloadUrl) {
+            setDownloadProgress((prev) => (prev < 95 ? 95 : prev));
+
+            const link = document.createElement('a');
+            link.href = payload.downloadUrl;
+            link.rel = 'noopener noreferrer';
+            link.download = file.filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            setDownloadProgress(100);
+            return;
+          }
+        } catch (parseError) {
+          console.error('Feil ved tolkning av direkte nedlastingsrespons:', parseError);
+          // Fortsett med standard nedlastingsflyt nedenfor
+        }
       }
 
-      const blob = await response.blob();
+      const blob = new Blob([arrayBuffer], { type: contentType || 'application/octet-stream' });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -88,12 +132,16 @@ const PublicDownloadPage: React.FC = () => {
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-      
+
+      setDownloadProgress(100);
+
     } catch (err: any) {
       console.error('Error downloading file:', err);
       alert('Kunne ikke laste ned fil: ' + err.message);
     } finally {
       setDownloading(null);
+      setTimeout(() => setDownloadProgress(0), 300);
+      setCurrentDownloadName(null);
     }
   };
 
@@ -111,6 +159,24 @@ const PublicDownloadPage: React.FC = () => {
       month: 'long',
       day: 'numeric'
     });
+  };
+
+  const getFileIcon = (filename: string) => {
+    const extension = filename.split('.').pop()?.toLowerCase();
+
+    switch (extension) {
+      case 'pdf':
+        return <img src={PdfIcon} alt="PDF" className="h-6 w-6" />;
+      case 'ocd':
+        return <img src={OcadIcon} alt="OCAD" className="h-6 w-6" />;
+      case 'jpg':
+      case 'jpeg':
+      case 'png':
+      case 'gif':
+        return <Image className="h-6 w-6 text-green-500" />;
+      default:
+        return <FileText className="h-6 w-6 text-gray-400" />;
+    }
   };
 
   if (loading) {
@@ -195,20 +261,29 @@ const PublicDownloadPage: React.FC = () => {
                   className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
                 >
                   <div className="flex items-center space-x-3">
-                    <FileText className="h-5 w-5 text-gray-400" />
+                    {getFileIcon(file.filename)}
                     <div>
                       <p className="font-medium text-gray-900">{file.filename}</p>
                       <p className="text-sm text-gray-500">{formatFileSize(file.file_size)}</p>
                     </div>
                   </div>
-                  
+
                   <button
                     onClick={() => handleDownload(file)}
                     disabled={downloading === file.id}
                     className="flex items-center space-x-2 px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 transition-colors disabled:opacity-50"
                   >
-                    <Download className="h-4 w-4" />
-                    <span>{downloading === file.id ? 'Laster ned...' : 'Last ned'}</span>
+                    {downloading === file.id ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span>{downloadProgress > 0 ? `Laster ned ${downloadProgress}%` : 'Forbereder...'}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Download className="h-4 w-4" />
+                        <span>Last ned</span>
+                      </>
+                    )}
                   </button>
                 </div>
               ))}
@@ -236,6 +311,21 @@ const PublicDownloadPage: React.FC = () => {
           </div>
         </div>
       </div>
+      {downloading && currentDownloadName && (
+        <div className="fixed bottom-6 right-6 z-30 max-w-sm w-full bg-white border border-gray-200 shadow-xl rounded-lg p-4 flex items-start space-x-3">
+          <Loader2 className="h-6 w-6 text-brand-600 animate-spin" />
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-gray-900">Nedlasting pågår</p>
+            <p className="text-xs text-gray-500 truncate">{currentDownloadName}</p>
+            <div className="mt-2 h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-brand-600 transition-all duration-200"
+                style={{ width: `${Math.min(downloadProgress || 10, 100)}%` }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
