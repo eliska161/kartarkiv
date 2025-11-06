@@ -123,7 +123,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ maps, selectedMap, onSelect
   });
 
   return (
-    <div className="h-screen lg:h-screen relative">
+    <div className="h-full relative">
       <style>{`
         .leaflet-interactive {
           cursor: pointer;
