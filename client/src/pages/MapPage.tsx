@@ -96,12 +96,12 @@ const MapPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       <Header />
-      
-      <div className="flex flex-col lg:flex-row">
+
+      <div className="flex flex-1 min-h-0 flex-col lg:flex-row">
         {/* Sidebar */}
-        <div className="w-full lg:w-80 bg-white shadow-lg h-auto lg:h-screen overflow-y-auto">
+        <div className="w-full lg:w-80 bg-white shadow-lg h-auto lg:h-full flex flex-col">
           <div className="p-4 border-b border-gray-200">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center">
@@ -212,7 +212,7 @@ const MapPage: React.FC = () => {
           </div>
 
           {/* Map list */}
-          <div className="p-4">
+          <div className="p-4 flex-1 overflow-y-auto min-h-0">
             {loading ? (
               <div className="flex justify-center py-8">
                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-brand-600"></div>
@@ -229,15 +229,17 @@ const MapPage: React.FC = () => {
         </div>
 
         {/* Main content */}
-        <div className="flex-1 min-h-screen">
+        <div className="flex-1 min-h-0 flex flex-col">
           {viewMode === 'map' ? (
-            <MapComponent 
-              maps={filteredMaps}
-              selectedMap={selectedMap}
-              onSelectMap={setSelectedMap}
-            />
+            <div className="flex-1 min-h-0">
+              <MapComponent
+                maps={filteredMaps}
+                selectedMap={selectedMap}
+                onSelectMap={setSelectedMap}
+              />
+            </div>
           ) : (
-            <div className="p-6">
+            <div className="flex-1 overflow-y-auto p-6 min-h-0">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredMaps.map(map => (
                   <div
