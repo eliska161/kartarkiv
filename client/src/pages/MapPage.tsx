@@ -96,12 +96,12 @@ const MapPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="h-screen bg-gray-50 flex flex-col lg:overflow-hidden">
       <Header />
 
-      <div className="flex flex-1 min-h-0 flex-col lg:flex-row">
+      <div className="flex flex-1 min-h-0 flex-col lg:flex-row lg:overflow-hidden">
         {/* Sidebar */}
-        <div className="w-full lg:w-80 bg-white shadow-lg h-auto lg:h-full flex flex-col">
+        <div className="w-full lg:w-80 bg-white shadow-lg flex flex-col lg:h-full lg:max-h-full lg:border-r lg:border-gray-200">
           <div className="p-4 border-b border-gray-200">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center">
@@ -229,7 +229,7 @@ const MapPage: React.FC = () => {
         </div>
 
         {/* Main content */}
-        <div className="flex-1 min-h-0 flex flex-col">
+        <div className="flex-1 min-h-0 flex flex-col lg:overflow-hidden">
           {viewMode === 'map' ? (
             <div className="flex-1 min-h-0">
               <MapComponent
