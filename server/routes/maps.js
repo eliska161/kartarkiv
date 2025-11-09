@@ -7,7 +7,7 @@ const rateLimit = require('express-rate-limit');
 const pool = require('../database/connection');
 const { authenticateUser, requireAdmin } = require('../middleware/auth-clerk-fixed');
 const { uploadToB2, getSignedUrl, b2Client, bucketName: b2BucketName } = require('../config/backblaze');
-const { PDFDocument, StandardFonts, rgb } = require('pdf-lib');
+const sharp = require('sharp');
 
 // Function to convert Norwegian characters to ASCII-friendly equivalents
 function sanitizeFilename(filename) {
@@ -93,64 +93,112 @@ const deriveClubName = (user = {}, map = {}) => {
   return process.env.DEFAULT_WATERMARK_CLUB || null;
 };
 
-const wrapTextForPdf = (text, font, fontSize, maxWidth) => {
+const escapeSvg = (value = '') => String(value)
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  .replace(/'/g, '&#39;');
+
+const wrapTextForSvg = (text, fontSize, maxWidth) => {
   const words = String(text).split(/\s+/);
   const lines = [];
   let currentLine = '';
+  const estimatedCharWidth = fontSize * 0.55;
+  const maxCharsPerLine = Math.max(Math.floor(maxWidth / estimatedCharWidth), 1);
+
+  const exceedsWidth = (content) => (content.length * estimatedCharWidth) > maxWidth;
+
+  const pushCurrentLine = () => {
+    if (currentLine) {
+      lines.push(currentLine);
+      currentLine = '';
+    }
+  };
 
   words.forEach((word) => {
-    const tentative = currentLine ? `${currentLine} ${word}` : word;
-    const width = font.widthOfTextAtSize(tentative, fontSize);
+    if (word.length > maxCharsPerLine) {
+      pushCurrentLine();
+      const segments = word.match(new RegExp(`.{1,${maxCharsPerLine}}`, 'g')) || [word];
+      segments.forEach((segment, index) => {
+        if (index === segments.length - 1 && segment.length <= maxCharsPerLine) {
+          currentLine = segment;
+        } else {
+          lines.push(segment);
+        }
+      });
+      return;
+    }
 
-    if (width <= maxWidth) {
+    const tentative = currentLine ? `${currentLine} ${word}` : word;
+    if (!exceedsWidth(tentative)) {
       currentLine = tentative;
     } else {
-      if (currentLine) {
-        lines.push(currentLine);
-      }
+      pushCurrentLine();
       currentLine = word;
     }
   });
 
-  if (currentLine) {
-    lines.push(currentLine);
-  }
+  pushCurrentLine();
 
-  return lines;
+  return lines.length > 0 ? lines : [''];
+};
+
+const buildWatermarkSvg = (text, width, height, options = {}) => {
+  const fontSize = options.fontSize || DEFAULT_WATERMARK_FONT_SIZE;
+  const margin = options.margin || DEFAULT_WATERMARK_MARGIN;
+  const opacity = options.opacity ?? DEFAULT_WATERMARK_OPACITY;
+  const lineGap = options.lineGap || 4;
+
+  const maxWidth = Math.max(width - (margin * 2), fontSize);
+  const lines = wrapTextForSvg(text, fontSize, maxWidth);
+  const totalHeight = (lines.length * fontSize) + ((lines.length - 1) * lineGap);
+  const startY = height - margin - totalHeight + fontSize;
+
+  const textNodes = lines.map((line, index) => {
+    const y = startY + index * (fontSize + lineGap);
+    return `<text x="${margin}" y="${y}" fill="rgba(51,51,51,${opacity})" font-family="Helvetica, 'Roboto Mono', Arial, sans-serif" font-size="${fontSize}" >${escapeSvg(line)}</text>`;
+  }).join('');
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${textNodes}</svg>`;
 };
 
 const applyPdfWatermark = async (inputBuffer, text, options = {}) => {
   const buffer = Buffer.isBuffer(inputBuffer) ? inputBuffer : Buffer.from(inputBuffer);
-  const pdfDoc = await PDFDocument.load(buffer);
-  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-  const pages = pdfDoc.getPages();
 
-  const fontSize = options.fontSize || DEFAULT_WATERMARK_FONT_SIZE;
-  const opacity = options.opacity ?? DEFAULT_WATERMARK_OPACITY;
-  const margin = options.margin || DEFAULT_WATERMARK_MARGIN;
-  const lineGap = options.lineGap || 4;
+  let metadata;
+  try {
+    metadata = await sharp(buffer, { density: options.density || 150, pages: -1 }).metadata();
+  } catch (error) {
+    console.warn('Unable to read PDF metadata for watermarking, returning original file.', error.message);
+    return buffer;
+  }
 
-  pages.forEach((page) => {
-    const { width } = page.getSize();
-    const maxWidth = width - (margin * 2);
-    const lines = wrapTextForPdf(text, font, fontSize, Math.max(maxWidth, fontSize));
+  if (!metadata || !metadata.width || !metadata.height) {
+    return buffer;
+  }
 
-    let currentY = margin;
-    lines.forEach((line) => {
-      page.drawText(line, {
-        x: margin,
-        y: currentY,
-        size: fontSize,
-        font,
-        color: rgb(0.2, 0.2, 0.2),
-        opacity,
-      });
-      currentY += fontSize + lineGap;
-    });
-  });
+  const pageCount = Math.max(metadata.pages || 1, 1);
+  const watermarkSvg = buildWatermarkSvg(text, metadata.width, metadata.height, options);
+  const overlays = Array.from({ length: pageCount }, (_, index) => ({
+    input: Buffer.from(watermarkSvg),
+    blend: 'over',
+    left: 0,
+    top: 0,
+    page: index,
+  }));
 
-  const pdfBytes = await pdfDoc.save();
-  return Buffer.from(pdfBytes);
+  try {
+    const result = await sharp(buffer, { density: options.density || 150, pages: -1 })
+      .composite(overlays)
+      .toFormat('pdf')
+      .toBuffer();
+
+    return result;
+  } catch (error) {
+    console.warn('Unable to apply PDF watermark, returning original file.', error.message);
+    return buffer;
+  }
 };
 
 const isPdfMimeType = (file = {}) => {
