@@ -1,11 +1,10 @@
 import React from 'react';
-import { useUser, UserProfile } from '@clerk/clerk-react';
+import { UserProfile } from '@clerk/clerk-react';
 import Header from '../components/Header';
 import { ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const ProfilePage: React.FC = () => {
-  const { user } = useUser();
   const navigate = useNavigate();
 
   return (

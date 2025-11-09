@@ -16,33 +16,6 @@ interface MonitorStatus {
   details?: string;
 }
 
-interface HealthCheckData {
-  timestamp: string;
-  status: 'healthy' | 'unhealthy';
-  services: {
-    database?: {
-      status: 'healthy' | 'unhealthy';
-      responseTime: string;
-      details: string;
-    };
-    fileStorage?: {
-      status: 'healthy' | 'unhealthy';
-      responseTime: string;
-      details: string;
-    };
-    clerkAuth?: {
-      status: 'healthy' | 'unhealthy';
-      responseTime: string;
-      details: string;
-    };
-    mapRendering?: {
-      status: 'healthy' | 'unhealthy';
-      responseTime: string;
-      details: string;
-    };
-  };
-}
-
 const UptimeStatus: React.FC<UptimeStatusProps> = ({ className = '', showDetails = true }) => {
   const [status, setStatus] = useState<MonitorStatus[]>([]);
   const [loading, setLoading] = useState(true);

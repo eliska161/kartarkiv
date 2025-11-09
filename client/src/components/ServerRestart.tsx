@@ -57,7 +57,7 @@ const ServerRestart: React.FC = () => {
     setLastRestart(new Date().toLocaleString('nb-NO'));
 
     try {
-      const response = await apiPost('/api/restart/restart');
+      await apiPost('/api/restart/restart');
       
       showSuccess('Server restart initiated! Railway CLI vil prøve å redeploye serveren.');
       

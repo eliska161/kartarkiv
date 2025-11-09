@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { History, User, Calendar, FileText } from 'lucide-react';
 import axios from 'axios';
 
@@ -26,13 +26,7 @@ const VersionHistory: React.FC<VersionHistoryProps> = ({ mapId, isOpen, onClose 
   const [versions, setVersions] = useState<VersionEntry[]>([]);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (isOpen && mapId) {
-      fetchVersionHistory();
-    }
-  }, [isOpen, mapId]);
-
-  const fetchVersionHistory = async () => {
+  const fetchVersionHistory = useCallback(async () => {
     setLoading(true);
     try {
       const response = await axios.get(`${API_BASE_URL}/api/maps/${mapId}/versions`);
@@ -42,7 +36,13 @@ const VersionHistory: React.FC<VersionHistoryProps> = ({ mapId, isOpen, onClose 
     } finally {
       setLoading(false);
     }
-  };
+  }, [mapId]);
+
+  useEffect(() => {
+    if (isOpen && mapId) {
+      fetchVersionHistory();
+    }
+  }, [fetchVersionHistory, isOpen, mapId]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString('nb-NO', {

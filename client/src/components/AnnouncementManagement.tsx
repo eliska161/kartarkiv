@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Eye, EyeOff, Calendar, AlertCircle, Info, CheckCircle, AlertTriangle, History, RotateCcw, X } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Plus, Edit, Trash2, Eye, EyeOff, AlertCircle, Info, CheckCircle, AlertTriangle, History, RotateCcw, X } from 'lucide-react';
 import apiClient from '../utils/apiClient';
 import { useToast } from '../contexts/ToastContext';
 import { useConfirmation } from '../hooks/useConfirmation';
@@ -53,11 +53,7 @@ const AnnouncementManagement: React.FC = () => {
     priority: 0
   });
 
-  useEffect(() => {
-    fetchAnnouncements();
-  }, []);
-
-  const fetchAnnouncements = async () => {
+  const fetchAnnouncements = useCallback(async () => {
     try {
       const response = await apiClient.get('/api/announcements/admin');
       setAnnouncements(response.data);
@@ -67,7 +63,11 @@ const AnnouncementManagement: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [showError]);
+
+  useEffect(() => {
+    fetchAnnouncements();
+  }, [fetchAnnouncements]);
 
   const fetchVersionHistory = async (announcementId: number) => {
     try {

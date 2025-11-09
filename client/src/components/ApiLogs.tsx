@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Activity, RefreshCw, Filter, Search, Clock, Globe, Database, AlertCircle, CheckCircle, XCircle, Info } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Activity, RefreshCw, Search, Clock, Globe, Database, AlertCircle, CheckCircle, XCircle, Info } from 'lucide-react';
 import { apiGet } from '../utils/apiClient';
 
 interface ApiLog {
@@ -23,28 +23,11 @@ const ApiLogs: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [totalLogs, setTotalLogs] = useState(0);
-  const [currentPage, setCurrentPage] = useState(0);
   const [pageSize] = useState(50);
+  const currentPage = 0;
   const [autoRefresh, setAutoRefresh] = useState(true);
 
-  useEffect(() => {
-    fetchLogs();
-  }, [currentPage, methodFilter, statusFilter, searchTerm]);
-
-  // Auto-refresh every 5 seconds
-  useEffect(() => {
-    if (!autoRefresh) return;
-
-    const interval = setInterval(() => {
-      if (!isRefreshing) {
-        fetchLogs();
-      }
-    }, 5000); // 5 seconds
-
-    return () => clearInterval(interval);
-  }, [autoRefresh, isRefreshing]);
-
-  const fetchLogs = async () => {
+  const fetchLogs = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams({
@@ -64,7 +47,24 @@ const ApiLogs: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, methodFilter, pageSize, searchTerm, statusFilter]);
+
+  useEffect(() => {
+    fetchLogs();
+  }, [fetchLogs]);
+
+  // Auto-refresh every 5 seconds
+  useEffect(() => {
+    if (!autoRefresh) return;
+
+    const interval = setInterval(() => {
+      if (!isRefreshing) {
+        fetchLogs();
+      }
+    }, 5000); // 5 seconds
+
+    return () => clearInterval(interval);
+  }, [autoRefresh, fetchLogs, isRefreshing]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { CheckCircle, XCircle, AlertTriangle, Info, X } from 'lucide-react';
 
 export interface Toast {
@@ -18,6 +18,11 @@ const ToastComponent: React.FC<ToastProps> = ({ toast, onRemove }) => {
   const [progress, setProgress] = useState(100);
   const [isVisible, setIsVisible] = useState(true);
 
+  const handleRemove = useCallback(() => {
+    setIsVisible(false);
+    setTimeout(() => onRemove(toast.id), 300); // Wait for animation
+  }, [onRemove, toast.id]);
+
   useEffect(() => {
     const duration = toast.duration || 5000; // Default 5 seconds
     const interval = setInterval(() => {
@@ -32,12 +37,7 @@ const ToastComponent: React.FC<ToastProps> = ({ toast, onRemove }) => {
     }, 100);
 
     return () => clearInterval(interval);
-  }, [toast.duration]);
-
-  const handleRemove = () => {
-    setIsVisible(false);
-    setTimeout(() => onRemove(toast.id), 300); // Wait for animation
-  };
+  }, [handleRemove, toast.duration]);
 
   const getIcon = () => {
     switch (toast.type) {
