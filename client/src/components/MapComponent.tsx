@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup, Polygon } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Download, Eye } from 'lucide-react';
+import { MapPin, Download, Eye } from 'lucide-react';
 
 // Fix for default markers in react-leaflet
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -272,6 +272,32 @@ const MapComponent: React.FC<MapComponentProps> = ({ maps, selectedMap, onSelect
         })}
       </MapContainer>
       
+      {/* Map info overlay */}
+      <div className="absolute top-2 left-2 right-2 lg:top-4 lg:left-4 lg:right-auto bg-white rounded-lg shadow-lg p-3 lg:p-4 z-[1000] max-w-sm lg:max-w-sm">
+        <div className="flex items-center mb-2">
+          <MapPin className="h-4 w-4 text-brand-600 mr-2" />
+          <h3 className="font-semibold text-gray-900">Instruksjoner</h3>
+        </div>
+        <div className="text-xs text-gray-500 space-y-1">
+          <div className="flex items-center">
+            <div className="w-3 h-3 bg-red-600 rounded-full mr-2"></div>
+            Tilgjengelige kart
+          </div>
+          <div className="flex items-center">
+            <div className="w-3 h-3 bg-brand-600 rounded-full mr-2"></div>
+            Valgt kart
+          </div>
+          <div className="flex items-center">
+            <div className="w-3 h-3 border-2 border-brand-600 rounded-full mr-2"></div>
+            Kartområde
+          </div>
+        </div>
+        <div className="mt-3 pt-2 border-t border-gray-200">
+          <p className="text-xs text-gray-500">
+            <strong>Tips:</strong> Bruk musen til å zoome og panne. Klikk på kart for å velge.
+          </p>
+        </div>
+      </div>
     </div>
   );
 };
