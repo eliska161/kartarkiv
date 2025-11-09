@@ -54,6 +54,9 @@ const authenticateUser = async (req, res, next) => {
           : [];
         const isSuperAdmin = Boolean(clerkUser.publicMetadata?.isSuperAdmin) || roles.includes('superadmin');
         const isAdmin = Boolean(clerkUser.publicMetadata?.isAdmin) || isSuperAdmin;
+        const clubName = typeof clerkUser.publicMetadata?.clubName === 'string'
+          ? clerkUser.publicMetadata.clubName.trim()
+          : null;
 
         console.log('🔐 CLERK AUTH - Extracted user data:', { email, username, firstName, lastName, isAdmin });
 
@@ -66,7 +69,8 @@ const authenticateUser = async (req, res, next) => {
           lastName: lastName,
           isAdmin: isAdmin,
           isSuperAdmin: isSuperAdmin,
-          roles
+          roles,
+          clubName
         };
       } catch (clerkApiError) {
         console.error('🔐 CLERK AUTH - Clerk API error:', clerkApiError.message);
@@ -80,6 +84,9 @@ const authenticateUser = async (req, res, next) => {
           : [];
         const isSuperAdmin = Boolean(payload.public_metadata?.isSuperAdmin || payload.publicMetadata?.isSuperAdmin) || roles.includes('superadmin');
         const isAdmin = Boolean(payload.public_metadata?.isAdmin || payload.publicMetadata?.isAdmin) || isSuperAdmin;
+        const clubName = typeof (payload.public_metadata?.clubName || payload.publicMetadata?.clubName) === 'string'
+          ? String(payload.public_metadata?.clubName || payload.publicMetadata?.clubName).trim()
+          : null;
 
         req.user = {
           id: payload.sub,
@@ -89,7 +96,8 @@ const authenticateUser = async (req, res, next) => {
           lastName: null,
           isAdmin: isAdmin,
           isSuperAdmin: isSuperAdmin,
-          roles
+          roles,
+          clubName
         };
       }
       
@@ -118,7 +126,8 @@ const authenticateUser = async (req, res, next) => {
         username: 'FallbackUser',
         isAdmin: true,
         isSuperAdmin: true,
-        roles: ['superadmin']
+        roles: ['superadmin'],
+        clubName: null
       };
       
       console.log('🔐 CLERK AUTH - Fallback user created:', req.user);
