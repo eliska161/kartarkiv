@@ -7,6 +7,7 @@ const rateLimit = require('express-rate-limit');
 const pool = require('../database/connection');
 const { authenticateUser, requireAdmin } = require('../middleware/auth-clerk-fixed');
 const { uploadToB2, getSignedUrl, b2Client, bucketName: b2BucketName } = require('../config/backblaze');
+const sharp = require('sharp');
 
 // Function to convert Norwegian characters to ASCII-friendly equivalents
 function sanitizeFilename(filename) {
@@ -20,6 +21,206 @@ function sanitizeFilename(filename) {
 }
 // const pdf = require('pdf-poppler'); // Removed - not supported on Linux
 const router = express.Router();
+
+const DEFAULT_WATERMARK_FONT_SIZE = 18;
+const DEFAULT_WATERMARK_OPACITY = 0.3;
+const DEFAULT_WATERMARK_MARGIN = 36;
+
+let shareLinkWatermarkSchemaEnsured = false;
+
+const ensureShareLinkWatermarkColumns = async () => {
+  if (shareLinkWatermarkSchemaEnsured) {
+    return;
+  }
+
+  try {
+    await pool.query('ALTER TABLE share_links ADD COLUMN IF NOT EXISTS watermark_enabled BOOLEAN DEFAULT TRUE');
+    await pool.query('ALTER TABLE share_links ADD COLUMN IF NOT EXISTS watermark_text TEXT');
+    await pool.query('ALTER TABLE share_links ADD COLUMN IF NOT EXISTS created_by_name TEXT');
+    await pool.query('ALTER TABLE share_links ADD COLUMN IF NOT EXISTS club_name TEXT');
+    await pool.query('UPDATE share_links SET watermark_enabled = TRUE WHERE watermark_enabled IS NULL');
+    shareLinkWatermarkSchemaEnsured = true;
+  } catch (schemaError) {
+    console.error('Error ensuring share_links watermark columns:', schemaError);
+  }
+};
+
+const getUserDisplayName = (user = {}) => {
+  const parts = [user.firstName, user.lastName].filter(Boolean).map(part => String(part).trim());
+  if (parts.length > 0) {
+    return parts.join(' ');
+  }
+  if (user.username) {
+    return String(user.username).trim();
+  }
+  if (user.email) {
+    return String(user.email).trim();
+  }
+  return 'Kartarkiv';
+};
+
+const abbreviateName = (name = '') => {
+  const matches = String(name)
+    .replace(/\s+/g, ' ')
+    .trim()
+    .match(/\b\p{L}/gu);
+
+  if (!matches || matches.length === 0) {
+    return 'KA';
+  }
+
+  const abbreviation = matches.join('').toUpperCase();
+  return abbreviation.length >= 2 ? abbreviation : abbreviation + 'K';
+};
+
+const buildWatermarkText = (clubName = '') => {
+  const resolvedClubName = clubName && clubName.trim().length > 0
+    ? clubName.trim()
+    : process.env.DEFAULT_WATERMARK_CLUB || 'Kartarkiv';
+  const year = new Date().getFullYear();
+  const shortName = abbreviateName(resolvedClubName);
+
+  return `Dette kartet er levert av ${resolvedClubName} via Kartarkiv – Kun for personlig bruk – ${year} © ${shortName}`;
+};
+
+const deriveClubName = (user = {}, map = {}) => {
+  if (user.clubName) {
+    return user.clubName;
+  }
+  if (map && map.club_name) {
+    return map.club_name;
+  }
+  return process.env.DEFAULT_WATERMARK_CLUB || null;
+};
+
+const escapeSvg = (value = '') => String(value)
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  .replace(/'/g, '&#39;');
+
+const wrapTextForSvg = (text, fontSize, maxWidth) => {
+  const words = String(text).split(/\s+/);
+  const lines = [];
+  let currentLine = '';
+  const estimatedCharWidth = fontSize * 0.55;
+  const maxCharsPerLine = Math.max(Math.floor(maxWidth / estimatedCharWidth), 1);
+
+  const exceedsWidth = (content) => (content.length * estimatedCharWidth) > maxWidth;
+
+  const pushCurrentLine = () => {
+    if (currentLine) {
+      lines.push(currentLine);
+      currentLine = '';
+    }
+  };
+
+  words.forEach((word) => {
+    if (word.length > maxCharsPerLine) {
+      pushCurrentLine();
+      const segments = word.match(new RegExp(`.{1,${maxCharsPerLine}}`, 'g')) || [word];
+      segments.forEach((segment, index) => {
+        if (index === segments.length - 1 && segment.length <= maxCharsPerLine) {
+          currentLine = segment;
+        } else {
+          lines.push(segment);
+        }
+      });
+      return;
+    }
+
+    const tentative = currentLine ? `${currentLine} ${word}` : word;
+    if (!exceedsWidth(tentative)) {
+      currentLine = tentative;
+    } else {
+      pushCurrentLine();
+      currentLine = word;
+    }
+  });
+
+  pushCurrentLine();
+
+  return lines.length > 0 ? lines : [''];
+};
+
+const buildWatermarkSvg = (text, width, height, options = {}) => {
+  const fontSize = options.fontSize || DEFAULT_WATERMARK_FONT_SIZE;
+  const margin = options.margin || DEFAULT_WATERMARK_MARGIN;
+  const opacity = options.opacity ?? DEFAULT_WATERMARK_OPACITY;
+  const lineGap = options.lineGap || 4;
+
+  const maxWidth = Math.max(width - (margin * 2), fontSize);
+  const lines = wrapTextForSvg(text, fontSize, maxWidth);
+  const totalHeight = (lines.length * fontSize) + ((lines.length - 1) * lineGap);
+  const startY = height - margin - totalHeight + fontSize;
+
+  const textNodes = lines.map((line, index) => {
+    const y = startY + index * (fontSize + lineGap);
+    return `<text x="${margin}" y="${y}" fill="rgba(51,51,51,${opacity})" font-family="Helvetica, 'Roboto Mono', Arial, sans-serif" font-size="${fontSize}" >${escapeSvg(line)}</text>`;
+  }).join('');
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${textNodes}</svg>`;
+};
+
+const applyPdfWatermark = async (inputBuffer, text, options = {}) => {
+  const buffer = Buffer.isBuffer(inputBuffer) ? inputBuffer : Buffer.from(inputBuffer);
+
+  let metadata;
+  try {
+    metadata = await sharp(buffer, { density: options.density || 150, pages: -1 }).metadata();
+  } catch (error) {
+    console.warn('Unable to read PDF metadata for watermarking, returning original file.', error.message);
+    return buffer;
+  }
+
+  if (!metadata || !metadata.width || !metadata.height) {
+    return buffer;
+  }
+
+  const pageCount = Math.max(metadata.pages || 1, 1);
+  const watermarkSvg = buildWatermarkSvg(text, metadata.width, metadata.height, options);
+  const overlays = Array.from({ length: pageCount }, (_, index) => ({
+    input: Buffer.from(watermarkSvg),
+    blend: 'over',
+    left: 0,
+    top: 0,
+    page: index,
+  }));
+
+  try {
+    const result = await sharp(buffer, { density: options.density || 150, pages: -1 })
+      .composite(overlays)
+      .toFormat('pdf')
+      .toBuffer();
+
+    return result;
+  } catch (error) {
+    console.warn('Unable to apply PDF watermark, returning original file.', error.message);
+    return buffer;
+  }
+};
+
+const isPdfMimeType = (file = {}) => {
+  const mimeType = (file.mime_type || '').toLowerCase();
+  const filename = (file.filename || '').toLowerCase();
+  return mimeType === 'application/pdf' || filename.endsWith('.pdf');
+};
+
+const backfillShareLinkWatermarkMetadata = async (shareLinkId, watermarkText, clubName) => {
+  if (!shareLinkId) {
+    return;
+  }
+
+  try {
+    await pool.query(
+      'UPDATE share_links SET watermark_text = COALESCE(watermark_text, $1), club_name = COALESCE(club_name, $2) WHERE id = $3',
+      [watermarkText, clubName, shareLinkId]
+    );
+  } catch (error) {
+    console.warn('Unable to update share link watermark metadata:', error.message);
+  }
+};
 
 // Upload rate limiting
 const uploadLimiter = rateLimit({
@@ -99,10 +300,23 @@ const previewUpload = multer({
 router.post('/:id/share', authenticateUser, async (req, res) => {
   try {
     const mapId = parseInt(req.params.id);
-    
-    // Verify map exists
-    const mapResult = await pool.query('SELECT id, name FROM maps WHERE id = $1', [mapId]);
-    if (mapResult.rows.length === 0) {
+
+    await ensureShareLinkWatermarkColumns();
+
+    let mapRow;
+    try {
+      const mapResult = await pool.query('SELECT id, name, club_name FROM maps WHERE id = $1', [mapId]);
+      mapRow = mapResult.rows[0];
+    } catch (mapError) {
+      if (mapError.code === '42703') {
+        const fallbackResult = await pool.query('SELECT id, name FROM maps WHERE id = $1', [mapId]);
+        mapRow = fallbackResult.rows[0];
+      } else {
+        throw mapError;
+      }
+    }
+
+    if (!mapRow) {
       return res.status(404).json({ message: 'Map not found' });
     }
     
@@ -113,24 +327,31 @@ router.post('/:id/share', authenticateUser, async (req, res) => {
     // Set expiration to 5 hours from now
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + 5);
-    
+
+    const requestedWatermarkEnabled = req.body?.watermarkEnabled !== false;
+    const watermarkEnabled = req.user.isAdmin ? requestedWatermarkEnabled : true;
+    const clubName = deriveClubName(req.user, mapRow) || mapRow.name;
+    const watermarkText = buildWatermarkText(clubName);
+    const createdByName = getUserDisplayName(req.user);
+
     // Create share link
     const result = await pool.query(`
-      INSERT INTO share_links (map_id, token, created_by, expires_at)
-      VALUES ($1, $2, $3, $4)
-      RETURNING id, token, expires_at
-    `, [mapId, token, req.user.id, expiresAt]);
-    
+      INSERT INTO share_links (map_id, token, created_by, expires_at, watermark_enabled, watermark_text, created_by_name, club_name)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      RETURNING id, token, expires_at, watermark_enabled, watermark_text, created_by_name, club_name
+    `, [mapId, token, req.user.id, expiresAt, watermarkEnabled, watermarkText, createdByName, clubName]);
+
     const shareLink = result.rows[0];
     const publicUrl = `${process.env.FRONTEND_URL || 'https://www.kartarkiv.co'}/download/${shareLink.token}`;
-    
+
     console.log('✅ Share link created:', {
       mapId,
       token: shareLink.token,
       expiresAt: shareLink.expires_at,
-      createdBy: req.user.id
+      createdBy: req.user.id,
+      watermarkEnabled
     });
-    
+
     res.json({
       message: 'Share link created successfully',
       shareLink: {
@@ -138,7 +359,11 @@ router.post('/:id/share', authenticateUser, async (req, res) => {
         token: shareLink.token,
         url: publicUrl,
         expiresAt: shareLink.expires_at,
-        expiresIn: '5 timer'
+        expiresIn: '5 timer',
+        watermarkEnabled: shareLink.watermark_enabled !== false,
+        watermarkText: shareLink.watermark_text,
+        createdByName: shareLink.created_by_name || createdByName,
+        clubName: shareLink.club_name || clubName
       }
     });
     
@@ -177,6 +402,14 @@ router.get('/download/:token', async (req, res) => {
     }
     
     const shareLink = shareResult.rows[0];
+
+    const shareClubName = shareLink.club_name || deriveClubName({}, { club_name: shareLink.club_name }) || shareLink.map_name;
+    const shareWatermarkText = shareLink.watermark_text || buildWatermarkText(shareClubName || shareLink.map_name);
+    const shareWatermarkEnabled = shareLink.watermark_enabled !== false;
+
+    if (!shareLink.watermark_text || !shareLink.club_name) {
+      await backfillShareLinkWatermarkMetadata(shareLink.id, shareWatermarkText, shareClubName || shareLink.map_name);
+    }
     
     // Mark as used and increment download count
     await pool.query(`
@@ -233,7 +466,11 @@ router.get('/download/:token', async (req, res) => {
       shareInfo: {
         expiresAt: shareLink.expires_at,
         downloadCount: shareLink.download_count + 1,
-        isOneTime: true
+        isOneTime: true,
+        createdByName: shareLink.created_by_name || 'Kartarkiv',
+        watermarkEnabled: shareWatermarkEnabled,
+        watermarkText: shareWatermarkText,
+        clubName: shareClubName || shareLink.map_name || null
       }
     });
     
@@ -256,11 +493,20 @@ router.get('/download/:token/file/:fileId', async (req, res) => {
       JOIN maps m ON sl.map_id = m.id
       WHERE sl.token = $1 AND sl.is_used = TRUE
     `, [token]);
-    
+
     if (shareResult.rows.length === 0) {
       return res.status(404).json({ message: 'Delings-lenke ikke gyldig' });
     }
-    
+
+    const shareLink = shareResult.rows[0];
+    const shareClubName = shareLink.club_name || deriveClubName({}, { club_name: shareLink.club_name }) || shareLink.map_name;
+    const shareWatermarkText = shareLink.watermark_text || buildWatermarkText(shareClubName || shareLink.map_name);
+    const shareWatermarkEnabled = shareLink.watermark_enabled !== false;
+
+    if (!shareLink.watermark_text || !shareLink.club_name) {
+      await backfillShareLinkWatermarkMetadata(shareLink.id, shareWatermarkText, shareClubName || shareLink.map_name);
+    }
+
     // Get file info
     const fileResult = await pool.query(`
       SELECT mf.*
@@ -272,9 +518,10 @@ router.get('/download/:token/file/:fileId', async (req, res) => {
     if (fileResult.rows.length === 0) {
       return res.status(404).json({ message: 'Fil ikke funnet' });
     }
-    
+
     const file = fileResult.rows[0];
-    
+    const shouldWatermark = shareWatermarkEnabled && isPdfMimeType(file);
+
     const wantsDirectDownload = req.query.direct === 'true';
     const hasB2Credentials = Boolean(process.env.B2_KEY_ID && process.env.B2_APPLICATION_KEY && process.env.B2_BUCKET);
 
@@ -282,6 +529,10 @@ router.get('/download/:token/file/:fileId', async (req, res) => {
       res.header('Access-Control-Allow-Origin', '*');
       res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
       res.header('Access-Control-Allow-Headers', 'Content-Type');
+
+      if (shouldWatermark) {
+        return res.status(409).json({ message: 'Direkte nedlasting er ikke tilgjengelig for vannmerkede filer' });
+      }
 
       if (hasB2Credentials && file.file_path.startsWith('maps/')) {
         try {
@@ -313,11 +564,38 @@ router.get('/download/:token/file/:fileId', async (req, res) => {
 
           const data = await b2Client.getObject(params).promise();
 
-          res.setHeader('Content-Type', file.mime_type || 'application/octet-stream');
-          res.setHeader('Content-Disposition', `attachment; filename="${file.filename}"`);
-          res.setHeader('Content-Length', data.ContentLength);
+          const originalBuffer = Buffer.isBuffer(data.Body) ? data.Body : Buffer.from(data.Body);
+          let responseBuffer = originalBuffer;
+          let watermarked = false;
 
-          res.send(data.Body);
+          if (shouldWatermark) {
+            try {
+              responseBuffer = await applyPdfWatermark(originalBuffer, shareWatermarkText, {
+                fontSize: DEFAULT_WATERMARK_FONT_SIZE,
+                opacity: DEFAULT_WATERMARK_OPACITY,
+                margin: DEFAULT_WATERMARK_MARGIN
+              });
+              watermarked = true;
+            } catch (watermarkError) {
+              console.error('Error applying watermark to PDF from Backblaze:', watermarkError);
+              return res.status(500).json({ message: 'Kunne ikke legge til vannmerke på PDF' });
+            }
+          }
+
+          const contentType = shouldWatermark ? 'application/pdf' : (file.mime_type || 'application/octet-stream');
+          res.setHeader('Content-Type', contentType);
+          res.setHeader('Content-Disposition', `attachment; filename="${file.filename}"`);
+          res.setHeader('Content-Length', responseBuffer.length);
+
+          if (watermarked) {
+            res.setHeader('X-Kartarkiv-Watermarked', 'true');
+            res.setHeader('X-Kartarkiv-Watermark-Text', encodeURIComponent(shareWatermarkText));
+            if (shareClubName) {
+              res.setHeader('X-Kartarkiv-Watermark-Club', encodeURIComponent(shareClubName));
+            }
+          }
+
+          res.send(responseBuffer);
           return;
         } catch (error) {
           console.error('Error downloading from Backblaze B2:', error);
@@ -332,13 +610,38 @@ router.get('/download/:token/file/:fileId', async (req, res) => {
     
     try {
       const filePath = path.join(__dirname, '../uploads', file.file_path);
-      const fileBuffer = await fs.readFile(filePath);
-      
-      res.setHeader('Content-Type', file.mime_type || 'application/octet-stream');
+      const originalBuffer = await fs.readFile(filePath);
+      let responseBuffer = originalBuffer;
+      let watermarked = false;
+
+      if (shouldWatermark) {
+        try {
+          responseBuffer = await applyPdfWatermark(originalBuffer, shareWatermarkText, {
+            fontSize: DEFAULT_WATERMARK_FONT_SIZE,
+            opacity: DEFAULT_WATERMARK_OPACITY,
+            margin: DEFAULT_WATERMARK_MARGIN
+          });
+          watermarked = true;
+        } catch (watermarkError) {
+          console.error('Error applying watermark to local PDF:', watermarkError);
+          return res.status(500).json({ message: 'Kunne ikke legge til vannmerke på PDF' });
+        }
+      }
+
+      const contentType = shouldWatermark ? 'application/pdf' : (file.mime_type || 'application/octet-stream');
+      res.setHeader('Content-Type', contentType);
       res.setHeader('Content-Disposition', `attachment; filename="${file.filename}"`);
-      res.setHeader('Content-Length', fileBuffer.length);
-      
-      res.send(fileBuffer);
+      res.setHeader('Content-Length', responseBuffer.length);
+
+      if (watermarked) {
+        res.setHeader('X-Kartarkiv-Watermarked', 'true');
+        res.setHeader('X-Kartarkiv-Watermark-Text', encodeURIComponent(shareWatermarkText));
+        if (shareClubName) {
+          res.setHeader('X-Kartarkiv-Watermark-Club', encodeURIComponent(shareClubName));
+        }
+      }
+
+      res.send(responseBuffer);
     } catch (error) {
       console.error('Error reading local file:', error);
       res.status(500).json({ message: 'Error downloading file' });

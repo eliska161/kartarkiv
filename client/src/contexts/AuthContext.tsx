@@ -10,6 +10,7 @@ interface User {
   lastName: string;
   isAdmin: boolean;
   isSuperAdmin: boolean;
+  clubName?: string | null;
 }
 
 interface AuthContextType {
@@ -92,6 +93,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               ? clerkUser.publicMetadata.roles.map(role => String(role).toLowerCase())
               : [];
             const isSuperAdmin = roles.includes('superadmin') || Boolean(clerkUser.publicMetadata?.isSuperAdmin);
+            const clubName = typeof clerkUser.publicMetadata?.clubName === 'string'
+              ? clerkUser.publicMetadata.clubName
+              : null;
 
             setUser({
               id: clerkUser.id,
@@ -100,7 +104,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               firstName: clerkUser.firstName || '',
               lastName: clerkUser.lastName || '',
               isAdmin: Boolean(clerkUser.publicMetadata?.isAdmin) || isSuperAdmin,
-              isSuperAdmin
+              isSuperAdmin,
+              clubName
             });
           }
         } catch (error) {

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Download, MapPin, RulerDimensionLine, Spline, Calendar, User, FileText, AlertCircle, CheckCircle, Loader2, Image } from 'lucide-react';
+import { Download, MapPin, RulerDimensionLine, Spline, Calendar, User, FileText, AlertCircle, CheckCircle, Loader2, Image, Lock } from 'lucide-react';
 import PdfIcon from '../assets/icon-pdf.svg';
 import OcadIcon from '../assets/icon-ocad.svg';
 
@@ -28,6 +28,10 @@ interface ShareInfo {
   expiresAt: string;
   downloadCount: number;
   isOneTime: boolean;
+  createdByName?: string;
+  watermarkEnabled?: boolean;
+  watermarkText?: string;
+  clubName?: string | null;
 }
 
 interface DownloadResponse {
@@ -229,18 +233,47 @@ const PublicDownloadPage: React.FC = () => {
                 <span className="text-sm">Målestokk: {data.map.scale}</span>
               </div>
             )}
-            
+
             {data.map.contour_interval && (
               <div className="flex items-center text-gray-600">
                 <Spline className="h-5 w-5 mr-2" />
                 <span className="text-sm">Ekvidistanse: {data.map.contour_interval}m</span>
               </div>
             )}
-            
+
             <div className="flex items-center text-gray-600">
               <Calendar className="h-5 w-5 mr-2" />
               <span className="text-sm">Opprettet: {formatDate(data.map.created_at)}</span>
             </div>
+          </div>
+
+          <div className="mt-4 space-y-3">
+            {data.shareInfo.createdByName && (
+              <div className="flex items-center text-sm text-gray-600">
+                <User className="h-4 w-4 mr-2" />
+                <span>Deling opprettet av: {data.shareInfo.createdByName}</span>
+              </div>
+            )}
+
+            {data.shareInfo.watermarkEnabled && data.shareInfo.watermarkText && (
+              <div className="flex items-start text-sm text-blue-700 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <Lock className="h-4 w-4 mr-2 mt-0.5" />
+                <div>
+                  <p className="font-medium">Filen merkes automatisk for sikker deling.</p>
+                  <p className="text-xs text-blue-600 mt-1">
+                    Tekst: “{data.shareInfo.watermarkText}”
+                    {data.shareInfo.clubName ? ` · Synlig for ${data.shareInfo.clubName}` : ''}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {data.shareInfo.watermarkEnabled === false && (
+              <div className="flex items-start text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                <AlertCircle className="h-4 w-4 mr-2 mt-0.5" />
+                <span>Vannmerking er deaktivert for denne delingen.</span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -301,6 +334,12 @@ const PublicDownloadPage: React.FC = () => {
                 <li>• Denne lenken kan kun brukes én gang</li>
                 <li>• Lenken utløper: {formatDate(data.shareInfo.expiresAt)}</li>
                 <li>• Du trenger ikke å logge inn for å laste ned</li>
+                {data.shareInfo.watermarkEnabled && data.shareInfo.watermarkText && (
+                  <li>• Filene er vannmerket med: “{data.shareInfo.watermarkText}”</li>
+                )}
+                {data.shareInfo.watermarkEnabled === false && (
+                  <li>• Denne delingen er levert uten vannmerke (valgt av administrator).</li>
+                )}
               </ul>
             </div>
           </div>
