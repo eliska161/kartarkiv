@@ -87,7 +87,7 @@ export const validateFile = (file: File): { isValid: boolean; error?: string } =
       error: `Filen er for stor. Maksimal størrelse er ${(maxSize / 1024 / 1024).toFixed(0)}MB.`
     };
   }
-  
+
   const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
   if (!allowedExtensions.includes(fileExtension)) {
     return {
@@ -95,7 +95,14 @@ export const validateFile = (file: File): { isValid: boolean; error?: string } =
       error: `Filtype ikke støttet. Tillatte formater: ${allowedExtensions.join(', ')}`
     };
   }
-  
+
+  if (file.type && !allowedTypes.includes(file.type)) {
+    return {
+      isValid: false,
+      error: 'Filtype ikke støttet. Velg en fil i riktig format.'
+    };
+  }
+
   return { isValid: true };
 };
 

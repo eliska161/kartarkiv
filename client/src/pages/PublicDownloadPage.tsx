@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Download, MapPin, RulerDimensionLine, Spline, Calendar, User, FileText, AlertCircle, CheckCircle, Loader2, Image, Lock } from 'lucide-react';
+import { Download, RulerDimensionLine, Spline, Calendar, User, FileText, AlertCircle, CheckCircle, Loader2, Image, Lock } from 'lucide-react';
 import PdfIcon from '../assets/icon-pdf.svg';
 import OcadIcon from '../assets/icon-ocad.svg';
 
@@ -51,20 +51,10 @@ const PublicDownloadPage: React.FC = () => {
   const [downloadProgress, setDownloadProgress] = useState<number>(0);
   const [currentDownloadName, setCurrentDownloadName] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!token) {
-      setError('Ugyldig delings-lenke');
-      setLoading(false);
-      return;
-    }
-
-    fetchDownloadData();
-  }, [token]);
-
-  const fetchDownloadData = async () => {
+  const fetchDownloadData = useCallback(async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/api/maps/download/${token}`);
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Kunne ikke laste ned kart');
@@ -78,7 +68,17 @@ const PublicDownloadPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
+
+  useEffect(() => {
+    if (!token) {
+      setError('Ugyldig delings-lenke');
+      setLoading(false);
+      return;
+    }
+
+    fetchDownloadData();
+  }, [fetchDownloadData, token]);
 
   const handleDownload = async (file: MapFile) => {
     const resetDownloadState = () => {

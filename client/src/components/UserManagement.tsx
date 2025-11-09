@@ -1,12 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { User, Mail, Shield, Trash2, Edit, Plus, Search, Filter, UserPlus, X, RefreshCw } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { User, Mail, Shield, Trash2, Search, UserPlus, X, RefreshCw } from 'lucide-react';
 import { apiGet, apiPut, apiDelete, apiPost } from '../utils/apiClient';
 import { useConfirmation } from '../hooks/useConfirmation';
 import { useToast } from '../contexts/ToastContext';
 import ConfirmationModal from './ConfirmationModal';
-import axios from 'axios';
-
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 interface ClerkUser {
   id: string;
@@ -44,7 +41,6 @@ const UserManagement: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState<'all' | 'admin' | 'user'>('all');
-  const [editingUser, setEditingUser] = useState<ClerkUser | null>(null);
   const [showAddUser, setShowAddUser] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<'user' | 'admin'>('user');
@@ -53,17 +49,10 @@ const UserManagement: React.FC = () => {
   const confirmation = useConfirmation();
   const { showSuccess, showError } = useToast();
 
-  useEffect(() => {
-    // Only fetch users on component mount
-    console.log('🔄 UserManagement: Fetching users on mount');
-    fetchUsers();
-    fetchInvitations();
-  }, []);
-
-  const fetchUsers = async (showRefreshSpinner = false) => {
+  const fetchUsers = useCallback(async (showRefreshSpinner = false) => {
     try {
       console.log('🔄 UserManagement: Starting fetchUsers, showRefreshSpinner:', showRefreshSpinner);
-      
+
       if (showRefreshSpinner) {
         setIsRefreshing(true);
       } else {
@@ -102,9 +91,9 @@ const UserManagement: React.FC = () => {
       setIsRefreshing(false);
       console.log('🔄 UserManagement: fetchUsers completed');
     }
-  };
+  }, [showError, showSuccess]);
 
-  const fetchInvitations = async () => {
+  const fetchInvitations = useCallback(async () => {
     try {
       console.log('🔄 UserManagement: Fetching invitations...');
       const response = await apiGet('/api/admin/invitations');
@@ -116,7 +105,14 @@ const UserManagement: React.FC = () => {
       console.error('Error fetching invitations:', error);
       setInvitations([]);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    // Only fetch users on component mount
+    console.log('🔄 UserManagement: Fetching users on mount');
+    fetchUsers();
+    fetchInvitations();
+  }, [fetchUsers, fetchInvitations]);
 
   const handleToggleAdmin = async (user: ClerkUser) => {
     try {
