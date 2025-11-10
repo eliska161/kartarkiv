@@ -72,7 +72,7 @@ const statusConfig: Record<Invoice['status'], { label: string; className: string
   }
 };
 
-// Stripe removed – no card fee
+// Stripe removed â€“ no card fee
 
 const sanitizePresetValue = (value: string | null | undefined) => {
   if (!value) {
@@ -94,7 +94,7 @@ const formatCurrency = (amount: number) =>
 
 const formatDate = (value: string | null) => {
   if (!value) {
-    return '—';
+    return 'â€”';
   }
   return new Intl.DateTimeFormat('nb-NO', {
     year: 'numeric',
@@ -303,7 +303,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
         }
       } catch (error) {
         console.error('Kunne ikke hente lagringspris', error);
-        showWarning('Kunne ikke hente lagringspris', 'Fyll inn beløp manuelt dersom nødvendig.');
+        showWarning('Kunne ikke hente lagringspris', 'Fyll inn belÃ¸p manuelt dersom nÃ¸dvendig.');
         setStoragePricing({ basePrice: 49, storageCost: 0, totalStorageGb: null });
       } finally {
         setStoragePricingLoaded(true);
@@ -319,7 +319,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
     const cancelled = params.get('cancelled');
 
     if (cancelled === 'true' && invoiceId && !hasHandledCheckoutRef.current) {
-      showWarning('Betaling avbrutt', 'Du kan prøve igjen når som helst.');
+      showWarning('Betaling avbrutt', 'Du kan prÃ¸ve igjen nÃ¥r som helst.');
       hasHandledCheckoutRef.current = true;
       window.history.replaceState({}, document.title, window.location.pathname);
       return;
@@ -336,7 +336,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
       const parsed: Invoice = JSON.parse(storedConfirmation);
       setPaymentConfirmation(parsed);
     } catch (error) {
-      console.warn('⚠️ Klarte ikke å lese bekreftet betaling fra sessionStorage', error);
+      console.warn('âš ï¸ Klarte ikke Ã¥ lese bekreftet betaling fra sessionStorage', error);
     } finally {
       sessionStorage.removeItem('kartarkiv:lastPaidInvoice');
     }
@@ -433,7 +433,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
       .filter(item => item.description && item.amount > 0 && item.quantity > 0);
 
     if (!form.month || items.length === 0) {
-      showError('Ufullstendig faktura', 'Angi måned og minst én gyldig kostnadslinje.');
+  // Kortbetaling er fjernet – kun faktura via e-post
       setSaving(false);
       return;
     }
@@ -456,7 +456,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
     }
   };
 
-  // Kortbetaling er fjernet � kun faktura via e-post
+  // Kortbetaling er fjernet – kun faktura via e-post
 
   const openInvoiceModal = (invoice: Invoice) => {
     const suggestedEmail = (invoice.invoice_request_email || invoice.invoice_requested_by || '').trim();
@@ -525,12 +525,12 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
     }
 
     if (!phone) {
-      showError('Telefonnummer mangler', 'Telefonnummer må fylles ut for å lagre mottakeren.');
+      showError('Telefonnummer mangler', 'Telefonnummer mÃ¥ fylles ut for Ã¥ lagre mottakeren.');
       return;
     }
 
     if (!address) {
-      showError('Adresse mangler', 'Adresse må fylles ut for å lagre mottakeren.');
+      showError('Adresse mangler', 'Adresse mÃ¥ fylles ut for Ã¥ lagre mottakeren.');
       return;
     }
 
@@ -581,7 +581,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
     const address = invoiceModalAddress.trim();
 
     if (!name) {
-      showError('Navn mangler', 'Angi navnet eller bedriften som skal stå på fakturaen.');
+      showError('Navn mangler', 'Angi navnet eller bedriften som skal stÃ¥ pÃ¥ fakturaen.');
       return;
     }
 
@@ -591,12 +591,12 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
     }
 
     if (!phone) {
-      showError('Telefonnummer mangler', 'Telefonnummer må fylles ut før fakturaen kan sendes.');
+      showError('Telefonnummer mangler', 'Telefonnummer mÃ¥ fylles ut fÃ¸r fakturaen kan sendes.');
       return;
     }
 
     if (!address) {
-      showError('Adresse mangler', 'Legg inn fakturaadresse før du sender.');
+      showError('Adresse mangler', 'Legg inn fakturaadresse fÃ¸r du sender.');
       return;
     }
 
@@ -618,7 +618,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
       setInvoiceModalAddress('');
       setInvoiceModalSelectedRecipient('custom');
     } catch (err: any) {
-      console.error('Kunne ikke forespørre faktura', err);
+      console.error('Kunne ikke forespÃ¸rre faktura', err);
       showError('Kunne ikke sende faktura', err.response?.data?.error);
     } finally {
       setInvoiceModalLoading(false);
@@ -632,7 +632,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
           <Wallet className="h-5 w-5 mr-2 text-slate-600" />
           Betalingsoversikt
         </h2>
-        <p className="text-gray-600 mt-1">Kartarkiv vil automatisk sende faktura på e-post. </p>
+        <p className="text-gray-600 mt-1">Kartarkiv vil automatisk sende faktura pÃ¥ e-post. </p>
         <p className="text-gray-600"></p>
       </div>
 
@@ -640,7 +640,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
         <div className="border border-green-200 bg-green-50 rounded-lg p-6">
           <div className="flex items-start justify-between">
             <div>
-              <h3 className="text-lg font-semibold text-green-900">Betaling fullført</h3>
+              <h3 className="text-lg font-semibold text-green-900">Betaling fullfÃ¸rt</h3>
               <p className="text-sm text-green-800 mt-1">
                 Fakturaen for {paymentConfirmation.month} er registrert som betalt. Takk!
               </p>
@@ -668,7 +668,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
                   rel="noopener noreferrer"
                   className="text-sm font-medium text-slate-700 hover:text-slate-900"
                 >
-                  Åpne kvittering i Stripe →
+                  Ã…pne kvittering i Stripe â†’
                 </a>
               </div>
             )}
@@ -681,14 +681,14 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-gray-900 flex items-center">
               <FileText className="h-5 w-5 mr-2 text-slate-600" />
-              Opprett månedlig faktura
+              Opprett mÃ¥nedlig faktura
             </h3>
           </div>
 
           <form className="space-y-6" onSubmit={handleCreateInvoice}>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <label className="block">
-                <span className="text-sm font-medium text-gray-700">Måned</span>
+                <span className="text-sm font-medium text-gray-700">MÃ¥ned</span>
                 <input
                   type="month"
                   value={form.month}
@@ -750,7 +750,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
                       />
                     </div>
                     <div className="md:col-span-3">
-                      <label className="block text-sm font-medium text-gray-700">Beløp (NOK)</label>
+                      <label className="block text-sm font-medium text-gray-700">BelÃ¸p (NOK)</label>
                       <input
                         type="number"
                         min="0"
@@ -825,7 +825,8 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
             Fakturaer og betalinger
           </h3>
           <span className="text-sm text-gray-500">{invoices.length} faktura(er)</span>
-        </div>\n        <p className="text-xs text-gray-500 mt-1">Manuell betaling: Marker faktura som betalt etter mottatt innbetaling.</p>
+        </div>
+        <p className="text-xs text-gray-500 mt-1">Manuell betaling: Marker faktura som betalt etter mottatt innbetaling.</p>
 
         {loading ? (
           <div className="py-12 flex items-center justify-center text-gray-500">
@@ -833,7 +834,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
           </div>
         ) : invoices.length === 0 ? (
           <div className="py-12 text-center text-gray-500">
-            Ingen fakturaer registrert ennå.
+            Ingen fakturaer registrert ennÃ¥.
           </div>
         ) : (
           <div className="space-y-4">
@@ -878,55 +879,65 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
                               href={invoice.pdf_url}
                               target="_blank"
                               rel="noopener noreferrer"
-                    className="text-sm font-medium text-slate-700 hover:text-slate-900"
+                              className="text-sm font-medium text-slate-700 hover:text-slate-900"
                             >
-                              Last ned faktura PDF →
-                            </a>
-                          </div>
-                        )}
-                      </div>
+                    <div className="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-end gap-3">
+                      <button
+                        type="button"
+                        onClick={() => openInvoiceModal(invoice)}
+                        className="btn-primary flex items-center justify-center"
+                      >
+                        <Send className="h-4 w-4 mr-2" />
+                        Send faktura på e-post
+                      </button>
+
+                      {isSuperAdmin && (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              const { data } = (await apiPost(
+                                `/api/payments/invoices/${invoice.id}/mark-paid`
+                              )) as AxiosResponse<{ invoice: Invoice }>;
+
+                              setInvoices(prev =>
+                                prev.map(item =>
+                                  item.id === invoice.id ? data.invoice : item
+                                )
+                              );
+                              showSuccess('Markert som betalt', 'Fakturaen er markert som betalt.');
+                            } catch (error: any) {
+                              console.error('Kunne ikke markere som betalt', error);
+                              showError(
+                                'Kunne ikke markere som betalt',
+                                error?.response?.data?.error || error?.message || 'Ukjent feil'
+                              );
+                            }
+                          }}
+                          className="flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
+                        >
+                          Marker som betalt
+                        </button>
+                      )}
                     </div>
+                  )}
 
-                    <div className="text-right">
-                      <div className="text-sm text-gray-600">Totalt</div>
-                      <div className="text-2xl font-bold text-gray-900">{formatCurrency(invoice.total_amount)}</div>
+                  {(invoice.status === 'paid' || invoice.paid) && (
+                    <div className="mt-6 flex items-center justify-end gap-2">
+                      <CheckCircle className="h-5 w-5 text-green-600" />
+                      <span className="text-sm font-medium text-green-700">
+                        Betalt {invoice.paid_at ? `(${formatDate(invoice.paid_at as any)})` : ''}
+                      </span>
                     </div>
-                  </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
-                  <div className="mt-4">
-                    <h5 className="text-sm font-medium text-gray-700 mb-2">Detaljer</h5>
-                    <div className="bg-gray-50 rounded-lg divide-y divide-gray-200">
-                      {invoice.items.map(item => (
-                        <div key={item.id || item.description} className="p-3 flex items-center justify-between text-sm text-gray-700">
-                          <div>
-                            <div className="font-medium">{item.description}</div>
-                            <div className="text-gray-500">Antall: {item.quantity}</div>
-                          </div>
-                          <div>{formatCurrency(item.amount * item.quantity)}</div>
-                        </div>
-                      ))}
-                    </div>
-                    <p className="text-xs text-gray-500 mt-2">
-                    </p>
-                  </div>
-
-                  {invoice.status !== 'paid' && (
-  <div className="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-end gap-3">
-    <button
-      onClick={() => openInvoiceModal(invoice)}
-      className="btn-primary flex items-center justify-center"
-    >
-      <Send className="h-4 w-4 mr-2" />
-      Send faktura p� e-post
-    </button>
-
-    {isSuperAdmin && (
-      <button
-        onClick={async () => {
-          try {
-            const res = await fetch(`/api/payments/invoices/${invoice.id}/mark-paid`, {
-              method: 'POST',
-            });
+      {isInvoiceModalOpen && invoiceModalTarget && (
             if (!res.ok) throw new Error('HTTP ' + res.status);
             const data = await res.json();
             setInvoices((prev) =>
@@ -943,7 +954,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
         }}
         className="flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
       >
-        Mark�r som betalt
+        Markér som betalt
       </button>
     )}
   </div>
@@ -987,7 +998,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
                   </option>
                   {recipients.map(recipient => (
                     <option key={recipient.id} value={String(recipient.id)}>
-                      {recipient.name} – {recipient.email}
+                      {recipient.name} â€“ {recipient.email}
                     </option>
                   ))}
                 </select>
@@ -995,7 +1006,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
                   Velg en lagret mottaker eller fyll inn detaljene manuelt.
                 </p>
                 {recipientsLoading && (
-                  <p className="text-xs text-gray-400">Laster mottakere…</p>
+                  <p className="text-xs text-gray-400">Laster mottakereâ€¦</p>
                 )}
               </div>
               <div>
@@ -1022,16 +1033,16 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
                 />
               </div>
               <div>
-              <label className="block text-sm font-medium text-gray-700">Telefonnummer</label>
-              <input
-                type="tel"
-                value={invoiceModalPhone}
-                onChange={event => setInvoiceModalPhone(event.target.value)}
-                placeholder="+47 12 34 56 78"
+                <label className="block text-sm font-medium text-gray-700">Telefonnummer</label>
+                <input
+                  type="tel"
+                  value={invoiceModalPhone}
+                  onChange={event => setInvoiceModalPhone(event.target.value)}
+                  placeholder="+47 12 34 56 78"
                 className="mt-1 block w-full rounded-md border border-slate-300 shadow-sm focus:border-slate-500 focus:ring-2 focus:ring-slate-400"
-                required
-              />
-              <p className="text-xs text-gray-500 mt-1">Telefonnummeret deles kun med Stripe og vises på fakturaen.</p>
+                  required
+                />
+                <p className="text-xs text-gray-500 mt-1">Telefonnummeret deles kun med Stripe og vises på fakturaen.</p>
               </div>
               <AddressAutocompleteInput
                 label="Adresse"
@@ -1044,7 +1055,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
               {isSuperAdmin && (
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-xs text-gray-500">
-                    Lagre denne mottakeren for raskt å bruke samme informasjon senere.
+                    Lagre denne mottakeren for raskt Ã¥ bruke samme informasjon senere.
                   </p>
                   <button
                     type="button"
@@ -1071,7 +1082,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
                   <span className="font-medium text-gray-800">Faktura:</span> {invoiceModalTarget.month}
                 </div>
                 <div>
-                  <span className="font-medium text-gray-800">Totalbeløp:</span> {formatCurrency(invoiceModalTarget.total_amount)}
+                  <span className="font-medium text-gray-800">TotalbelÃ¸p:</span> {formatCurrency(invoiceModalTarget.total_amount)}
                 </div>
                 {invoiceModalTarget.due_date && (
                   <div>
@@ -1113,14 +1124,3 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
 };
 
 export default PaymentManagement;
-
-
-
-
-
-
-
-
-
-
-
