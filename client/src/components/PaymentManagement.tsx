@@ -881,46 +881,52 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
                               rel="noopener noreferrer"
                               className="text-sm font-medium text-slate-700 hover:text-slate-900"
                             >
-                    <div className="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-end gap-3">
-                      <button
-                        type="button"
-                        onClick={() => openInvoiceModal(invoice)}
-                        className="btn-primary flex items-center justify-center"
-                      >
-                        <Send className="h-4 w-4 mr-2" />
-                        Send faktura på e-post
-                      </button>
+                              Åpne faktura i Stripe →
+                            </a>
+                          </div>
+                        )}
 
-                      {isSuperAdmin && (
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            try {
-                              const { data } = (await apiPost(
-                                `/api/payments/invoices/${invoice.id}/mark-paid`
-                              )) as AxiosResponse<{ invoice: Invoice }>;
+                        <div className="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-end gap-3">
+                          <button
+                            type="button"
+                            onClick={() => openInvoiceModal(invoice)}
+                            className="btn-primary flex items-center justify-center"
+                          >
+                            <Send className="h-4 w-4 mr-2" />
+                            Send faktura på e-post
+                          </button>
 
-                              setInvoices(prev =>
-                                prev.map(item =>
-                                  item.id === invoice.id ? data.invoice : item
-                                )
-                              );
-                              showSuccess('Markert som betalt', 'Fakturaen er markert som betalt.');
-                            } catch (error: any) {
-                              console.error('Kunne ikke markere som betalt', error);
-                              showError(
-                                'Kunne ikke markere som betalt',
-                                error?.response?.data?.error || error?.message || 'Ukjent feil'
-                              );
-                            }
-                          }}
-                          className="flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
-                        >
-                          Marker som betalt
-                        </button>
-                      )}
+                          {isSuperAdmin && (
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                try {
+                                  const { data } = (await apiPost(
+                                    `/api/payments/invoices/${invoice.id}/mark-paid`
+                                  )) as AxiosResponse<{ invoice: Invoice }>;
+
+                                  setInvoices(prev =>
+                                    prev.map(item =>
+                                      item.id === invoice.id ? data.invoice : item
+                                    )
+                                  );
+                                  showSuccess('Markert som betalt', 'Fakturaen er markert som betalt.');
+                                } catch (error: any) {
+                                  console.error('Kunne ikke markere som betalt', error);
+                                  showError(
+                                    'Kunne ikke markere som betalt',
+                                    error?.response?.data?.error || error?.message || 'Ukjent feil'
+                                  );
+                                }
+                              }}
+                              className="flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
+                            >
+                              Marker som betalt
+                            </button>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  )}
 
                   {(invoice.status === 'paid' || invoice.paid) && (
                     <div className="mt-6 flex items-center justify-end gap-2">
@@ -931,6 +937,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
                     </div>
                   )}
                 </div>
+              </div>
               );
             })}
           </div>
@@ -938,37 +945,6 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
       </div>
 
       {isInvoiceModalOpen && invoiceModalTarget && (
-            if (!res.ok) throw new Error('HTTP ' + res.status);
-            const data = await res.json();
-            setInvoices((prev) =>
-              prev.map((it) => (it.id === invoice.id ? data.invoice : it))
-            );
-            showSuccess('Markert som betalt', 'Fakturaen er markert som betalt.');
-          } catch (e: any) {
-            console.error(e);
-            showError(
-              'Kunne ikke markere som betalt',
-              e?.message || 'Ukjent feil'
-            );
-          }
-        }}
-        className="flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
-      >
-        Markér som betalt
-      </button>
-    )}
-  </div>
-)}
-
-  {(invoice.status === 'paid' || invoice.paid) && (
-    <div className="mt-6 flex items-center justify-end gap-2">
-      <CheckCircle className="h-5 w-5 text-green-600" />
-      <span className="text-sm font-medium text-green-700">
-        Betalt {invoice.paid_at ? `(${formatDate(invoice.paid_at as any)})` : ''}
-      </span>
-    </div>
-  )}
-{isInvoiceModalOpen && invoiceModalTarget && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
           <div className="bg-white rounded-lg shadow-xl w-full max-w-lg">
             <div className="flex items-center justify-between p-6 border-b border-gray-200">
