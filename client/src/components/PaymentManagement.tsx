@@ -5,6 +5,7 @@ import { CheckCircle, CreditCard, FileText, Loader2, PlusCircle, Send, Wallet, X
 import { useToast } from '../contexts/ToastContext';
 import AddressAutocompleteInput from './payments/AddressAutocompleteInput';
 
+
 interface PaymentManagementProps {
   isSuperAdmin: boolean;
 }
@@ -455,7 +456,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
     }
   };
 
-  // Kortbetaling er fjernet ï¿½ kun faktura via e-post\n
+  // Kortbetaling er fjernet – kun faktura via e-post
 
   const openInvoiceModal = (invoice: Invoice) => {
     const suggestedEmail = (invoice.invoice_request_email || invoice.invoice_requested_by || '').trim();
@@ -910,52 +911,53 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
                   </div>
 
                   {invoice.status !== 'paid' && (
-                    <div className="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-end gap-3">
-                      <button
-                        onClick={() => openInvoiceModal(invoice)}
-                        className="btn-primary flex items-center justify-center"
-                      >
-                        <CreditCard className="h-4 w-4 mr-2" />
-                        Send faktura pï¿½ e-post
-                      </button>
-                      {isSuperAdmin && (
-                      <button
-                        onClick={async () => {
-                          try {
-                            const res = await fetch(`/api/payments/invoices/${invoice.id}/mark-paid`, { method: 'POST' });
-                            if (!res.ok) throw new Error('HTTP ' + res.status);
-                            const data = await res.json();
-                            setInvoices(prev => prev.map(it => it.id === invoice.id ? data.invoice : it));
-                            showSuccess('Markert som betalt', 'Fakturaen er markert som betalt.');
-                          } catch (e) {
-                            console.error(e);
-                            // @ts-ignore
-                            showError('Kunne ikke markere som betalt', (e?.message) || 'Ukjent feil');
-                          }
-                        }}
-                        className="flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
-                      >
-                        Markï¿½r som betalt
-                      </button>
-                      )}
-                    </div>
-                  )}
-                  )}
-                    <div className="mt-6 flex items-center justify-end gap-2">
-                      <CheckCircle className="h-5 w-5 text-green-600" />
-                      <span className="text-sm font-medium text-green-700">
-                        Betalt {invoice.paid_at ? `(${formatDate(invoice.paid_at as any)})` : ''}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
+  <div className="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-end gap-3">
+    <button
+      onClick={() => openInvoiceModal(invoice)}
+      className="btn-primary flex items-center justify-center"
+    >
+      <Send className="h-4 w-4 mr-2" />
+      Send faktura på e-post
+    </button>
 
-      {isInvoiceModalOpen && invoiceModalTarget && (
+    {isSuperAdmin && (
+      <button
+        onClick={async () => {
+          try {
+            const res = await fetch(`/api/payments/invoices/${invoice.id}/mark-paid`, {
+              method: 'POST',
+            });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const data = await res.json();
+            setInvoices((prev) =>
+              prev.map((it) => (it.id === invoice.id ? data.invoice : it))
+            );
+            showSuccess('Markert som betalt', 'Fakturaen er markert som betalt.');
+          } catch (e: any) {
+            console.error(e);
+            showError(
+              'Kunne ikke markere som betalt',
+              e?.message || 'Ukjent feil'
+            );
+          }
+        }}
+        className="flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
+      >
+        Markér som betalt
+      </button>
+    )}
+  </div>
+)}
+
+  {(invoice.status === 'paid' || invoice.paid) && (
+    <div className="mt-6 flex items-center justify-end gap-2">
+      <CheckCircle className="h-5 w-5 text-green-600" />
+      <span className="text-sm font-medium text-green-700">
+        Betalt {invoice.paid_at ? `(${formatDate(invoice.paid_at as any)})` : ''}
+      </span>
+    </div>
+  )}
+{isInvoiceModalOpen && invoiceModalTarget && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
           <div className="bg-white rounded-lg shadow-xl w-full max-w-lg">
             <div className="flex items-center justify-between p-6 border-b border-gray-200">
