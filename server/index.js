@@ -6,6 +6,7 @@ const path = require('path');
 require('dotenv').config();
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./swagger');
+const pool = require('./database/connection');
 
 const authRoutes = require('./routes/auth-jwt'); // Use JWT auth
 const mapRoutes = require('./routes/maps');
@@ -20,6 +21,7 @@ const { requestLogger, getLogs, clearLogs } = require('./middleware/requestLogge
 
 const app = express();
 const PORT = process.env.PORT || 5001;
+// Cron-based reconciliation removed; manual payment flow only
 
 // Trust proxy for rate limiting (needed for Railway/Vercel)
 app.set('trust proxy', 1);

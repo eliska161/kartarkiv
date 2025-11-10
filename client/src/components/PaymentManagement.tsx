@@ -38,10 +38,11 @@ interface Invoice {
   invoice_request_name: string | null;
   invoice_request_phone: string | null;
   invoice_request_address: string | null;
-  stripe_invoice_id?: string | null;
-  stripe_customer_id?: string | null;
-  stripe_invoice_url?: string | null;
-  stripe_invoice_pdf?: string | null;
+  kid?: string | null;
+  account_number?: string | null;
+  paid?: boolean;
+  paid_at?: string | null;
+  pdf_url?: string | null;
   items: InvoiceItem[];
 }
 
@@ -70,9 +71,7 @@ const statusConfig: Record<Invoice['status'], { label: string; className: string
   }
 };
 
-const STRIPE_FEE_PERCENT_NUMERATOR = 24;
-const STRIPE_FEE_PERCENT_DENOMINATOR = 1000; // 2.4%
-const STRIPE_FEE_FIXED = 2; // NOK 2,00
+// Stripe removed – no card fee
 
 const sanitizePresetValue = (value: string | null | undefined) => {
   if (!value) {
@@ -87,16 +86,7 @@ const sanitizePresetValue = (value: string | null | undefined) => {
   return trimmed;
 };
 
-const calculateStripeFee = (baseAmount: number) => {
-  if (!baseAmount || baseAmount <= 0) {
-    return 0;
-  }
-
-  const baseCents = Math.round(baseAmount * 100);
-  const percentFeeCents = Math.round((baseCents * STRIPE_FEE_PERCENT_NUMERATOR) / STRIPE_FEE_PERCENT_DENOMINATOR);
-  const totalFeeCents = percentFeeCents + STRIPE_FEE_FIXED * 100;
-  return totalFeeCents / 100;
-};
+// No Stripe fee calculation
 
 const formatCurrency = (amount: number) =>
   new Intl.NumberFormat('nb-NO', { style: 'currency', currency: 'NOK' }).format(amount);
@@ -159,8 +149,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
     }, 0);
   }, [form.items]);
 
-  const formStripeFee = useMemo(() => calculateStripeFee(formBaseTotal), [formBaseTotal]);
-  const formTotal = useMemo(() => formBaseTotal + formStripeFee, [formBaseTotal, formStripeFee]);
+  const formTotal = useMemo(() => formBaseTotal, [formBaseTotal]);
 
   const formatAmountInput = useCallback((amount: number) => {
     if (!Number.isFinite(amount) || amount <= 0) {
@@ -466,22 +455,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
     }
   };
 
-  const handleCheckout = async (invoice: Invoice) => {
-    try {
-      showInfo('Åpner Stripe', 'Du sendes til Stripe for å fullføre betalingen.');
-      const { data } = (await apiPost(
-        `/api/payments/invoices/${invoice.id}/checkout`
-      )) as AxiosResponse<{ url: string }>;
-      if (data.url) {
-        window.location.href = data.url;
-      } else {
-        showError('Kunne ikke starte Stripe-betaling', 'Mottok ikke en gyldig Stripe-lenke.');
-      }
-    } catch (err: any) {
-      console.error('Kunne ikke starte stripe-betaling', err);
-      showError('Kunne ikke starte betaling', err.response?.data?.error);
-    }
-  };
+  // Kortbetaling er fjernet � kun faktura via e-post\n
 
   const openInvoiceModal = (invoice: Invoice) => {
     const suggestedEmail = (invoice.invoice_request_email || invoice.invoice_requested_by || '').trim();
@@ -633,7 +607,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
         contactPhone: phone,
         contactAddress: address
       })) as AxiosResponse<{ invoice: Invoice }>;
-      showSuccess('Faktura sendt', 'Stripe har sendt fakturaen til valgt e-post.');
+      showSuccess('Faktura sendt', 'Faktura er sendt til valgt e-post.');
       setInvoices(prev => prev.map(item => (item.id === invoiceModalTarget.id ? data.invoice : item)));
       setIsInvoiceModalOpen(false);
       setInvoiceModalTarget(null);
@@ -657,7 +631,8 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
           <Wallet className="h-5 w-5 mr-2 text-slate-600" />
           Betalingsoversikt
         </h2>
-        <p className="text-gray-600">Hold oversikt over kostnader og sørg for enkel betaling via Stripe eller faktura.</p>
+        <p className="text-gray-600 mt-1">Kartarkiv vil automatisk sende faktura p� e-post. N�r betaling er mottatt, kan den markeres som betalt i adminpanelet.</p>
+        <p className="text-gray-600">Hold oversikt over kostnader og sørg for enkel betaling via faktura.</p>
       </div>
 
       {paymentConfirmation && (
@@ -684,10 +659,10 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
             <div>
               <span className="font-medium">Betalt:</span> {formatDate(paymentConfirmation.updated_at)}
             </div>
-            {paymentConfirmation.stripe_invoice_url && (
+            {paymentConfirmation.pdf_url && (
               <div className="md:col-span-2">
                 <a
-                  href={paymentConfirmation.stripe_invoice_url}
+                  href={paymentConfirmation.pdf_url}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-sm font-medium text-slate-700 hover:text-slate-900"
@@ -815,7 +790,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div className="text-sm text-gray-600 space-y-1">
                 <div>Sum uten gebyr: {formatCurrency(formBaseTotal)}</div>
-                <div>Stripe-gebyr (2,4% + 2,00 kr): {formatCurrency(formStripeFee)}</div>
+                <div></div>
                 <div className="font-semibold text-gray-900">
                   Totalt (inkl. gebyr): {formatCurrency(formTotal)}
                 </div>
@@ -849,7 +824,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
             Fakturaer og betalinger
           </h3>
           <span className="text-sm text-gray-500">{invoices.length} faktura(er)</span>
-        </div>
+        </div>\n        <p className="text-xs text-gray-500 mt-1">Manuell betaling: Marker faktura som betalt etter mottatt innbetaling.</p>
 
         {loading ? (
           <div className="py-12 flex items-center justify-center text-gray-500">
@@ -888,16 +863,17 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
                         )}
                         {invoice.invoice_request_address && (
                           <div>Adresse: {invoice.invoice_request_address}</div>
+\n                        {invoice.kid && (\n                          <div>KID: {invoice.kid}</div>\n                        )}\n                        {invoice.account_number && (\n                          <div>Konto: {invoice.account_number}</div>\n                        )}
                         )}
-                        {invoice.stripe_invoice_url && (
+                        {invoice.pdf_url && (
                           <div>
                             <a
-                              href={invoice.stripe_invoice_url}
+                              href={invoice.pdf_url}
                               target="_blank"
                               rel="noopener noreferrer"
                     className="text-sm font-medium text-slate-700 hover:text-slate-900"
                             >
-                              Vis Stripe-faktura →
+                              Last ned faktura PDF →
                             </a>
                           </div>
                         )}
@@ -924,18 +900,17 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
                       ))}
                     </div>
                     <p className="text-xs text-gray-500 mt-2">
-                      Totalsummen inkluderer et automatisk Stripe-gebyr (2,4% + 2,00 kr).
                     </p>
                   </div>
 
                   {invoice.status !== 'paid' && (
                     <div className="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-end gap-3">
                       <button
-                        onClick={() => handleCheckout(invoice)}
+                        onClick={() => openInvoiceModal(invoice)}
                         className="btn-primary flex items-center justify-center"
                       >
                         <CreditCard className="h-4 w-4 mr-2" />
-                        Betal med kort
+                        Send faktura p� e-post
                       </button>
                       <button
                         onClick={() => openInvoiceModal(invoice)}
@@ -1109,3 +1084,8 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
 };
 
 export default PaymentManagement;
+
+
+
+
+

@@ -1,6 +1,8 @@
 const express = require('express');
 const pool = require('../database/connection');
 const { authenticateUser, requireSuperAdmin } = require('../middleware/auth-clerk-fixed');
+const { sendReceiptEmail } = require('../invoices/invoice.email');
+const { createAndSendInvoice } = require('../invoices/invoice.service');
 
 const router = express.Router();
 
@@ -331,6 +333,11 @@ const ensureTables = async () => {
       stripe_customer_id TEXT,
       stripe_invoice_url TEXT,
       stripe_invoice_pdf TEXT,
+      kid TEXT,
+      account_number TEXT,
+      pdf_url TEXT,
+      paid BOOLEAN DEFAULT FALSE,
+      paid_at TIMESTAMP,
       invoice_request_address TEXT,
       created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
       updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW()
@@ -354,6 +361,11 @@ const ensureTables = async () => {
   await pool.query('ALTER TABLE club_invoices ADD COLUMN IF NOT EXISTS invoice_request_name TEXT');
   await pool.query('ALTER TABLE club_invoices ADD COLUMN IF NOT EXISTS invoice_request_phone TEXT');
   await pool.query('ALTER TABLE club_invoices ADD COLUMN IF NOT EXISTS invoice_request_address TEXT');
+  await pool.query('ALTER TABLE club_invoices ADD COLUMN IF NOT EXISTS kid TEXT');
+  await pool.query('ALTER TABLE club_invoices ADD COLUMN IF NOT EXISTS account_number TEXT');
+  await pool.query('ALTER TABLE club_invoices ADD COLUMN IF NOT EXISTS pdf_url TEXT');
+  await pool.query('ALTER TABLE club_invoices ADD COLUMN IF NOT EXISTS paid BOOLEAN DEFAULT FALSE');
+  await pool.query('ALTER TABLE club_invoices ADD COLUMN IF NOT EXISTS paid_at TIMESTAMP');
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS club_invoice_recipients (
@@ -413,10 +425,89 @@ const ensureTables = async () => {
     END;
     $$;
   `);
+
+  // Index to speed up paid filter
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_club_invoices_paid ON club_invoices(paid)');
 };
 
 ensureTables().catch(error => {
   console.error('❌ Failed to ensure payment tables exist:', error);
+});
+
+// New invoice-based flow overrides
+router.post('/invoices/:invoiceId/checkout', authenticateUser, async (req, res) => {
+  return res.status(410).json({ error: 'Kortbetaling er deaktivert. Bruk faktura.' });
+});
+
+router.post('/checkout/confirm', authenticateUser, async (req, res) => {
+  return res.status(410).json({ error: 'Kortbetaling er deaktivert. Bruk faktura.' });
+});
+
+router.post('/invoices/:invoiceId/request-invoice', authenticateUser, async (req, res) => {
+  const invoiceId = Number(req.params.invoiceId);
+  const { contactEmail, contactName, contactPhone, contactAddress } = req.body || {};
+
+  if (!Number.isInteger(invoiceId)) {
+    return res.status(400).json({ error: 'Ugyldig faktura-ID' });
+  }
+
+  const normalizedEmail = String(contactEmail || req.user.email || '').trim();
+  const normalizedName = String(contactName || '').trim();
+  const normalizedPhoneRaw = contactPhone == null ? '' : String(contactPhone).trim();
+  const normalizedPhone = normalizedPhoneRaw;
+  const normalizedAddressRaw = contactAddress == null ? '' : String(contactAddress).trim();
+  const normalizedAddress = normalizedAddressRaw;
+  if (!normalizedEmail) {
+    return res.status(400).json({ error: 'Oppgi e-postadressen fakturaen skal sendes til' });
+  }
+  if (!normalizedName) {
+    return res.status(400).json({ error: 'Oppgi navnet eller bedriften som skal stå på fakturaen' });
+  }
+  if (!normalizedPhone) {
+    return res.status(400).json({ error: 'Oppgi telefonnummer til mottakeren' });
+  }
+  if (!normalizedAddress) {
+    return res.status(400).json({ error: 'Oppgi fakturaadressen' });
+  }
+
+  try {
+    const [invoice] = await getInvoices(invoiceId);
+    if (!invoice) {
+      return res.status(404).json({ error: 'Fant ikke faktura' });
+    }
+    if (invoice.status === 'paid') {
+      return res.status(400).json({ error: 'Fakturaen er allerede betalt' });
+    }
+
+    const accountNumber = process.env.SB1_ACCOUNT_NUMBER || '00000000000';
+    await createAndSendInvoice({
+      invoiceId: invoice.id,
+      email: normalizedEmail,
+      name: normalizedName,
+      amountNok: invoice.total_amount,
+      accountNumber,
+      dueDate: invoice.due_date,
+      lineItems: invoice.items
+    });
+
+    const { rows } = await pool.query(
+      `UPDATE club_invoices
+         SET invoice_requested_by = $1,
+             invoice_request_email = $2,
+             invoice_request_name = $3,
+             invoice_request_phone = $4,
+             invoice_request_address = $5,
+             updated_at = NOW()
+       WHERE id = $6 RETURNING id`,
+      [req.user.email, normalizedEmail, normalizedName, normalizedPhone, normalizedAddress, invoiceId]
+    );
+
+    const [fullInvoice] = await getInvoices(rows[0].id);
+    res.json({ invoice: fullInvoice });
+  } catch (error) {
+    console.error('Failed to send invoice:', error);
+    res.status(500).json({ error: 'Kunne ikke sende faktura' });
+  }
 });
 
 const getInvoices = async (invoiceId = null) => {
@@ -444,6 +535,11 @@ const getInvoices = async (invoiceId = null) => {
         i.stripe_customer_id,
         i.stripe_invoice_url,
         i.stripe_invoice_pdf,
+        i.kid,
+        i.account_number,
+        i.pdf_url,
+        i.paid,
+        i.paid_at,
         i.invoice_requested_at,
         i.invoice_requested_by,
         i.invoice_request_email,
@@ -485,56 +581,9 @@ const getInvoices = async (invoiceId = null) => {
       }))
     };
 
-    await ensureStripeFeeForInvoice(invoice);
     invoices.push(invoice);
   }
-
-  if (!stripeSecretKey) {
-    return invoices;
-  }
-
-  const syncedInvoices = [];
-
-  for (const invoice of invoices) {
-    if (invoice.status !== 'paid' && invoice.stripe_invoice_id) {
-      try {
-        const stripeInvoice = await callStripe('GET', `/invoices/${invoice.stripe_invoice_id}`);
-
-        const isPaid = stripeInvoice?.status === 'paid' || Boolean(stripeInvoice?.paid);
-
-        if (isPaid) {
-          const hostedUrl = stripeInvoice.hosted_invoice_url || null;
-          const pdfUrl = stripeInvoice.invoice_pdf || null;
-
-          const { rows: updateRows } = await pool.query(
-            `
-              UPDATE club_invoices
-              SET status = 'paid',
-                  stripe_invoice_url = $1,
-                  stripe_invoice_pdf = $2,
-                  updated_at = NOW()
-              WHERE id = $3
-              RETURNING updated_at
-            `,
-            [hostedUrl, pdfUrl, invoice.id]
-          );
-
-          invoice.status = 'paid';
-          invoice.stripe_invoice_url = hostedUrl;
-          invoice.stripe_invoice_pdf = pdfUrl;
-          if (updateRows[0]?.updated_at) {
-            invoice.updated_at = updateRows[0].updated_at;
-          }
-        }
-      } catch (statusError) {
-        console.warn('⚠️ Could not refresh Stripe invoice status:', statusError);
-      }
-    }
-
-    syncedInvoices.push(invoice);
-  }
-
-  return syncedInvoices;
+  return invoices;
 };
 
 const createStripeInvoiceForClub = async (invoice, { email, name, phone, address }) => {
@@ -670,6 +719,50 @@ router.post('/invoices', authenticateUser, requireSuperAdmin, async (req, res) =
   } catch (error) {
     console.error('❌ Failed to create invoice:', error);
     res.status(500).json({ error: 'Kunne ikke opprette faktura' });
+  }
+});
+
+// Manual mark as paid (admin)
+router.post('/invoices/:invoiceId/mark-paid', authenticateUser, requireSuperAdmin, async (req, res) => {
+  const invoiceId = Number(req.params.invoiceId);
+  if (!Number.isInteger(invoiceId)) {
+    return res.status(400).json({ error: 'Ugyldig faktura-ID' });
+  }
+  try {
+    const { rows } = await pool.query(
+      `UPDATE club_invoices SET paid = TRUE, paid_at = NOW(), status = 'paid', updated_at = NOW() WHERE id = $1 RETURNING *`,
+      [invoiceId]
+    );
+    const updated = rows[0];
+    if (!updated) return res.status(404).json({ error: 'Fant ikke faktura' });
+    const [full] = await getInvoices(invoiceId);
+
+    // Send receipt email if we have a recipient email
+    try {
+      const to = full?.invoice_request_email || updated.invoice_request_email || updated.created_by_email || null;
+      const amount = (full?.total_amount ?? (updated.total_amount_cents ? updated.total_amount_cents / 100 : null));
+      if (to && amount != null) {
+        await sendReceiptEmail({ to, amount, invoiceId });
+      }
+    } catch (mailErr) {
+      console.warn('Failed to send receipt email for invoice', invoiceId, mailErr?.message);
+    }
+
+    // Log action if api_logs exists
+    try {
+      await pool.query(
+        `INSERT INTO api_logs (event, message, club_id)
+         VALUES ('invoice_mark_paid', 'Invoice ' || $1 || ' manually marked as paid', current_club_id())`,
+        [invoiceId]
+      );
+    } catch (logErr) {
+      // Ignore if table or function doesn't exist
+    }
+
+    return res.json({ invoice: full || updated });
+  } catch (err) {
+    console.error('Failed to mark invoice paid:', err);
+    return res.status(500).json({ error: 'Kunne ikke oppdatere faktura' });
   }
 });
 

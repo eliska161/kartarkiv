@@ -22,19 +22,21 @@ This repository contains the Express-based backend under `server/` and a React f
    npm start
    ```
 
-### Stripe configuration
+### Billing via Norwegian Bank (SB1)
 
-The new betalingsfanen i adminpanelet bruker Stripe Checkout for kortbetalinger. Konfigurer fÃ¸lgende miljÃ¸variabler fÃ¸r du
-starter backend-serveren:
+Stripe er fjernet. Betaling skjer via faktura og norsk bank (SpareBank 1) med automatisk avstemming.
 
-| Variabel | Beskrivelse |
-| --- | --- |
-| `STRIPE_SECRET_KEY` | Stripe sitt hemmelige API-nÃ¸kkel (starter vanligvis med `sk_live_` eller `sk_test_`). |
-| `CLIENT_BASE_URL` | URL-en som klienten kjÃ¸rer pÃ¥ lokalt eller i produksjon (brukes for Ã¥ sende Stripe tilbake til riktig side, f.eks. `http://localhost:3000`). |
+1) Konfigurer miljøvariabler i server/.env (se server/.env.example):
+- SB1_CLIENT_ID, SB1_CLIENT_SECRET, SB1_TOKEN_URL
+- SB1_TRANSACTIONS_URL, SB1_ACCOUNT_KEY, SB1_ACCOUNT_NUMBER
+- SB1_POLL_FROM_DAYS, SB1_POLL_INTERVAL_CRON
+- E-post (SMTP): SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, EMAIL_FROM
 
-NÃ¥r variablene er satt kan superadministratorer opprette fakturaer, og klubbene kan betale via kort eller be om faktura.
+2) Serveren genererer en PDF-faktura (pdf-lib), sender den på e-post (SMTP) og lagrer faktura-metadata i Postgres (club_invoices utvidet med KID, konto, betalt-status).
 
-### Mapbox adresse-autoutfylling
+3) En cron-jobb (node-cron) henter periodisk transaksjoner fra SB1 og matcher på KID + beløp. Ved treff settes paid=true, paid_at=now() og kvittering sendes på e-post.
+
+Lokal testing: sett MOCK_SB1=1 for å bruke server/fixtures/sample-transactions.json.### Mapbox adresse-autoutfylling
 
 Fakturamodalen stÃ¸tter nÃ¥ Mapbox Address Autofill slik at klubbens fakturaadresse kan hentes fra kartet og kvalitetssikres automatisk. Funksjonen aktiveres ved Ã¥ legge til en Mapbox Search access token i klientmiljÃ¸et:
 
@@ -63,3 +65,17 @@ The Express server hosts two auto-generated documentation surfaces:
 * `http://localhost:5001/api-doc` â€“ lightweight HTML overview summarising every route, HTTP method, and tag extracted from the Swagger definition.
 * `http://localhost:5001/docs` â€“ interactive Swagger UI for trying requests against a running instance.
 * `http://localhost:5001/docs-json` â€“ raw OpenAPI JSON that can be imported into other tools (e.g. Theneo or Postman).
+
+### Manual Payment Flow
+
+Stripe and SpareBank 1 reconciliation are removed. Billing is handled by PDF invoices via email and manual status updates.
+
+- Server emails PDF invoices (SMTP). Configure SMTP vars in server/.env (see server/.env.example).
+- Admins can create invoices, send them via email, and mark them as paid.
+
+New endpoint:
+- POST /api/payments/invoices/:invoiceId/mark-paid
+  - Marks the invoice as paid and sets paid_at = NOW().
+  - Response: { invoice: <updated invoice> }
+
+Note: "Kartarkiv vil automatisk sende faktura på e-post. Når betaling er mottatt, kan den markeres som betalt i adminpanelet."
