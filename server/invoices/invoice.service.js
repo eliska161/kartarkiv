@@ -37,10 +37,24 @@ async function createAndSendInvoice({ invoiceId, email, name, amountNok, account
     'Takk!'
   ].join('\n');
 
-  // Save invoice metadata before sending email
+  try {
+    await sendInvoiceEmail({
+      to: email,
+      subject,
+      text: body,
+      html: body,
+      pdfBuffer,
+      filename: `invoice-${invoiceId}.pdf`
+    });
+  } catch (error) {
+    console.error('Failed to send invoice email for', invoiceId, error);
+    throw error;
+  }
+
+  // Persist invoice metadata only after the email has been sent successfully
   await pool.query(
     `UPDATE club_invoices
-     SET 
+     SET
        status = 'invoice_requested',
        invoice_requested_at = NOW(),
        kid = $1,
@@ -51,18 +65,6 @@ async function createAndSendInvoice({ invoiceId, email, name, amountNok, account
      WHERE id = $3`,
     [kid, accountNumber, invoiceId]
   );
-
-  // Fire-and-forget email sending so API responds quickly
-  sendInvoiceEmail({
-    to: email,
-    subject,
-    text: body,
-    html: body,
-    pdfBuffer,
-    filename: `invoice-${invoiceId}.pdf`
-  }).catch(err => {
-    console.warn('Failed to send invoice email for', invoiceId, err && err.message);
-  });
 
   return { kid };
 }
