@@ -455,7 +455,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
     }
   };
 
-  // Kortbetaling er fjernet – kun faktura via e-post\n
+  // Kortbetaling er fjernet ï¿½ kun faktura via e-post\n
 
   const openInvoiceModal = (invoice: Invoice) => {
     const suggestedEmail = (invoice.invoice_request_email || invoice.invoice_requested_by || '').trim();
@@ -631,8 +631,8 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
           <Wallet className="h-5 w-5 mr-2 text-slate-600" />
           Betalingsoversikt
         </h2>
-        <p className="text-gray-600 mt-1">Kartarkiv vil automatisk sende faktura på e-post. Når betaling er mottatt, kan den markeres som betalt i adminpanelet.</p>
-        <p className="text-gray-600">Hold oversikt over kostnader og sÃ¸rg for enkel betaling via faktura.</p>
+        <p className="text-gray-600 mt-1">Kartarkiv vil automatisk sende faktura pÃ¥ e-post. </p>
+        <p className="text-gray-600"></p>
       </div>
 
       {paymentConfirmation && (
@@ -916,7 +916,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
                         className="btn-primary flex items-center justify-center"
                       >
                         <CreditCard className="h-4 w-4 mr-2" />
-                        Send faktura på e-post
+                        Send faktura pï¿½ e-post
                       </button>
                       {isSuperAdmin && (
                       <button
@@ -935,7 +935,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
                         }}
                         className="flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
                       >
-                        Markér som betalt
+                        Markï¿½r som betalt
                       </button>
                       )}
                     </div>
