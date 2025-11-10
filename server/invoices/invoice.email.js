@@ -3,11 +3,18 @@ const nodemailer = require('nodemailer');
 function buildTransport() {
   const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env;
   if (SMTP_HOST && SMTP_PORT && SMTP_USER && SMTP_PASS) {
+    const port = Number(SMTP_PORT) || 587;
     return nodemailer.createTransport({
       host: SMTP_HOST,
-      port: Number(SMTP_PORT) || 587,
-      secure: false,
-      auth: { user: SMTP_USER, pass: SMTP_PASS }
+      port,
+      secure: port === 465,
+      auth: { user: SMTP_USER, pass: SMTP_PASS },
+      // Fail fast on network issues so API calls don't block too long
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 20000,
+      // requireTLS: true, // uncomment if provider requires TLS on 587
+      // tls: { rejectUnauthorized: false } // only if provider uses self-signed certs
     });
   }
   return null;

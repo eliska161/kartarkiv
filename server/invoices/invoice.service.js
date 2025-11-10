@@ -27,18 +27,17 @@ async function createAndSendInvoice({ invoiceId, email, name, amountNok, account
     baseUrl: process.env.BASE_URL
   });
 
-  const subject = `Faktura #${invoiceId} â€“ Kartarkiv`;
+  const subject = `Faktura #${invoiceId} – Kartarkiv`;
   const body = [
     `Hei ${name || ''}`.trim(),
     '',
-    `Vedlagt finner du faktura #${invoiceId} pÃ¥ ${amountNok} NOK.`,
+    `Vedlagt finner du faktura #${invoiceId} på ${amountNok} NOK.`,
     `Betal til konto ${accountNumber} og oppgi KID ${kid} innen ${formatDate(dueDate)}.`,
     '',
     'Takk!'
   ].join('\n');
 
-  await sendInvoiceEmail({ to: email, subject, text: body, html: body, pdfBuffer, filename: `invoice-${invoiceId}.pdf` });
-
+  // Save invoice metadata before sending email
   await pool.query(
     `UPDATE club_invoices
      SET 
@@ -53,6 +52,18 @@ async function createAndSendInvoice({ invoiceId, email, name, amountNok, account
     [kid, accountNumber, invoiceId]
   );
 
+  // Fire-and-forget email sending so API responds quickly
+  sendInvoiceEmail({
+    to: email,
+    subject,
+    text: body,
+    html: body,
+    pdfBuffer,
+    filename: `invoice-${invoiceId}.pdf`
+  }).catch(err => {
+    console.warn('Failed to send invoice email for', invoiceId, err && err.message);
+  });
+
   return { kid };
 }
 
@@ -62,4 +73,3 @@ function formatDate(d) {
 }
 
 module.exports = { createAndSendInvoice, createKidForInvoiceId };
-

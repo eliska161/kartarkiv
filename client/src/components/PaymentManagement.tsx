@@ -918,6 +918,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
                         <CreditCard className="h-4 w-4 mr-2" />
                         Send faktura på e-post
                       </button>
+                      {isSuperAdmin && (
                       <button
                         onClick={async () => {
                           try {
@@ -935,11 +936,11 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
                         className="flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
                       >
                         Markér som betalt
-                      </button
->
+                      </button>
+                      )}
                     </div>
                   )}
-                  {invoice.status === 'paid' && (
+                  )}
                     <div className="mt-6 flex items-center justify-end gap-2">
                       <CheckCircle className="h-5 w-5 text-green-600" />
                       <span className="text-sm font-medium text-green-700">
@@ -1110,6 +1111,9 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
 };
 
 export default PaymentManagement;
+
+
+
 
 
 
