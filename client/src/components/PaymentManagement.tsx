@@ -619,7 +619,13 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
       setInvoiceModalSelectedRecipient('custom');
     } catch (err: any) {
       console.error('Kunne ikke forespÃ¸rre faktura', err);
-      showError('Kunne ikke sende faktura', err.response?.data?.error);
+      const status = err?.response?.status;
+      const message = err?.response?.data?.error;
+      if (status === 504) {
+        showWarning('E-postserver utilgjengelig', message || 'Vent litt og prøv å sende fakturaen på nytt.');
+      } else {
+        showError('Kunne ikke sende faktura', message);
+      }
     } finally {
       setInvoiceModalLoading(false);
     }
