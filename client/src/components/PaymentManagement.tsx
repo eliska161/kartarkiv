@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { AxiosResponse } from 'axios';
 import { apiGet, apiPost } from '../utils/apiClient';
-import { CreditCard, FileText, Loader2, PlusCircle, Send, Wallet, X } from 'lucide-react';
+import { CheckCircle, CreditCard, FileText, Loader2, PlusCircle, Send, Wallet, X } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 import AddressAutocompleteInput from './payments/AddressAutocompleteInput';
 
@@ -863,7 +863,13 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
                         )}
                         {invoice.invoice_request_address && (
                           <div>Adresse: {invoice.invoice_request_address}</div>
-\n                        {invoice.kid && (\n                          <div>KID: {invoice.kid}</div>\n                        )}\n                        {invoice.account_number && (\n                          <div>Konto: {invoice.account_number}</div>\n                        )}
+
+                        )}
+                        {invoice.kid && (
+                          <div>KID: {invoice.kid}</div>
+                        )}
+                        {invoice.account_number && (
+                          <div>Konto: {invoice.account_number}</div>
                         )}
                         {invoice.pdf_url && (
                           <div>
@@ -913,12 +919,32 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
                         Send faktura på e-post
                       </button>
                       <button
-                        onClick={() => openInvoiceModal(invoice)}
+                        onClick={async () => {
+                          try {
+                            const res = await fetch(`/api/payments/invoices/${invoice.id}/mark-paid`, { method: 'POST' });
+                            if (!res.ok) throw new Error('HTTP ' + res.status);
+                            const data = await res.json();
+                            setInvoices(prev => prev.map(it => it.id === invoice.id ? data.invoice : it));
+                  {invoice.status === 'paid' && (
+                    <div className="mt-6 flex items-center justify-end gap-2">
+                      <CheckCircle className="h-5 w-5 text-green-600" />
+                      <span className="text-sm font-medium text-green-700">
+                        Betalt {invoice.paid_at ? `(${formatDate(invoice.paid_at as any)})` : ''}
+                      </span>
+                    </div>
+                  )}
+                            showSuccess('Markert som betalt', 'Fakturaen er markert som betalt.');
+                          } catch (e) {
+                            console.error(e);
+                            // @ts-ignore
+                            showError('Kunne ikke markere som betalt', (e?.message) || 'Ukjent feil');
+                          }
+                        }}
                         className="flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
                       >
-                        <Send className="h-4 w-4 mr-2" />
-                        Betal med faktura
-                      </button>
+                        Markér som betalt
+                      </button
+>
                     </div>
                   )}
                 </div>
@@ -1084,6 +1110,8 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
 };
 
 export default PaymentManagement;
+
+
 
 
 
