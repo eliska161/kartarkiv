@@ -506,6 +506,13 @@ router.post('/invoices/:invoiceId/request-invoice', authenticateUser, async (req
     res.json({ invoice: fullInvoice });
   } catch (error) {
     console.error('Failed to send invoice:', error);
+    const errorMessage = String(error?.message || '').toLowerCase();
+    if (error?.code === 'ETIMEDOUT' || errorMessage.includes('timed out') || errorMessage.includes('timeout')) {
+      return res
+        .status(504)
+        .json({ error: 'Klarte ikke å koble til e-postserveren. Vent litt og prøv igjen.' });
+    }
+
     res.status(500).json({ error: 'Kunne ikke sende faktura' });
   }
 });
