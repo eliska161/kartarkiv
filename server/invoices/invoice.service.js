@@ -27,11 +27,11 @@ async function createAndSendInvoice({ invoiceId, email, name, amountNok, account
     baseUrl: process.env.BASE_URL
   });
 
-  const subject = `Faktura #${invoiceId} – Kartarkiv`;
+  const subject = `Faktura #${invoiceId} | Kartarkiv`;
   const body = [
     `Hei ${name || ''}`.trim(),
     '',
-    `Vedlagt finner du faktura #${invoiceId} på ${amountNok} NOK.`,
+    `Vedlagt finner du faktura #${invoiceId} pÃ¥ ${amountNok} NOK.`,
     `Betal til konto ${accountNumber} og oppgi KID ${kid} innen ${formatDate(dueDate)}.`,
     '',
     'Takk!'
