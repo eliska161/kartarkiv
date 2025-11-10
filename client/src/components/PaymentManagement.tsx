@@ -119,7 +119,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
   const [recipientsLoading, setRecipientsLoading] = useState(false);
   const [recipientSaving, setRecipientSaving] = useState(false);
   const hasHandledCheckoutRef = useRef(false);
-  const { showSuccess, showError, showInfo, showWarning } = useToast();
+  const { showSuccess, showError, showWarning } = useToast();
   const collator = useMemo(() => new Intl.Collator('nb', { sensitivity: 'base' }), []);
 
   const [storagePricing, setStoragePricing] = useState<{
@@ -925,14 +925,6 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
                             if (!res.ok) throw new Error('HTTP ' + res.status);
                             const data = await res.json();
                             setInvoices(prev => prev.map(it => it.id === invoice.id ? data.invoice : it));
-                  {invoice.status === 'paid' && (
-                    <div className="mt-6 flex items-center justify-end gap-2">
-                      <CheckCircle className="h-5 w-5 text-green-600" />
-                      <span className="text-sm font-medium text-green-700">
-                        Betalt {invoice.paid_at ? `(${formatDate(invoice.paid_at as any)})` : ''}
-                      </span>
-                    </div>
-                  )}
                             showSuccess('Markert som betalt', 'Fakturaen er markert som betalt.');
                           } catch (e) {
                             console.error(e);
@@ -945,6 +937,14 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
                         Markér som betalt
                       </button
 >
+                    </div>
+                  )}
+                  {invoice.status === 'paid' && (
+                    <div className="mt-6 flex items-center justify-end gap-2">
+                      <CheckCircle className="h-5 w-5 text-green-600" />
+                      <span className="text-sm font-medium text-green-700">
+                        Betalt {invoice.paid_at ? `(${formatDate(invoice.paid_at as any)})` : ''}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -1110,6 +1110,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
 };
 
 export default PaymentManagement;
+
 
 
 
