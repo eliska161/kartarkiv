@@ -12,6 +12,9 @@ const RETRYABLE_SMTP_ERROR_CODES = new Set([
 
 const RETRYABLE_SMTP_COMMANDS = new Set(['CONN', 'EHLO', 'HELO', 'STARTTLS']);
 
+const DEADLINE_SAFETY_BUFFER_MS = 500;
+const MINIMUM_ATTEMPT_BUDGET_MS = 1500;
+
 function parseTimeout(value, fallback) {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
@@ -85,32 +88,79 @@ function wait(delayMs) {
   return new Promise(resolve => setTimeout(resolve, delayMs));
 }
 
+function sendMailWithBudget(transport, mailOptions, attempt, budgetMs) {
+  const effectiveBudget = Math.max(MINIMUM_ATTEMPT_BUDGET_MS, budgetMs);
+
+  return new Promise((resolve, reject) => {
+    let settled = false;
+
+    const timeoutId = setTimeout(() => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      try {
+        if (typeof transport.close === 'function') {
+          transport.close();
+        }
+      } catch (closeError) {
+        console.warn('Failed to close SMTP transport after timeout', closeError);
+      }
+      reject(createOverallTimeoutError(attempt));
+    }, effectiveBudget);
+
+    transport.sendMail(mailOptions, (error, info) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      clearTimeout(timeoutId);
+      if (error) {
+        reject(error);
+        return;
+      }
+      resolve(info);
+    });
+  });
+}
+
 async function sendInvoiceEmail({ to, from, subject, text, html, pdfBuffer, filename = 'invoice.pdf' }) {
-  const transport = buildTransport();
-  if (!transport) {
-    console.warn('Email transport not configured; pretending to send email to', to);
-    return { accepted: [to], messageId: 'mock-email', preview: true };
-  }
   const attempts = Math.max(1, resolveRetryAttempts());
   const deadline = Date.now() + resolveOverallTimeoutMs();
   let lastError = null;
 
+  const mailOptions = {
+    to,
+    from: from || process.env.EMAIL_FROM || 'Kartarkiv <noreply@kartarkiv.co>',
+    subject,
+    text,
+    html,
+    attachments: pdfBuffer ? [{ filename, content: pdfBuffer, contentType: 'application/pdf' }] : []
+  };
+
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
     const timeRemaining = deadline - Date.now();
-    if (timeRemaining <= 0) {
+    if (timeRemaining <= DEADLINE_SAFETY_BUFFER_MS) {
       lastError = createOverallTimeoutError(attempt - 1);
       break;
     }
 
+    const transport = buildTransport();
+    if (!transport) {
+      if (attempt === 1) {
+        console.warn('Email transport not configured; pretending to send email to', to);
+        return { accepted: [to], messageId: 'mock-email', preview: true };
+      }
+      lastError = new Error('SMTP transport misconfigured during retry');
+      break;
+    }
+
     try {
-      const info = await transport.sendMail({
-        to,
-        from: from || process.env.EMAIL_FROM || 'Kartarkiv <noreply@kartarkiv.co>',
-        subject,
-        text,
-        html,
-        attachments: pdfBuffer ? [{ filename, content: pdfBuffer, contentType: 'application/pdf' }] : []
-      });
+      const attemptBudget = Math.max(
+        MINIMUM_ATTEMPT_BUDGET_MS,
+        timeRemaining - DEADLINE_SAFETY_BUFFER_MS
+      );
+      const info = await sendMailWithBudget(transport, mailOptions, attempt, attemptBudget);
 
       if (attempt > 1) {
         console.info(`Invoice email send succeeded on retry attempt ${attempt}.`);
@@ -128,13 +178,16 @@ async function sendInvoiceEmail({ to, from, subject, text, html, pdfBuffer, file
       }
 
       const remainingBeforeDelay = deadline - Date.now();
-      if (remainingBeforeDelay <= 0) {
+      if (remainingBeforeDelay <= DEADLINE_SAFETY_BUFFER_MS + MINIMUM_ATTEMPT_BUDGET_MS) {
         lastError = createOverallTimeoutError(attempt);
         break;
       }
 
       const plannedDelay = Math.min(30000, 2000 * Math.pow(2, attempt - 1));
-      const safeDelay = Math.min(plannedDelay, Math.max(0, remainingBeforeDelay - 500));
+      const safeDelay = Math.min(
+        plannedDelay,
+        Math.max(0, remainingBeforeDelay - DEADLINE_SAFETY_BUFFER_MS - MINIMUM_ATTEMPT_BUDGET_MS)
+      );
       if (safeDelay <= 0) {
         lastError = createOverallTimeoutError(attempt);
         break;
@@ -143,6 +196,14 @@ async function sendInvoiceEmail({ to, from, subject, text, html, pdfBuffer, file
         `Invoice email send attempt ${attempt} failed (${error.code || error.message}). Retrying in ${safeDelay}ms.`
       );
       await wait(safeDelay);
+    } finally {
+      try {
+        if (typeof transport?.close === 'function') {
+          transport.close();
+        }
+      } catch (closeError) {
+        console.warn('Failed to close SMTP transport cleanly', closeError);
+      }
     }
   }
 
