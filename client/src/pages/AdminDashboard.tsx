@@ -384,7 +384,7 @@ const AdminDashboard: React.FC = () => {
                 </div>
               </div>
 
-              {/* UptimeRobot Status */}
+              {/* Better Stack Status */}
               <div className="mt-6">
                 <UptimeStatus showDetails={true} />
               </div>
