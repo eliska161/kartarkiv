@@ -25,6 +25,20 @@ function resolveRetryAttempts() {
   return 3;
 }
 
+function resolveOverallTimeoutMs() {
+  return parseTimeout(process.env.SMTP_OVERALL_TIMEOUT, 25000);
+}
+
+function createOverallTimeoutError(attempt) {
+  const error = new Error('SMTP overall timeout exceeded');
+  error.code = 'ETIMEDOUT';
+  error.command = 'OVERALL_TIMEOUT';
+  if (Number.isFinite(attempt) && attempt > 0) {
+    error.attempts = attempt;
+  }
+  return error;
+}
+
 function buildTransport() {
   const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env;
   if (SMTP_HOST && SMTP_PORT && SMTP_USER && SMTP_PASS) {
@@ -78,9 +92,16 @@ async function sendInvoiceEmail({ to, from, subject, text, html, pdfBuffer, file
     return { accepted: [to], messageId: 'mock-email', preview: true };
   }
   const attempts = Math.max(1, resolveRetryAttempts());
+  const deadline = Date.now() + resolveOverallTimeoutMs();
   let lastError = null;
 
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    const timeRemaining = deadline - Date.now();
+    if (timeRemaining <= 0) {
+      lastError = createOverallTimeoutError(attempt - 1);
+      break;
+    }
+
     try {
       const info = await transport.sendMail({
         to,
@@ -106,11 +127,22 @@ async function sendInvoiceEmail({ to, from, subject, text, html, pdfBuffer, file
         break;
       }
 
-      const backoffDelay = Math.min(30000, 2000 * Math.pow(2, attempt - 1));
+      const remainingBeforeDelay = deadline - Date.now();
+      if (remainingBeforeDelay <= 0) {
+        lastError = createOverallTimeoutError(attempt);
+        break;
+      }
+
+      const plannedDelay = Math.min(30000, 2000 * Math.pow(2, attempt - 1));
+      const safeDelay = Math.min(plannedDelay, Math.max(0, remainingBeforeDelay - 500));
+      if (safeDelay <= 0) {
+        lastError = createOverallTimeoutError(attempt);
+        break;
+      }
       console.warn(
-        `Invoice email send attempt ${attempt} failed (${error.code || error.message}). Retrying in ${backoffDelay}ms.`
+        `Invoice email send attempt ${attempt} failed (${error.code || error.message}). Retrying in ${safeDelay}ms.`
       );
-      await wait(backoffDelay);
+      await wait(safeDelay);
     }
   }
 
