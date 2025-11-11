@@ -72,38 +72,11 @@ const UptimeStatus: React.FC<UptimeStatusProps> = ({ className = '', showDetails
       try {
         setLoading(true);
         
-        const apiKey = process.env.REACT_APP_BETTERSTACK_API_KEY;
-        if (!apiKey) {
-          console.warn('Better Stack API key not found, using mock data');
-          // Fallback to mock data if API key is not available
-          const mockStatus: MonitorStatus[] = [
-            {
-              id: '1',
-              name: 'Kartarkiv API',
-              status: 'up',
-              uptime: 99.9,
-              lastCheck: new Date().toISOString()
-            },
-            {
-              id: '2', 
-              name: 'Kartarkiv Frontend',
-              status: 'up',
-              uptime: 99.8,
-              lastCheck: new Date().toISOString()
-            }
-          ];
-          setStatus(mockStatus);
-          setError(null);
-          setLastUpdated(new Date());
-          return;
-        }
-
-        // Fetch real data from Better Stack API
-        const response = await fetch('https://uptime.betterstack.com/api/v2/monitors', {
+        // Fetch monitor data through the backend proxy to avoid CORS issues
+        const response = await fetch('/api/monitoring/monitors', {
           method: 'GET',
           headers: {
-            Accept: 'application/json',
-            Authorization: `Bearer ${apiKey}`
+            Accept: 'application/json'
           }
         });
 
