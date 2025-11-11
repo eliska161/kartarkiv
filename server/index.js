@@ -18,6 +18,7 @@ const healthRoutes = require('./routes/health');
 const paymentRoutes = require('./routes/payments');
 const storageRoutes = require('./routes/storage');
 const { requestLogger, getLogs, clearLogs } = require('./middleware/requestLogger');
+const monitoringRoutes = require('./routes/monitoring');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -357,6 +358,8 @@ console.log('✅ Health check routes registered at /api/health');
 app.use('/api/payments', paymentRoutes);
 app.use('/api/storage', storageRoutes);
 console.log('✅ Payments routes registered at /api/payments');
+app.use('/api/monitoring', monitoringRoutes);
+console.log('✅ Monitoring routes registered at /api/monitoring');
 
 // Test route to verify announcements are working
 app.get('/api/announcements/test', (req, res) => {
@@ -398,7 +401,7 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
-// Simple health check endpoint (for UptimeRobot)
+// Simple health check endpoint (for Better Stack)
 app.get('/health', (req, res) => {
   res.json({ 
     status: 'OK', 
