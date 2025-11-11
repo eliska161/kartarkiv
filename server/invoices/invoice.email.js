@@ -2,11 +2,7 @@ const nodemailer = require('nodemailer');
 const dns = require('dns').promises;
 const net = require('net');
 
-const RESEND_API_URL = process.env.RESEND_API_URL || 'https://api.resend.com/emails';
-
-const LOG_PREFIX = '[InvoiceEmail]';
-
-const RESEND_API_URL = process.env.RESEND_API_URL || 'https://api.resend.com/emails';
+const RESEND_EMAIL_ENDPOINT = process.env.RESEND_API_URL || 'https://api.resend.com/emails';
 
 const LOG_PREFIX = '[InvoiceEmail]';
 
@@ -348,7 +344,7 @@ async function sendViaResend(mailOptions, attempt, budgetMs) {
       payload.attachments = attachments;
     }
 
-    const response = await fetch(RESEND_API_URL, {
+    const response = await fetch(RESEND_EMAIL_ENDPOINT, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
