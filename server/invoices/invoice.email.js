@@ -25,6 +25,51 @@ const MINIMUM_ATTEMPT_BUDGET_MS = 1500;
 
 let smtpDiagnosticsPromise = null;
 
+function readEnv(name) {
+  const value = process.env[name];
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed.length ? trimmed : undefined;
+  }
+  return value;
+}
+
+function resolveSmtpConfig() {
+  const smtpHost = readEnv('SMTP_HOST');
+  const smtpPort = readEnv('SMTP_PORT');
+  const smtpUser = readEnv('SMTP_USER');
+  const smtpPass = readEnv('SMTP_PASS');
+
+  const resendHost = readEnv('RESEND_SMTP_HOST');
+  const resendPort = readEnv('RESEND_SMTP_PORT');
+  const resendUser =
+    readEnv('RESEND_SMTP_USERNAME') ||
+    readEnv('RESEND_SMTP_USER') ||
+    readEnv('RESEND_SMTP_EMAIL');
+  const resendPass = readEnv('RESEND_SMTP_PASSWORD') || readEnv('RESEND_SMTP_PASS');
+
+  const host = smtpHost || resendHost;
+  const port = smtpPort || resendPort;
+  const user = smtpUser || resendUser;
+  const pass = smtpPass || resendPass;
+
+  const sources = [];
+  if (smtpHost || smtpPort || smtpUser || smtpPass) {
+    sources.push('SMTP_*');
+  }
+  if (resendHost || resendPort || resendUser || resendPass) {
+    sources.push('RESEND_SMTP_*');
+  }
+
+  return {
+    host,
+    port,
+    user,
+    pass,
+    source: sources.length ? sources.join('+') : 'env'
+  };
+}
+
 function parseTimeout(value, fallback) {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
@@ -60,19 +105,19 @@ function hasResendConfiguration() {
 }
 
 function hasSmtpConfiguration() {
-  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env;
-  return Boolean(SMTP_HOST && SMTP_PORT && SMTP_USER && SMTP_PASS);
+  const { host, port, user, pass } = resolveSmtpConfig();
+  return Boolean(host && port && user && pass);
 }
 
 function buildTransport() {
-  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env;
-  if (SMTP_HOST && SMTP_PORT && SMTP_USER && SMTP_PASS) {
-    const port = Number(SMTP_PORT) || 587;
+  const config = resolveSmtpConfig();
+  if (config.host && config.port && config.user && config.pass) {
+    const port = Number(config.port) || 587;
     return nodemailer.createTransport({
-      host: SMTP_HOST,
+      host: config.host,
       port,
       secure: port === 465,
-      auth: { user: SMTP_USER, pass: SMTP_PASS },
+      auth: { user: config.user, pass: config.pass },
       // Fail fast on network issues so API calls don't block too long while still giving the
       // provider a fair chance to respond. These values are configurable via env overrides.
       connectionTimeout: parseTimeout(process.env.SMTP_CONNECTION_TIMEOUT, 20000),
@@ -138,21 +183,27 @@ async function gatherSmtpDiagnostics() {
     return;
   }
 
-  const { SMTP_HOST, SMTP_PORT } = process.env;
-  const port = Number(SMTP_PORT) || 587;
+  const config = resolveSmtpConfig();
+  const { host, port: rawPort, source } = config;
+  if (!(host && rawPort)) {
+    console.warn(`${LOG_PREFIX} SMTP diagnostics skipped because configuration is incomplete.`);
+    return;
+  }
+
+  const port = Number(rawPort) || 587;
   const secure = port === 465;
   const connectionTimeout = parseTimeout(process.env.SMTP_CONNECTION_TIMEOUT, 20000);
   const greetingTimeout = parseTimeout(process.env.SMTP_GREETING_TIMEOUT, 20000);
   const socketTimeout = parseTimeout(process.env.SMTP_SOCKET_TIMEOUT, 45000);
 
   console.info(
-    `${LOG_PREFIX} SMTP configuration summary host=${SMTP_HOST} port=${port} secure=${secure} ` +
+    `${LOG_PREFIX} SMTP configuration summary source=${source} host=${host} port=${port} secure=${secure} ` +
       `connectionTimeout=${connectionTimeout}ms greetingTimeout=${greetingTimeout}ms socketTimeout=${socketTimeout}ms`
   );
 
   const dnsTimeoutMs = parseTimeout(process.env.SMTP_DNS_TIMEOUT, 2000);
   try {
-    const lookupPromise = dns.lookup(SMTP_HOST, { all: true });
+    const lookupPromise = dns.lookup(host, { all: true });
     const records = await Promise.race([
       lookupPromise,
       new Promise((_, reject) =>
@@ -162,33 +213,33 @@ async function gatherSmtpDiagnostics() {
 
     const addresses = Array.isArray(records) ? records : [records];
     if (!addresses.length) {
-      console.warn(`${LOG_PREFIX} DNS lookup for ${SMTP_HOST} returned no addresses.`);
+      console.warn(`${LOG_PREFIX} DNS lookup for ${host} returned no addresses.`);
     } else {
       const formatted = addresses
         .map(entry => `${entry.address}/${entry.family === 6 ? 'IPv6' : 'IPv4'}`)
         .join(', ');
-      console.info(`${LOG_PREFIX} DNS lookup results for ${SMTP_HOST}: ${formatted}`);
+      console.info(`${LOG_PREFIX} DNS lookup results for ${host}: ${formatted}`);
     }
   } catch (error) {
-    console.error(`${LOG_PREFIX} SMTP DNS lookup failed for ${SMTP_HOST}: ${error.message}`, error);
+    console.error(`${LOG_PREFIX} SMTP DNS lookup failed for ${host}: ${error.message}`, error);
   }
 
   const probeTimeoutMs = parseTimeout(process.env.SMTP_PROBE_TIMEOUT, 3000);
   try {
-    const result = await probeSmtpPort(SMTP_HOST, port, probeTimeoutMs);
+    const result = await probeSmtpPort(host, port, probeTimeoutMs);
     if (result.ok) {
       console.info(
-        `${LOG_PREFIX} SMTP connectivity probe succeeded in ${result.durationMs}ms (host=${SMTP_HOST} port=${port}).`
+        `${LOG_PREFIX} SMTP connectivity probe succeeded in ${result.durationMs}ms (host=${host} port=${port}).`
       );
     } else if (result.reason === 'timeout') {
       console.error(
-        `${LOG_PREFIX} SMTP connectivity probe timed out after ${probeTimeoutMs}ms (host=${SMTP_HOST} port=${port}). ` +
+        `${LOG_PREFIX} SMTP connectivity probe timed out after ${probeTimeoutMs}ms (host=${host} port=${port}). ` +
           'The SMTP server may be unreachable from this environment.'
       );
     } else {
       console.error(
         `${LOG_PREFIX} SMTP connectivity probe failed (${result.error?.code || result.error?.message || result.reason}) ` +
-          `(host=${SMTP_HOST} port=${port}).`,
+          `(host=${host} port=${port}).`,
         result.error
       );
     }
@@ -434,6 +485,8 @@ async function sendInvoiceEmail({ to, from, subject, text, html, pdfBuffer, file
   const deadline = Date.now() + resolveOverallTimeoutMs();
   let lastError = null;
 
+  const smtpConfig = resolveSmtpConfig();
+  const hasSmtp = hasSmtpConfiguration();
   const mailOptions = {
     to,
     from: from || process.env.EMAIL_FROM || 'Kartarkiv <noreply@kartarkiv.co>',
@@ -448,6 +501,17 @@ async function sendInvoiceEmail({ to, from, subject, text, html, pdfBuffer, file
   );
 
   let usingResend = hasResendConfiguration();
+  if (usingResend) {
+    console.info(`${LOG_PREFIX} Resend API key detected; prioritising Resend HTTP delivery.`);
+  } else if (hasSmtp) {
+    console.info(
+      `${LOG_PREFIX} Resend API key not configured; defaulting to SMTP (${smtpConfig.host || 'unknown-host'}:${smtpConfig.port || 'unknown-port'} via ${smtpConfig.source}).`
+    );
+  } else {
+    console.warn(
+      `${LOG_PREFIX} Neither Resend API nor SMTP credentials are configured. Set RESEND_API_KEY or SMTP_/RESEND_SMTP_ env vars.`
+    );
+  }
 
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
     const timeRemaining = deadline - Date.now();
@@ -516,9 +580,9 @@ async function sendInvoiceEmail({ to, from, subject, text, html, pdfBuffer, file
         error
       );
       if (provider === 'smtp') {
-        const { SMTP_HOST, SMTP_PORT } = process.env;
         if (error?.command === 'CONN' || error?.code === 'ETIMEDOUT') {
-          const hostLabel = `${SMTP_HOST || 'undefined-host'}:${SMTP_PORT || 'undefined-port'}`;
+          const currentSmtp = resolveSmtpConfig();
+          const hostLabel = `${currentSmtp.host || 'undefined-host'}:${currentSmtp.port || 'undefined-port'}`;
           const codeLabel = error?.code || error?.errno || 'unknown';
           console.error(
             `${LOG_PREFIX} SMTP connection to ${hostLabel} failed (${codeLabel}). ` +
