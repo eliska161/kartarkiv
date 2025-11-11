@@ -6,6 +6,10 @@ const RESEND_API_URL = process.env.RESEND_API_URL || 'https://api.resend.com/ema
 
 const LOG_PREFIX = '[InvoiceEmail]';
 
+const RESEND_API_URL = process.env.RESEND_API_URL || 'https://api.resend.com/emails';
+
+const LOG_PREFIX = '[InvoiceEmail]';
+
 const RETRYABLE_SMTP_ERROR_CODES = new Set([
   'ETIMEDOUT',
   'ESOCKET',
