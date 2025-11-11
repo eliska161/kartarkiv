@@ -20,15 +20,61 @@ const UptimeStatus: React.FC<UptimeStatusProps> = ({ className = '', showDetails
   const [status, setStatus] = useState<MonitorStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+
+  const normalizeStatus = (rawStatus: string | undefined): MonitorStatus['status'] => {
+    if (!rawStatus) {
+      return 'unknown';
+    }
+
+    switch (rawStatus.toLowerCase()) {
+      case 'up':
+      case 'available':
+        return 'up';
+      case 'down':
+      case 'critical':
+        return 'down';
+      case 'paused':
+      case 'maintenance':
+      case 'under_maintenance':
+      case 'degraded':
+        return 'paused';
+      default:
+        return 'unknown';
+    }
+  };
+
+  const parseTimestamp = (value: unknown): string => {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      const date = new Date(value * (value < 1e12 ? 1000 : 1));
+      if (!Number.isNaN(date.getTime())) {
+        return date.toISOString();
+      }
+    }
+
+    if (typeof value === 'string' && value.trim().length > 0) {
+      const date = new Date(value);
+      if (!Number.isNaN(date.getTime())) {
+        return date.toISOString();
+      }
+    }
+
+    return new Date().toISOString();
+  };
+
+  const toNumber = (value: unknown): number => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
 
   useEffect(() => {
     const fetchStatus = async () => {
       try {
         setLoading(true);
         
-        const apiKey = process.env.REACT_APP_UPTIMEROBOT_API_KEY;
+        const apiKey = process.env.REACT_APP_BETTERSTACK_API_KEY;
         if (!apiKey) {
-          console.warn('UptimeRobot API key not found, using mock data');
+          console.warn('Better Stack API key not found, using mock data');
           // Fallback to mock data if API key is not available
           const mockStatus: MonitorStatus[] = [
             {
@@ -48,19 +94,17 @@ const UptimeStatus: React.FC<UptimeStatusProps> = ({ className = '', showDetails
           ];
           setStatus(mockStatus);
           setError(null);
+          setLastUpdated(new Date());
           return;
         }
 
-        // Fetch real data from UptimeRobot API
-        const response = await fetch('https://api.uptimerobot.com/v2/getMonitors', {
-          method: 'POST',
+        // Fetch real data from Better Stack API
+        const response = await fetch('https://uptime.betterstack.com/api/v2/monitors', {
+          method: 'GET',
           headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body: new URLSearchParams({
-            api_key: apiKey,
-            format: 'json'
-          })
+            Accept: 'application/json',
+            Authorization: `Bearer ${apiKey}`
+          }
         });
 
         if (!response.ok) {
@@ -68,35 +112,66 @@ const UptimeStatus: React.FC<UptimeStatusProps> = ({ className = '', showDetails
         }
 
         const data = await response.json();
-        
-        if (data.stat === 'ok') {
-          const monitors: MonitorStatus[] = data.monitors.map((monitor: any) => {
-            let lastCheck = new Date().toISOString(); // Default to current time
-            if (monitor.datetime && !isNaN(monitor.datetime)) {
-              const date = new Date(monitor.datetime * 1000);
-              if (!isNaN(date.getTime())) {
-                lastCheck = date.toISOString();
-              }
-            }
-            
-            return {
-              id: monitor.id,
-              name: monitor.friendly_name,
-              status: monitor.status === 2 ? 'up' : monitor.status === 9 ? 'down' : 'paused',
-              uptime: parseFloat(monitor.custom_uptime_ratio) || 0,
-              lastCheck: lastCheck
-            };
-          });
-          
-          setStatus(monitors);
-          setError(null);
-        } else {
-          throw new Error(data.error?.message || 'API error');
+
+        if (!data || !Array.isArray(data.data)) {
+          throw new Error('Invalid response from Better Stack API');
         }
+
+        const monitors: MonitorStatus[] = data.data.map((monitor: any) => {
+          const attributes = monitor?.attributes || {};
+
+          const monitorName =
+            attributes.name ||
+            attributes.url ||
+            monitor?.name ||
+            `Monitor ${monitor?.id ?? ''}`;
+
+          const uptimeValue =
+            attributes.uptime_percentage ??
+            attributes.uptime ??
+            attributes.sla ??
+            attributes.sla_percentage ??
+            attributes.custom_uptime_ratio;
+
+          const responseTimeValue =
+            attributes.response_time ??
+            attributes.last_response_time ??
+            attributes.average_response_time ??
+            attributes.avg_response_time;
+
+          const details =
+            attributes.incident_note ||
+            attributes.status_description ||
+            attributes.last_incident_note ||
+            attributes.paused_note;
+
+          const lastCheck = parseTimestamp(
+            attributes.last_checked_at ??
+              attributes.last_status_change_at ??
+              attributes.created_at ??
+              attributes.updated_at ??
+              monitor?.lastCheckedAt ??
+              monitor?.last_status_change_at
+          );
+
+          return {
+            id: String(monitor?.id ?? monitorName),
+            name: monitorName,
+            status: normalizeStatus(attributes.status ?? monitor?.status),
+            uptime: Number(toNumber(uptimeValue).toFixed(2)),
+            lastCheck,
+            responseTime: responseTimeValue ? `${Math.round(toNumber(responseTimeValue))} ms` : undefined,
+            details: typeof details === 'string' ? details : undefined
+          };
+        });
+
+        setStatus(monitors);
+        setError(null);
+        setLastUpdated(new Date());
       } catch (err) {
         console.error('Failed to fetch status:', err);
         setError('Kunne ikke hente status');
-        
+
         // Fallback to mock data on error
         const mockStatus: MonitorStatus[] = [
           {
@@ -115,6 +190,7 @@ const UptimeStatus: React.FC<UptimeStatusProps> = ({ className = '', showDetails
           }
         ];
         setStatus(mockStatus);
+        setLastUpdated(new Date());
       } finally {
         setLoading(false);
       }
@@ -195,35 +271,46 @@ const UptimeStatus: React.FC<UptimeStatusProps> = ({ className = '', showDetails
         <h3 className="text-sm font-medium text-gray-900">Systemstatus</h3>
       </div>
       
-      <div className="space-y-2">
+      <div className="space-y-3">
         {status.map((monitor) => (
-          <div key={monitor.id} className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              {getStatusIcon(monitor.status)}
-              <span className="text-sm text-gray-700">{monitor.name}</span>
-            </div>
-            <div className="flex items-center space-x-2">
+          <div key={monitor.id}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                {getStatusIcon(monitor.status)}
+                <span className="text-sm text-gray-700">{monitor.name}</span>
+              </div>
               <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(monitor.status)}`}>
                 {getStatusText(monitor.status)}
               </span>
-              {showDetails && (
-                <span className="text-xs text-gray-500">
-                  {monitor.uptime}%
-                </span>
-              )}
             </div>
+            {showDetails && (
+              <div className="mt-1 pl-6 grid gap-x-4 gap-y-1 text-xs text-gray-500 sm:grid-cols-2">
+                <span>Oppetid: {monitor.uptime}%</span>
+                {monitor.responseTime && <span>Responstid: {monitor.responseTime}</span>}
+                {monitor.lastCheck && (
+                  <span>
+                    Sist sjekket:{' '}
+                    {new Date(monitor.lastCheck).toLocaleTimeString('nb-NO')}
+                  </span>
+                )}
+                {monitor.details && (
+                  <span className="sm:col-span-2 text-gray-400">{monitor.details}</span>
+                )}
+              </div>
+            )}
           </div>
         ))}
       </div>
       
       <div className="mt-3 pt-3 border-t border-gray-100">
         <p className="text-xs text-gray-500">
-          Sist oppdatert: {new Date().toLocaleTimeString('nb-NO')}
+          Sist oppdatert:{' '}
+          {lastUpdated ? lastUpdated.toLocaleTimeString('nb-NO') : 'ukjent'}
         </p>
         <p className="text-xs text-gray-500">
-          <a 
-            href="https://stats.uptimerobot.com/jcONK7VXFW" 
-            target="_blank" 
+          <a
+            href="https://status.kartarkiv.co"
+            target="_blank"
             rel="noopener noreferrer"
             className="text-brand-600 hover:text-brand-700"
           >
