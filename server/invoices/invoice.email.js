@@ -1,4 +1,10 @@
 const nodemailer = require('nodemailer');
+const dns = require('dns').promises;
+const net = require('net');
+
+const RESEND_API_URL = process.env.RESEND_API_URL || 'https://api.resend.com/emails';
+
+const LOG_PREFIX = '[InvoiceEmail]';
 
 const RESEND_API_URL = process.env.RESEND_API_URL || 'https://api.resend.com/emails';
 
@@ -20,6 +26,8 @@ const RESEND_RETRYABLE_STATUS = new Set([408, 409, 425, 429]);
 
 const DEADLINE_SAFETY_BUFFER_MS = 500;
 const MINIMUM_ATTEMPT_BUDGET_MS = 1500;
+
+let smtpDiagnosticsPromise = null;
 
 function parseTimeout(value, fallback) {
   const parsed = Number(value);
@@ -79,6 +87,130 @@ function buildTransport() {
     });
   }
   return null;
+}
+
+function probeSmtpPort(host, port, timeoutMs) {
+  return new Promise(resolve => {
+    const start = Date.now();
+    let socket;
+    let timer;
+    let settled = false;
+
+    const finalize = result => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      if (timer) {
+        clearTimeout(timer);
+      }
+      if (socket) {
+        try {
+          socket.removeAllListeners();
+          socket.destroy();
+        } catch (cleanupError) {
+          console.warn(`${LOG_PREFIX} Failed to clean up SMTP probe socket`, cleanupError);
+        }
+      }
+      const durationMs = Date.now() - start;
+      resolve({
+        ok: result?.ok === true,
+        reason: result?.reason,
+        error: result?.error,
+        durationMs
+      });
+    };
+
+    try {
+      socket = net.createConnection({ host, port });
+    } catch (error) {
+      finalize({ ok: false, reason: 'error', error });
+      return;
+    }
+
+    timer = setTimeout(() => finalize({ ok: false, reason: 'timeout' }), timeoutMs);
+
+    socket.once('connect', () => finalize({ ok: true }));
+    socket.once('error', error => finalize({ ok: false, reason: 'error', error }));
+    socket.setTimeout(timeoutMs, () => finalize({ ok: false, reason: 'timeout' }));
+  });
+}
+
+async function gatherSmtpDiagnostics() {
+  if (!hasSmtpConfiguration()) {
+    console.warn(`${LOG_PREFIX} SMTP diagnostics skipped because configuration is incomplete.`);
+    return;
+  }
+
+  const { SMTP_HOST, SMTP_PORT } = process.env;
+  const port = Number(SMTP_PORT) || 587;
+  const secure = port === 465;
+  const connectionTimeout = parseTimeout(process.env.SMTP_CONNECTION_TIMEOUT, 20000);
+  const greetingTimeout = parseTimeout(process.env.SMTP_GREETING_TIMEOUT, 20000);
+  const socketTimeout = parseTimeout(process.env.SMTP_SOCKET_TIMEOUT, 45000);
+
+  console.info(
+    `${LOG_PREFIX} SMTP configuration summary host=${SMTP_HOST} port=${port} secure=${secure} ` +
+      `connectionTimeout=${connectionTimeout}ms greetingTimeout=${greetingTimeout}ms socketTimeout=${socketTimeout}ms`
+  );
+
+  const dnsTimeoutMs = parseTimeout(process.env.SMTP_DNS_TIMEOUT, 2000);
+  try {
+    const lookupPromise = dns.lookup(SMTP_HOST, { all: true });
+    const records = await Promise.race([
+      lookupPromise,
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error(`DNS lookup timed out after ${dnsTimeoutMs}ms`)), dnsTimeoutMs)
+      )
+    ]);
+
+    const addresses = Array.isArray(records) ? records : [records];
+    if (!addresses.length) {
+      console.warn(`${LOG_PREFIX} DNS lookup for ${SMTP_HOST} returned no addresses.`);
+    } else {
+      const formatted = addresses
+        .map(entry => `${entry.address}/${entry.family === 6 ? 'IPv6' : 'IPv4'}`)
+        .join(', ');
+      console.info(`${LOG_PREFIX} DNS lookup results for ${SMTP_HOST}: ${formatted}`);
+    }
+  } catch (error) {
+    console.error(`${LOG_PREFIX} SMTP DNS lookup failed for ${SMTP_HOST}: ${error.message}`, error);
+  }
+
+  const probeTimeoutMs = parseTimeout(process.env.SMTP_PROBE_TIMEOUT, 3000);
+  try {
+    const result = await probeSmtpPort(SMTP_HOST, port, probeTimeoutMs);
+    if (result.ok) {
+      console.info(
+        `${LOG_PREFIX} SMTP connectivity probe succeeded in ${result.durationMs}ms (host=${SMTP_HOST} port=${port}).`
+      );
+    } else if (result.reason === 'timeout') {
+      console.error(
+        `${LOG_PREFIX} SMTP connectivity probe timed out after ${probeTimeoutMs}ms (host=${SMTP_HOST} port=${port}). ` +
+          'The SMTP server may be unreachable from this environment.'
+      );
+    } else {
+      console.error(
+        `${LOG_PREFIX} SMTP connectivity probe failed (${result.error?.code || result.error?.message || result.reason}) ` +
+          `(host=${SMTP_HOST} port=${port}).`,
+        result.error
+      );
+    }
+  } catch (probeError) {
+    console.error(`${LOG_PREFIX} Unexpected error during SMTP connectivity probe`, probeError);
+  }
+}
+
+async function ensureSmtpDiagnostics() {
+  if (!hasSmtpConfiguration()) {
+    return;
+  }
+  if (!smtpDiagnosticsPromise) {
+    smtpDiagnosticsPromise = gatherSmtpDiagnostics().catch(error => {
+      console.error(`${LOG_PREFIX} Failed to collect SMTP diagnostics`, error);
+    });
+  }
+  await smtpDiagnosticsPromise;
 }
 
 function isRetryableSmtpError(error) {
@@ -350,6 +482,7 @@ async function sendInvoiceEmail({ to, from, subject, text, html, pdfBuffer, file
         if (provider === 'resend') {
           info = await sendViaResend(mailOptions, attempt, attemptBudget);
         } else {
+          await ensureSmtpDiagnostics();
           transport = buildTransport();
           if (!transport) {
             if (attempt === 1) {
@@ -386,6 +519,17 @@ async function sendInvoiceEmail({ to, from, subject, text, html, pdfBuffer, file
         `${LOG_PREFIX} Attempt ${attempt} failed. code=${error?.code} command=${error?.command} message=${error?.message}`,
         error
       );
+      if (provider === 'smtp') {
+        const { SMTP_HOST, SMTP_PORT } = process.env;
+        if (error?.command === 'CONN' || error?.code === 'ETIMEDOUT') {
+          const hostLabel = `${SMTP_HOST || 'undefined-host'}:${SMTP_PORT || 'undefined-port'}`;
+          const codeLabel = error?.code || error?.errno || 'unknown';
+          console.error(
+            `${LOG_PREFIX} SMTP connection to ${hostLabel} failed (${codeLabel}). ` +
+              'Verify network access, firewall rules, and that the SMTP service is reachable from the server.'
+          );
+        }
+      }
       if (provider === 'resend' && !isRetryableEmailError(error) && hasSmtpConfiguration()) {
         console.warn(
           `${LOG_PREFIX} Resend failed with non-retryable error; switching to SMTP fallback for remaining attempts.`
