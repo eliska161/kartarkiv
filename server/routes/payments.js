@@ -479,7 +479,11 @@ router.post('/invoices/:invoiceId/request-invoice', authenticateUser, async (req
       return res.status(400).json({ error: 'Fakturaen er allerede betalt' });
     }
 
-    const accountNumber = process.env.SB1_ACCOUNT_NUMBER || '00000000000';
+    const accountNumber =
+      process.env.INVOICE_ACCOUNT_NUMBER ||
+      invoice.account_number ||
+      process.env.SB1_ACCOUNT_NUMBER ||
+      '00000000000';
     await createAndSendInvoice({
       invoiceId: invoice.id,
       email: normalizedEmail,
