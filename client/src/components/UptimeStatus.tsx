@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Activity, AlertCircle, CheckCircle, Clock, XCircle } from 'lucide-react';
 
+const DEFAULT_API_BASE_URL =
+  process.env.NODE_ENV === 'development'
+    ? 'http://localhost:5001'
+    : 'https://kartarkiv-production.up.railway.app';
+const API_BASE_URL = (process.env.REACT_APP_API_URL || DEFAULT_API_BASE_URL).replace(/\/$/, '');
+
 interface UptimeStatusProps {
   className?: string;
   showDetails?: boolean;
@@ -73,7 +79,9 @@ const UptimeStatus: React.FC<UptimeStatusProps> = ({ className = '', showDetails
         setLoading(true);
         
         // Fetch monitor data through the backend proxy to avoid CORS issues
-        const response = await fetch('/api/monitoring/monitors', {
+        const monitoringUrl = `${API_BASE_URL}/api/monitoring/monitors`;
+
+        const response = await fetch(monitoringUrl, {
           method: 'GET',
           headers: {
             Accept: 'application/json'
@@ -82,6 +90,14 @@ const UptimeStatus: React.FC<UptimeStatusProps> = ({ className = '', showDetails
 
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const contentType = response.headers.get('content-type')?.toLowerCase() ?? '';
+        if (!contentType.includes('application/json')) {
+          const bodySnippet = (await response.text()).slice(0, 200);
+          throw new Error(
+            `Unexpected response content-type: ${contentType || 'unknown'}. Body: ${bodySnippet}`
+          );
         }
 
         const data = await response.json();
