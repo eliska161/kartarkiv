@@ -70,7 +70,7 @@ const MapPage: React.FC = () => {
             <h3 className="text-lg font-medium text-gray-900 mb-2">Kunne ikke hente kart</h3>
             <p className="text-gray-600 mb-6">{error}</p>
             
-            {/* UptimeRobot Status */}
+            {/* Better Stack Status */}
             <div className="mb-6">
               <UptimeStatus showDetails={true} />
             </div>
