@@ -6,7 +6,7 @@ const { generateKid } = require('./invoice.kid');
 const { makeInvoicePdf } = require('./invoice.pdf');
 const { sendInvoiceEmail } = require('./invoice.email');
 
-const LOGO_RELATIVE_PATH = ['..', '..', 'client', 'src', 'assets', 'kartarkiv-logo.svg'];
+const LOGO_RELATIVE_PATH = ['..', '..', 'client', 'public', 'uploads', 'logo', 'kartarkiv.png'];
 let cachedLogoDataUrl;
 
 function getLogoDataUrl() {
@@ -16,9 +16,9 @@ function getLogoDataUrl() {
 
   const logoPath = path.join(__dirname, ...LOGO_RELATIVE_PATH);
   try {
-    const svgContent = fs.readFileSync(logoPath, 'utf8');
-    const base64 = Buffer.from(svgContent, 'utf8').toString('base64');
-    cachedLogoDataUrl = `data:image/svg+xml;base64,${base64}`;
+    const logoBuffer = fs.readFileSync(logoPath);
+    const base64 = logoBuffer.toString('base64');
+    cachedLogoDataUrl = `data:image/png;base64,${base64}`;
   } catch (error) {
     cachedLogoDataUrl = null;
     console.warn('⚠️  Could not load invoice email logo asset:', logoPath, error.message);

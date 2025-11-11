@@ -1,4 +1,34 @@
+const fs = require('fs');
+const path = require('path');
 const { PDFDocument, StandardFonts, rgb } = require('pdf-lib');
+
+const LOGO_PATH = path.join(
+  __dirname,
+  '..',
+  '..',
+  'client',
+  'public',
+  'uploads',
+  'logo',
+  'kartarkiv.png'
+);
+
+let cachedLogoBytes;
+
+function getLogoBytes() {
+  if (cachedLogoBytes !== undefined) {
+    return cachedLogoBytes;
+  }
+
+  try {
+    cachedLogoBytes = fs.readFileSync(LOGO_PATH);
+  } catch (error) {
+    cachedLogoBytes = null;
+    console.warn('⚠️  Could not load invoice PDF logo asset:', LOGO_PATH, error.message);
+  }
+
+  return cachedLogoBytes;
+}
 
 async function makeInvoicePdf({
   sellerName = 'Kartarkiv',
@@ -19,10 +49,10 @@ async function makeInvoicePdf({
   const { width, height } = page.getSize();
   const margin = 40;
   const contentWidth = width - margin * 2;
-  const headerHeight = 110;
-  const slipHeight = 170;
-  const slipBottomMargin = 40;
-  const protectedBottom = slipBottomMargin + slipHeight + 24;
+  const headerHeight = 210;
+  const slipHeight = 250;
+  const slipBottomMargin = 36;
+  const protectedBottom = slipBottomMargin + slipHeight + 32;
 
   const bold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
   const regular = await pdfDoc.embedFont(StandardFonts.Helvetica);
@@ -34,6 +64,17 @@ async function makeInvoicePdf({
   const tableBorder = rgb(210 / 255, 224 / 255, 216 / 255);
   const giroYellow = rgb(252 / 255, 227 / 255, 125 / 255);
   const textDark = rgb(24 / 255, 42 / 255, 30 / 255);
+  const white = rgb(1, 1, 1);
+
+  let logoImage;
+  const logoBytes = getLogoBytes();
+  if (logoBytes) {
+    try {
+      logoImage = await pdfDoc.embedPng(logoBytes);
+    } catch (error) {
+      console.warn('⚠️  Failed to embed logo for invoice PDF:', error.message);
+    }
+  }
 
   const wrapText = (text, maxWidth, font = regular, size = 12) => {
     const words = String(text || '').split(/\s+/).filter(Boolean);
@@ -70,35 +111,50 @@ async function makeInvoicePdf({
     }
   };
 
-  // Header band
+  // Header band with logo and metadata panel
   page.drawRectangle({ x: 0, y: height - headerHeight, width, height: headerHeight, color: brandPrimary });
-  page.drawRectangle({ x: 0, y: height - headerHeight - 14, width, height: 14, color: brandDark });
+  page.drawRectangle({ x: 0, y: height - headerHeight, width, height: 26, color: brandDark });
 
-  const headerTextY = height - 50;
-  page.drawText(String(sellerName), { x: margin, y: headerTextY, size: 26, font: bold, color: rgb(1, 1, 1) });
-  page.drawText(String(sellerOrg), { x: margin, y: headerTextY - 22, size: 12, font: regular, color: rgb(1, 1, 1) });
+  if (logoImage) {
+    const logoHeight = 52;
+    const logoWidth = (logoImage.width / logoImage.height) * logoHeight;
+    page.drawImage(logoImage, {
+      x: margin,
+      y: height - logoHeight - 30,
+      width: logoWidth,
+      height: logoHeight
+    });
+  } else {
+    page.drawText(String(sellerName), { x: margin, y: height - 62, size: 28, font: bold, color: white });
+  }
+
+  const headerInfoY = height - headerHeight + 88;
+  page.drawText(String(sellerOrg), { x: margin, y: headerInfoY, size: 14, font: regular, color: white });
+  page.drawText('Faktura', { x: margin, y: headerInfoY - 20, size: 18, font: bold, color: white });
+  page.drawText(`#${invoiceId}`, { x: margin + 64, y: headerInfoY - 20, size: 18, font: bold, color: white });
 
   const metaWidth = 220;
+  const metaHeight = 160;
   const metaX = width - margin - metaWidth;
-  let metaY = height - 40;
-  const drawMeta = (label, value) => {
-    const labelSize = 10;
-    const valueSize = 14;
-    const labelColor = rgb(220 / 255, 235 / 255, 226 / 255);
-    const valueColor = rgb(1, 1, 1);
-    drawRightAligned(String(label), metaX, metaWidth, metaY, regular, labelSize, labelColor);
-    metaY -= labelSize + 4;
-    drawRightAligned(String(value || ''), metaX, metaWidth, metaY, bold, valueSize, valueColor);
-    metaY -= valueSize + 10;
-  };
+  const metaYTop = height - 28;
+  page.drawRectangle({ x: metaX, y: metaYTop - metaHeight, width: metaWidth, height: metaHeight, color: white, borderColor: brandDark, borderWidth: 1.2 });
 
-  drawMeta('Fakturanr.', `#${invoiceId}`);
-  drawMeta('Dato', formatDate(createdAt));
-  drawMeta('Forfallsdato', formatDate(dueDate));
-  drawMeta('Konto', accountNumber);
-  drawMeta('KID', kid);
+  const metaEntries = [
+    ['Fakturanr.', `#${invoiceId}`],
+    ['Dato', formatDate(createdAt)],
+    ['Forfallsdato', formatDate(dueDate)],
+    ['Konto', accountNumber],
+    ['KID', kid]
+  ];
 
-  let y = height - headerHeight - 50;
+  let metaY = metaYTop - 24;
+  metaEntries.forEach(([label, value]) => {
+    page.drawText(label, { x: metaX + 14, y: metaY, size: 9, font: regular, color: slate });
+    page.drawText(String(value || ''), { x: metaX + 14, y: metaY - 14, size: 13, font: bold, color: brandDark });
+    metaY -= 30;
+  });
+
+  let y = height - headerHeight - 36;
 
   const drawBodyText = ({ text, x = margin, size = 12, font = regular, color = textDark, gap = size + 6 }) => {
     ensureSpace(gap);
@@ -106,13 +162,26 @@ async function makeInvoicePdf({
     y -= gap;
   };
 
-  drawBodyText({ text: 'Fakturamottaker', font: bold, size: 14, color: brandDark, gap: 18 });
-  drawBodyText({ text: buyerName || buyerEmail, size: 12, color: textDark, gap: 16 });
+  const recipientBoxHeight = buyerEmail ? 94 : 72;
+  ensureSpace(recipientBoxHeight + 24);
+  const recipientBottom = y - recipientBoxHeight;
+  page.drawRectangle({ x: margin, y: recipientBottom, width: contentWidth, height: recipientBoxHeight, color: brandSoft, borderColor: tableBorder, borderWidth: 1 });
+  page.drawText('Fakturamottaker', { x: margin + 16, y: y - 18, size: 13, font: bold, color: brandDark });
+  page.drawText(buyerName || buyerEmail || 'Ukjent mottaker', { x: margin + 16, y: y - 36, size: 12, font: regular, color: textDark });
   if (buyerEmail) {
-    drawBodyText({ text: buyerEmail, size: 11, color: slate, gap: 18 });
+    page.drawText(buyerEmail, { x: margin + 16, y: y - 52, size: 11, font: regular, color: slate });
+  }
+  const issuerX = margin + contentWidth / 2 + 12;
+  page.drawText('Fakturautsteder', { x: issuerX, y: y - 18, size: 13, font: bold, color: brandDark });
+  const issuerLine = sellerOrg ? `${sellerName} – ${sellerOrg}` : sellerName;
+  page.drawText(String(issuerLine || sellerName), { x: issuerX, y: y - 36, size: 12, font: regular, color: textDark });
+  if (baseUrl) {
+    page.drawText(String(baseUrl).replace(/\/$/, ''), { x: issuerX, y: y - 52, size: 11, font: regular, color: slate });
   }
 
-  drawBodyText({ text: 'Fakturadetaljer', font: bold, size: 14, color: brandDark, gap: 20 });
+  y = recipientBottom - 28;
+
+  drawBodyText({ text: 'Fakturadetaljer', font: bold, size: 14, color: brandDark, gap: 22 });
 
   const columnWidths = [contentWidth * 0.5, contentWidth * 0.16, contentWidth * 0.14, contentWidth * 0.20];
   const columnX = [margin, margin + columnWidths[0], margin + columnWidths[0] + columnWidths[1], margin + columnWidths[0] + columnWidths[1] + columnWidths[2]];
@@ -240,52 +309,137 @@ async function makeInvoicePdf({
     infoLineY -= 14;
   });
 
+  const summaryBoxHeight = 58;
+  const summaryGap = 18;
+  const summaryY = Math.max(infoBottom - summaryGap - summaryBoxHeight, protectedBottom + 18);
+  const summaryWidth = (contentWidth - 12) / 2;
+  const summaryLeftX = margin;
+  const summaryRightX = margin + summaryWidth + 12;
+
+  page.drawRectangle({ x: summaryLeftX, y: summaryY, width: summaryWidth, height: summaryBoxHeight, color: white, borderColor: tableBorder, borderWidth: 1 });
+  page.drawRectangle({ x: summaryRightX, y: summaryY, width: summaryWidth, height: summaryBoxHeight, color: white, borderColor: tableBorder, borderWidth: 1 });
+
+  page.drawText('Kvittering', { x: summaryLeftX + 14, y: summaryY + summaryBoxHeight - 20, size: 12, font: bold, color: brandDark });
+  page.drawText(nok(amountNok), { x: summaryLeftX + 14, y: summaryY + summaryBoxHeight - 38, size: 13, font: bold, color: brandDark });
+  page.drawText(formatDate(dueDate), { x: summaryLeftX + 14, y: summaryY + 12, size: 11, font: regular, color: slate });
+
+  page.drawText('Giro', { x: summaryRightX + 14, y: summaryY + summaryBoxHeight - 20, size: 12, font: bold, color: brandDark });
+  page.drawText(`${sellerName} – ${sellerOrg}`, { x: summaryRightX + 14, y: summaryY + summaryBoxHeight - 38, size: 11, font: regular, color: textDark });
+  page.drawText(`#${invoiceId}`, { x: summaryRightX + 14, y: summaryY + 12, size: 11, font: regular, color: slate });
+
   // Norwegian giro-style payment slip
   const slipY = slipBottomMargin;
   const slipX = margin;
-  page.drawRectangle({ x: slipX, y: slipY, width: contentWidth, height: slipHeight, color: giroYellow });
-  page.drawRectangle({ x: slipX, y: slipY + slipHeight - 40, width: contentWidth, height: 40, color: rgb(1, 1, 1) });
+  const slipWidth = contentWidth;
+  const slipLeftWidth = 210;
+  const slipRightWidth = slipWidth - slipLeftWidth;
+
+  page.drawRectangle({ x: slipX, y: slipY, width: slipWidth, height: slipHeight, color: giroYellow, borderColor: brandDark, borderWidth: 1 });
   page.drawLine({
-    start: { x: slipX + contentWidth / 2, y: slipY },
-    end: { x: slipX + contentWidth / 2, y: slipY + slipHeight },
+    start: { x: slipX + slipLeftWidth, y: slipY },
+    end: { x: slipX + slipLeftWidth, y: slipY + slipHeight },
     thickness: 1,
     color: brandDark
   });
 
-  const slipHeaderY = slipY + slipHeight - 24;
-  page.drawText('Kvittering', { x: slipX + 18, y: slipHeaderY, size: 12, font: bold, color: brandDark });
-  page.drawText('Giro', { x: slipX + contentWidth / 2 + 18, y: slipHeaderY, size: 12, font: bold, color: brandDark });
+  const slipHeaderHeight = 24;
+  page.drawLine({
+    start: { x: slipX, y: slipY + slipHeight - slipHeaderHeight },
+    end: { x: slipX + slipWidth, y: slipY + slipHeight - slipHeaderHeight },
+    thickness: 1,
+    color: brandDark
+  });
+  page.drawText('Kvittering', { x: slipX + 12, y: slipY + slipHeight - 17, size: 11, font: bold, color: brandDark });
+  page.drawText('GIRO', { x: slipX + slipLeftWidth + 12, y: slipY + slipHeight - 17, size: 11, font: bold, color: brandDark });
 
-  const drawSlipField = (label, value, xPos, yPos, widthArea) => {
-    const labelSize = 9;
-    const valueSize = 12;
-    page.drawText(label, { x: xPos, y: yPos, size: labelSize, font: regular, color: brandDark });
-    page.drawRectangle({ x: xPos - 2, y: yPos - 4, width: widthArea, height: 22, borderWidth: 0.8, borderColor: brandDark, color: rgb(1, 1, 1) });
-    page.drawText(String(value || ''), {
-      x: xPos + 6,
-      y: yPos + 6,
-      size: valueSize,
-      font: bold,
-      color: textDark
-    });
+  const slipLabel = (text, xPos, yPos) => {
+    page.drawText(text, { x: xPos, y: yPos, size: 9, font: regular, color: brandDark });
   };
 
-  const slipLeftX = slipX + 18;
-  const slipRightX = slipX + contentWidth / 2 + 18;
-  const fieldWidth = contentWidth / 2 - 36;
-  let slipFieldY = slipY + slipHeight - 70;
+  const slipValueBox = (value, xPos, yPos, widthArea, heightArea = 22, align = 'left') => {
+    page.drawRectangle({ x: xPos, y: yPos, width: widthArea, height: heightArea, color: white, borderColor: brandDark, borderWidth: 0.8 });
+    const text = String(value || '');
+    const size = 12;
+    if (align === 'right') {
+      const textWidth = bold.widthOfTextAtSize(text, size);
+      const drawX = xPos + widthArea - textWidth - 6;
+      page.drawText(text, { x: drawX, y: yPos + 6, size, font: bold, color: textDark });
+    } else if (align === 'center') {
+      const textWidth = bold.widthOfTextAtSize(text, size);
+      const drawX = xPos + (widthArea - textWidth) / 2;
+      page.drawText(text, { x: drawX, y: yPos + 6, size, font: bold, color: textDark });
+    } else {
+      page.drawText(text, { x: xPos + 6, y: yPos + 6, size, font: bold, color: textDark });
+    }
+  };
 
-  const slipRecipient = sellerOrg ? `${sellerName} – ${sellerOrg}` : sellerName;
+  const giroTop = slipY + slipHeight - slipHeaderHeight - 18;
+  const leftX = slipX + 12;
+  const rightX = slipX + slipLeftWidth + 12;
 
-  drawSlipField('Beløp', nok(amountNok), slipLeftX, slipFieldY, fieldWidth);
-  drawSlipField('Konto', accountNumber, slipLeftX, slipFieldY - 36, fieldWidth);
-  drawSlipField('KID', kid, slipLeftX, slipFieldY - 72, fieldWidth);
-  drawSlipField('Fakturadato', formatDate(createdAt), slipLeftX, slipFieldY - 108, fieldWidth);
+  // Left column content
+  let leftRowY = giroTop;
+  slipLabel('Kvittering til konto', leftX, leftRowY);
+  slipValueBox(accountNumber, leftX, leftRowY - 20, slipLeftWidth - 24, 26);
+  leftRowY -= 44;
 
-  drawSlipField('Til', slipRecipient, slipRightX, slipFieldY, fieldWidth);
-  drawSlipField('Fra', buyerName || buyerEmail || '', slipRightX, slipFieldY - 36, fieldWidth);
-  drawSlipField('Fakturanr.', `#${invoiceId}`, slipRightX, slipFieldY - 72, fieldWidth);
-  drawSlipField('Forfallsdato', formatDate(dueDate), slipRightX, slipFieldY - 108, fieldWidth);
+  slipLabel('Beløp', leftX, leftRowY);
+  slipValueBox(nok(amountNok), leftX, leftRowY - 20, slipLeftWidth - 24, 26);
+  leftRowY -= 44;
+
+  slipLabel('Betalingsinformasjon', leftX, leftRowY);
+  page.drawText(`Kundenummer: ${buyerEmail || buyerName || '-'}`, { x: leftX, y: leftRowY - 16, size: 9, font: regular, color: brandDark });
+  page.drawText(`Faktura: ${invoiceId}`, { x: leftX, y: leftRowY - 30, size: 9, font: regular, color: brandDark });
+  leftRowY -= 54;
+
+  slipLabel('Betalt av', leftX, leftRowY);
+  slipValueBox(buyerName || buyerEmail || '-', leftX, leftRowY - 20, slipLeftWidth - 24, 26);
+  leftRowY -= 40;
+
+  slipLabel('Blankettnummer', leftX, leftRowY);
+  slipValueBox(`KID: ${kid}`, leftX, leftRowY - 20, slipLeftWidth - 24, 26);
+
+  // Right column content
+  let rightRowY = giroTop;
+  slipLabel('Betales til konto', rightX, rightRowY);
+  slipValueBox(accountNumber, rightX, rightRowY - 20, slipRightWidth - 24, 26);
+  rightRowY -= 44;
+
+  slipLabel('Beløp', rightX, rightRowY);
+  slipValueBox(nok(amountNok), rightX, rightRowY - 20, slipRightWidth - 24, 26, 'right');
+  rightRowY -= 44;
+
+  slipLabel('Betales innen', rightX, rightRowY);
+  slipValueBox(formatDate(dueDate), rightX, rightRowY - 20, slipRightWidth / 2 - 16, 26);
+  slipLabel('Dato', rightX + slipRightWidth / 2, rightRowY);
+  slipValueBox(formatDate(createdAt), rightX + slipRightWidth / 2, rightRowY - 20, slipRightWidth / 2 - 28, 26);
+  rightRowY -= 44;
+
+  slipLabel('Til', rightX, rightRowY);
+  slipValueBox(`${sellerName} / ${sellerOrg}`, rightX, rightRowY - 20, slipRightWidth - 24, 26);
+  rightRowY -= 36;
+
+  slipLabel('Adresse', rightX, rightRowY);
+  const addressLines = ['Søaveien 23C', '0459 OSLO'];
+  addressLines.forEach((line, idx) => {
+    page.drawText(line, { x: rightX, y: rightRowY - 18 - idx * 12, size: 9, font: regular, color: brandDark });
+  });
+  rightRowY -= 48;
+
+  slipLabel('KID', rightX, rightRowY);
+  const kidDigits = String(kid || '').replace(/\s+/g, '');
+  const boxWidth = 16;
+  const boxHeight = 20;
+  const maxBoxes = Math.min(Math.max(kidDigits.length, 10), Math.floor((slipRightWidth - 40) / (boxWidth + 2)));
+  for (let i = 0; i < maxBoxes; i += 1) {
+    const char = kidDigits[i] || '';
+    const boxX = rightX + i * (boxWidth + 2);
+    slipValueBox(char, boxX, rightRowY - 18, boxWidth, boxHeight, 'center');
+  }
+
+  slipLabel('Beløp', rightX, slipY + 36);
+  page.drawRectangle({ x: rightX, y: slipY + 10, width: 120, height: 24, color: white, borderColor: brandDark, borderWidth: 0.8 });
+  page.drawText(nok(amountNok), { x: rightX + 6, y: slipY + 16, size: 12, font: bold, color: textDark });
 
   const pdfBytes = await pdfDoc.save();
   return Buffer.from(pdfBytes);
