@@ -398,7 +398,7 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
-// Simple health check endpoint (for UptimeRobot)
+// Simple health check endpoint (for Better Stack)
 app.get('/health', (req, res) => {
   res.json({ 
     status: 'OK', 
