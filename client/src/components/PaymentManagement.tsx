@@ -638,7 +638,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
           <Wallet className="h-5 w-5 mr-2 text-slate-600" />
           Betalingsoversikt
         </h2>
-        <p className="text-gray-600 mt-1">Kartarkiv vil automatisk sende faktura pÃ¥ e-post. </p>
+        <p className="text-gray-600 mt-1">Kartarkiv vil automatisk sende faktura på e-post. </p>
         <p className="text-gray-600"></p>
       </div>
 
@@ -687,14 +687,14 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-gray-900 flex items-center">
               <FileText className="h-5 w-5 mr-2 text-slate-600" />
-              Opprett mÃ¥nedlig faktura
+              Opprett månedlig faktura
             </h3>
           </div>
 
           <form className="space-y-6" onSubmit={handleCreateInvoice}>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <label className="block">
-                <span className="text-sm font-medium text-gray-700">MÃ¥ned</span>
+                <span className="text-sm font-medium text-gray-700">Måned</span>
                 <input
                   type="month"
                   value={form.month}
@@ -756,7 +756,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
                       />
                     </div>
                     <div className="md:col-span-3">
-                      <label className="block text-sm font-medium text-gray-700">BelÃ¸p (NOK)</label>
+                      <label className="block text-sm font-medium text-gray-700">Beløp (NOK)</label>
                       <input
                         type="number"
                         min="0"
@@ -832,7 +832,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
           </h3>
           <span className="text-sm text-gray-500">{invoices.length} faktura(er)</span>
         </div>
-        <p className="text-xs text-gray-500 mt-1">Manuell betaling: Marker faktura som betalt etter mottatt innbetaling.</p>
+        <p className="text-xs text-gray-500 mt-1"></p>
 
         {loading ? (
           <div className="py-12 flex items-center justify-center text-gray-500">
@@ -1064,7 +1064,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
                   <span className="font-medium text-gray-800">Faktura:</span> {invoiceModalTarget.month}
                 </div>
                 <div>
-                  <span className="font-medium text-gray-800">TotalbelÃ¸p:</span> {formatCurrency(invoiceModalTarget.total_amount)}
+                  <span className="font-medium text-gray-800">Totalbeløp:</span> {formatCurrency(invoiceModalTarget.total_amount)}
                 </div>
                 {invoiceModalTarget.due_date && (
                   <div>
