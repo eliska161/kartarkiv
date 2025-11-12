@@ -297,16 +297,16 @@ async function makeInvoicePdf({
   if (baseUrl) {
     instructionLines.push(`Mer informasjon: ${baseUrl}`);
   }
-  let infoLineY = y - 42;
+  let infoCursorY = y - 42;
   instructionLines.forEach(line => {
     page.drawText(line, {
       x: margin + 16,
-      y: infoLineY,
+      y: infoCursorY,
       size: 11,
       font: regular,
       color: textDark
     });
-    infoLineY -= 14;
+    infoCursorY -= 14;
   });
 
   const summaryBoxHeight = 64;
@@ -584,6 +584,9 @@ async function makeInvoicePdf({
   slipLabel('Beløp', rightX, slipY + 36);
   page.drawRectangle({ x: rightX, y: slipY + 10, width: 120, height: 24, color: white, borderColor: brandDark, borderWidth: 0.8 });
   page.drawText(nok(amountNok), { x: rightX + 6, y: slipY + 16, size: 12, font: bold, color: textDark });
+
+  slipLabel('Beløp å betale', rightX, slipY + 32);
+  slipValueBox(nok(amountNok), rightX, slipY + 12, 148, 26, 'right', 13, bold);
 
   slipLabel('Beløp å betale', rightX, slipY + 32);
   slipValueBox(nok(amountNok), rightX, slipY + 12, 148, 26, 'right', 13, bold);
