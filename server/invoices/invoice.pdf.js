@@ -1032,6 +1032,9 @@ async function makeInvoicePdf({
   slipLabel('Beløp å betale', rightX, slipY + 32);
   slipValueBox(nok(amountNok), rightX, slipY + 12, 148, 26, 'right', 13, bold);
 
+  slipLabel('Beløp å betale', rightX, slipY + 32);
+  slipValueBox(nok(amountNok), rightX, slipY + 12, 148, 26, 'right', 13, bold);
+
   const pdfBytes = await pdfDoc.save();
   return Buffer.from(pdfBytes);
 }
