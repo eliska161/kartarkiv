@@ -278,6 +278,10 @@ async function makeInvoicePdf({
   }
 
   const infoBoxHeight = 96;
+  const infoBottomMargin = 28;
+  if (y - infoBoxHeight < protectedBottom + infoBottomMargin) {
+    y = protectedBottom + infoBottomMargin + infoBoxHeight;
+  }
   const infoBottom = y - infoBoxHeight;
   page.drawRectangle({ x: margin, y: infoBottom, width: contentWidth, height: infoBoxHeight, color: brandSoft });
   page.drawRectangle({ x: margin, y: infoBottom, width: contentWidth, height: 2, color: brandPrimary });
