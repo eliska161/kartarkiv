@@ -1,80 +1,80 @@
+// server/routes/monitoring.js
 const express = require('express');
-
 const router = express.Router();
 
-const BETTERSTACK_API_URL = 'https://uptime.betterstack.com/api/v2/monitors';
-const REQUEST_TIMEOUT_MS = 15000;
-const CACHE_TTL_MS = 60 * 1000; // 1 minute cache to avoid hammering the API
+// Better Stack API configuration
+const BETTER_STACK_API_URL = 'https://uptime.betterstack.com/api/v2/monitors';
+const BETTER_STACK_API_TOKEN = process.env.BETTER_STACK_API_TOKEN;
 
-let cache = {
-  data: null,
-  expiresAt: 0
-};
-
-const hasValidCache = () => cache.data && cache.expiresAt > Date.now();
-
-const fetchWithTimeout = async (url, options = {}) => {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-
-  try {
-    const response = await fetch(url, {
-      ...options,
-      signal: controller.signal
-    });
-
-    return response;
-  } finally {
-    clearTimeout(timeout);
+// CORS middleware
+router.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
   }
-};
+  
+  next();
+});
 
 router.get('/monitors', async (req, res) => {
-  const apiKey = process.env.BETTERSTACK_API_KEY;
-
-  if (!apiKey) {
-    return res.status(503).json({
-      error: 'Monitoring integration is not configured.'
-    });
-  }
-
-  if (hasValidCache()) {
-    return res.json(cache.data);
-  }
-
   try {
-    const response = await fetchWithTimeout(BETTERSTACK_API_URL, {
+    console.log('🔍 Fetching Better Stack monitors...');
+    
+    if (!BETTER_STACK_API_TOKEN) {
+      console.error('❌ BETTER_STACK_API_TOKEN is not configured');
+      return res.status(500).json({ 
+        error: 'Better Stack API token not configured',
+        data: [] 
+      });
+    }
+
+    const response = await fetch(BETTER_STACK_API_URL, {
       method: 'GET',
       headers: {
-        Accept: 'application/json',
-        Authorization: `Bearer ${apiKey}`
+        'Authorization': `Bearer ${BETTER_STACK_API_TOKEN}`,
+        'Accept': 'application/json'
       }
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      return res.status(response.status).json({
-        error: 'Failed to fetch monitor status.',
-        status: response.status,
-        detail: errorText
+      console.error(`❌ Better Stack API error: ${response.status} ${response.statusText}`);
+      console.error('Error response:', errorText);
+      
+      return res.status(response.status).json({ 
+        error: `Better Stack API error: ${response.status}`,
+        message: errorText,
+        data: []
       });
     }
 
     const data = await response.json();
-
-    cache = {
-      data,
-      expiresAt: Date.now() + CACHE_TTL_MS
-    };
-
-    return res.json(data);
+    console.log('✅ Successfully fetched', data?.data?.length || 0, 'monitors from Better Stack');
+    
+    // Return the data in the expected format
+    res.json(data);
+    
   } catch (error) {
-    const isAbortError = error && error.name === 'AbortError';
-    return res.status(504).json({
-      error: isAbortError ? 'Monitoring request timed out.' : 'Unable to retrieve monitor status.',
-      detail: error.message
+    console.error('❌ Error fetching Better Stack monitors:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch monitor data',
+      message: error.message,
+      data: []
     });
   }
+});
+
+// Health check endpoint for the monitoring route itself
+router.get('/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    configured: Boolean(BETTER_STACK_API_TOKEN),
+    timestamp: new Date().toISOString()
+  });
 });
 
 module.exports = router;
