@@ -187,8 +187,12 @@ function buildInvoiceEmailHtml({
                         <a href="${summaryUrl}" style="display:inline-block;background:#17834c;color:#ffffff;text-decoration:none;padding:14px 26px;border-radius:999px;font-weight:600;font-size:15px;">Åpne fakturaoversikt</a>
                       </div>`
                     : ''}
-                  <p style="margin:24px 0 0 0;font-size:14px;color:#64748b;">Har du spørsmål? Ta kontakt med oss ved å svare på denne e-posten.</p>
-                  <p style="margin:24px 0 0 0;font-size:14px;color:#0f4e2f;font-weight:600;">Takk for samarbeidet!<br/>Kartarkiv-teamet</p>
+                  <p style="margin:24px 0 0 0;font-size:14px;color:#64748b;">Har du spørsmål? Ta kontakt på
+                  <a href="mailto:elias@kartarkiv.co" style="color:#64748b;text-decoration:underline;">
+                  elias@kartarkiv.co
+                  </a>
+                  </p>
+                  <p style="margin:24px 0 0 0;font-size:14px;color:#0f4e2f;font-weight:600;">Takk for samarbeidet!<br/></p>
                 </td>
               </tr>
             </table>
