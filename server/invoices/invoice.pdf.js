@@ -49,7 +49,7 @@ async function makeInvoicePdf({
   const { width, height } = page.getSize();
   const margin = 48;
   const contentWidth = width - margin * 2;
-  const headerHeight = 140;
+  const headerHeight = 128;
   const protectedBottom = 72;
 
   const bold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
@@ -57,11 +57,11 @@ async function makeInvoicePdf({
 
   const brandPrimary = rgb(23 / 255, 131 / 255, 76 / 255);
   const brandDark = rgb(15 / 255, 78 / 255, 47 / 255);
-  const brandSoft = rgb(242 / 255, 251 / 255, 246 / 255);
   const slate = rgb(71 / 255, 85 / 255, 105 / 255);
-  const tableBorder = rgb(216 / 255, 230 / 255, 222 / 255);
+  const tableBorder = rgb(210 / 255, 222 / 255, 215 / 255);
   const textDark = rgb(24 / 255, 42 / 255, 30 / 255);
   const muted = rgb(120 / 255, 135 / 255, 123 / 255);
+  const lightDivider = rgb(227 / 255, 236 / 255, 232 / 255);
   const white = rgb(1, 1, 1);
 
   let logoImage;
@@ -103,12 +103,6 @@ async function makeInvoicePdf({
     page.drawText(value, { x: drawX, y: yPos, font, size, color });
   };
 
-  const ensureSpace = required => {
-    if (y - required < protectedBottom) {
-      y = protectedBottom + required;
-    }
-  };
-
   // Header band
   page.drawRectangle({ x: 0, y: height - headerHeight, width, height: headerHeight, color: brandPrimary });
 
@@ -132,12 +126,7 @@ async function makeInvoicePdf({
     page.drawText(String(sellerOrg), { x: margin, y: headerContentY - 108, size: 12, font: regular, color: white });
   }
 
-  const metaBoxWidth = 220;
-  const metaBoxHeight = 96;
-  const metaX = width - margin - metaBoxWidth;
-  const metaY = height - margin + 8;
-  page.drawRectangle({ x: metaX, y: metaY - metaBoxHeight, width: metaBoxWidth, height: metaBoxHeight, color: white, borderColor: white, borderWidth: 0 });
-
+  const metaColumnX = width - margin - 220;
   const metaEntries = [
     ['Dato', formatDate(createdAt)],
     ['Forfallsdato', formatDate(dueDate)],
@@ -145,37 +134,44 @@ async function makeInvoicePdf({
     ['KID', kid]
   ];
 
-  let metaCursor = metaY - 24;
+  let metaCursor = height - margin - 14;
   metaEntries.forEach(([label, value]) => {
-    page.drawText(label, { x: metaX, y: metaCursor + 4, size: 10, font: regular, color: muted });
-    page.drawText(String(value || ''), { x: metaX, y: metaCursor - 12, size: 13, font: bold, color: brandDark });
-    metaCursor -= 28;
+    page.drawText(label, { x: metaColumnX, y: metaCursor + 10, size: 9, font: regular, color: lightDivider });
+    page.drawText(String(value || ''), { x: metaColumnX, y: metaCursor - 4, size: 12, font: bold, color: white });
+    metaCursor -= 30;
   });
 
   let y = height - headerHeight - 32;
 
-  const infoBoxHeight = buyerEmail ? 96 : 76;
-  ensureSpace(infoBoxHeight + 16);
-  const infoBottom = y - infoBoxHeight;
-  page.drawRectangle({ x: margin, y: infoBottom, width: contentWidth, height: infoBoxHeight, color: brandSoft, borderColor: tableBorder, borderWidth: 1 });
-  page.drawText('Fakturamottaker', { x: margin + 18, y: y - 18, size: 13, font: bold, color: brandDark });
-  page.drawText(buyerName || buyerEmail || 'Ukjent mottaker', { x: margin + 18, y: y - 36, size: 12, font: regular, color: textDark });
+  page.drawLine({
+    start: { x: margin, y: y + 10 },
+    end: { x: margin + contentWidth, y: y + 10 },
+    thickness: 1,
+    color: lightDivider
+  });
+
+  const buyerBlockTop = y;
+  const buyerLineHeight = 16;
+  page.drawText('Fakturamottaker', { x: margin, y: buyerBlockTop, size: 13, font: bold, color: brandDark });
+  page.drawText(buyerName || buyerEmail || 'Ukjent mottaker', { x: margin, y: buyerBlockTop - buyerLineHeight, size: 12, font: regular, color: textDark });
+  let buyerDetailsY = buyerBlockTop - buyerLineHeight * 2;
   if (buyerEmail) {
-    page.drawText(buyerEmail, { x: margin + 18, y: y - 52, size: 11, font: regular, color: slate });
+    page.drawText(buyerEmail, { x: margin, y: buyerDetailsY, size: 11, font: regular, color: slate });
+    buyerDetailsY -= buyerLineHeight;
   }
 
-  const issuerX = margin + contentWidth / 2 + 12;
-  page.drawText('Utsteder', { x: issuerX, y: y - 18, size: 13, font: bold, color: brandDark });
+  const issuerX = margin + contentWidth / 2 + 8;
+  page.drawText('Utsteder', { x: issuerX, y: buyerBlockTop, size: 13, font: bold, color: brandDark });
   const issuerLine = sellerOrg ? `${sellerName} – ${sellerOrg}` : sellerName;
-  page.drawText(String(issuerLine || sellerName), { x: issuerX, y: y - 36, size: 12, font: regular, color: textDark });
+  page.drawText(String(issuerLine || sellerName), { x: issuerX, y: buyerBlockTop - buyerLineHeight, size: 12, font: regular, color: textDark });
   if (baseUrl) {
-    page.drawText(String(baseUrl).replace(/\/$/, ''), { x: issuerX, y: y - 52, size: 11, font: regular, color: slate });
+    page.drawText(String(baseUrl).replace(/\/$/, ''), { x: issuerX, y: buyerBlockTop - buyerLineHeight * 2, size: 11, font: regular, color: slate });
   }
 
-  y = infoBottom - 32;
+  y = Math.min(buyerDetailsY, buyerBlockTop - buyerLineHeight * 3) - 24;
 
   page.drawText('Fakturadetaljer', { x: margin, y, size: 14, font: bold, color: brandDark });
-  y -= 26;
+  y -= 24;
 
   const columnWidths = [contentWidth * 0.52, contentWidth * 0.14, contentWidth * 0.14, contentWidth * 0.20];
   const columnX = [margin, margin + columnWidths[0], margin + columnWidths[0] + columnWidths[1], margin + columnWidths[0] + columnWidths[1] + columnWidths[2]];
@@ -200,7 +196,6 @@ async function makeInvoicePdf({
   let tableTop = y;
   const tableBottom = tableTop - tableHeight;
 
-  page.drawRectangle({ x: margin, y: tableBottom, width: contentWidth, height: tableHeight, color: white, borderColor: tableBorder, borderWidth: 1 });
   const headerBottom = tableTop - headerRowHeight;
   page.drawRectangle({ x: margin, y: headerBottom, width: contentWidth, height: headerRowHeight, color: brandPrimary });
 
@@ -223,13 +218,11 @@ async function makeInvoicePdf({
   let rowTop = headerBottom;
   bodyRowHeights.forEach((row, rowIndex) => {
     const rowBottom = rowTop - row.height;
-    const fillColor = rowIndex % 2 === 0 ? brandSoft : white;
-    page.drawRectangle({ x: margin, y: rowBottom, width: contentWidth, height: row.height, color: fillColor });
     page.drawLine({
       start: { x: margin, y: rowBottom },
       end: { x: margin + contentWidth, y: rowBottom },
       thickness: 0.5,
-      color: tableBorder
+      color: lightDivider
     });
 
     row.descLines.forEach((line, idx) => {
@@ -256,27 +249,30 @@ async function makeInvoicePdf({
 
   const totalBottom = tableBottom;
   const totalTop = totalBottom + totalRowHeight;
-  page.drawRectangle({ x: margin, y: totalBottom, width: contentWidth, height: totalRowHeight, color: brandSoft });
   page.drawLine({
-    start: { x: margin, y: totalBottom },
-    end: { x: margin + contentWidth, y: totalBottom },
+    start: { x: margin, y: totalTop },
+    end: { x: margin + contentWidth, y: totalTop },
     thickness: 0.75,
     color: tableBorder
   });
   drawRightAligned('Totalt å betale', columnX[2], columnWidths[2] + columnWidths[3] - 24, totalTop - 22, bold, 12, textDark);
   drawRightAligned(nok(amountNok), columnX[3], columnWidths[3] - 12, totalTop - 22, bold, 14, brandDark);
 
-  y = tableBottom - 44;
-  if (y < protectedBottom + 96) {
-    y = protectedBottom + 96;
+  y = tableBottom - 40;
+  if (y < protectedBottom + 100) {
+    y = protectedBottom + 100;
   }
 
-  const paymentBoxHeight = 116;
-  ensureSpace(paymentBoxHeight + 12);
-  const paymentBottom = y - paymentBoxHeight;
-  page.drawRectangle({ x: margin, y: paymentBottom, width: contentWidth, height: paymentBoxHeight, color: white, borderColor: tableBorder, borderWidth: 1 });
-  page.drawRectangle({ x: margin, y: paymentBottom + paymentBoxHeight - 26, width: contentWidth, height: 26, color: brandSoft });
-  page.drawText('Betalingsinformasjon', { x: margin + 18, y: y - 20, size: 12, font: bold, color: brandDark });
+  page.drawLine({
+    start: { x: margin, y: y },
+    end: { x: margin + contentWidth, y: y },
+    thickness: 0.75,
+    color: lightDivider
+  });
+  y -= 26;
+
+  page.drawText('Betalingsinformasjon', { x: margin, y, size: 12, font: bold, color: brandDark });
+  y -= 22;
 
   const paymentDetails = [
     ['Beløp', nok(amountNok)],
@@ -288,14 +284,13 @@ async function makeInvoicePdf({
     paymentDetails.push(['Mer informasjon', String(baseUrl).replace(/\/$/, '')]);
   }
 
-  let paymentRowY = y - 46;
   paymentDetails.forEach(([label, value]) => {
-    page.drawText(label, { x: margin + 18, y: paymentRowY, size: 11, font: bold, color: brandDark });
-    page.drawText(String(value || ''), { x: margin + 150, y: paymentRowY, size: 11, font: regular, color: textDark });
-    paymentRowY -= 18;
+    page.drawText(label, { x: margin, y, size: 11, font: bold, color: brandDark });
+    page.drawText(String(value || ''), { x: margin + 140, y, size: 11, font: regular, color: textDark });
+    y -= 18;
   });
 
-  const footerY = Math.max(paymentBottom - 38, protectedBottom);
+  const footerY = Math.max(y - 24, protectedBottom);
   page.drawLine({
     start: { x: margin, y: footerY },
     end: { x: margin + contentWidth, y: footerY },
