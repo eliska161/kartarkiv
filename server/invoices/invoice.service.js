@@ -1,31 +1,9 @@
-const fs = require('fs');
-const path = require('path');
-
 const pool = require('../database/connection');
 const { generateKid } = require('./invoice.kid');
 const { makeInvoicePdf } = require('./invoice.pdf');
 const { sendInvoiceEmail } = require('./invoice.email');
 
-const LOGO_RELATIVE_PATH = ['..', '..', 'client', 'public', 'uploads', 'logo', 'kartarkiv.png'];
-let cachedLogoDataUrl;
-
-function getLogoDataUrl() {
-  if (cachedLogoDataUrl !== undefined) {
-    return cachedLogoDataUrl;
-  }
-
-  const logoPath = path.join(__dirname, ...LOGO_RELATIVE_PATH);
-  try {
-    const logoBuffer = fs.readFileSync(logoPath);
-    const base64 = logoBuffer.toString('base64');
-    cachedLogoDataUrl = `data:image/png;base64,${base64}`;
-  } catch (error) {
-    cachedLogoDataUrl = null;
-    console.warn('⚠️  Could not load invoice email logo asset:', logoPath, error.message);
-  }
-
-  return cachedLogoDataUrl;
-}
+const LOGO_URL = 'https://i.ibb.co/PZmKX4sH/logo-uptime.png';
 
 function resolveAccountNumber(provided) {
   return (
@@ -61,7 +39,7 @@ function buildInvoiceEmailHtml({
   lineItems,
   baseUrl
 }) {
-  const logoDataUrl = getLogoDataUrl();
+  const logoDataUrl = LOGO_URL || null;
   const safeName = sanitizeText(name || '');
   const safeDue = sanitizeText(dueDate);
   const safeAccount = sanitizeText(accountNumber);

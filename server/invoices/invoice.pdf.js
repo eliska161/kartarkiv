@@ -1,33 +1,34 @@
-const fs = require('fs');
-const path = require('path');
 const { PDFDocument, StandardFonts, rgb } = require('pdf-lib');
 
-const LOGO_PATH = path.join(
-  __dirname,
-  '..',
-  '..',
-  'client',
-  'public',
-  'uploads',
-  'logo',
-  'kartarkiv.png'
-);
+const LOGO_URL = 'https://i.ibb.co/PZmKX4sH/logo-uptime.png';
 
-let cachedLogoBytes;
+let cachedLogoBytesPromise;
 
-function getLogoBytes() {
-  if (cachedLogoBytes !== undefined) {
-    return cachedLogoBytes;
+function fetchLogoBytes() {
+  if (cachedLogoBytesPromise) {
+    return cachedLogoBytesPromise;
   }
 
-  try {
-    cachedLogoBytes = fs.readFileSync(LOGO_PATH);
-  } catch (error) {
-    cachedLogoBytes = null;
-    console.warn('⚠️  Could not load invoice PDF logo asset:', LOGO_PATH, error.message);
+  if (typeof fetch !== 'function') {
+    console.warn('⚠️  Global fetch API unavailable; cannot load invoice PDF logo.');
+    cachedLogoBytesPromise = Promise.resolve(null);
+    return cachedLogoBytesPromise;
   }
 
-  return cachedLogoBytes;
+  cachedLogoBytesPromise = fetch(LOGO_URL)
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      return response.arrayBuffer();
+    })
+    .then(buffer => Buffer.from(buffer))
+    .catch(error => {
+      console.warn('⚠️  Could not load invoice PDF logo asset:', LOGO_URL, error.message);
+      return null;
+    });
+
+  return cachedLogoBytesPromise;
 }
 
 async function makeInvoicePdf({
@@ -65,7 +66,7 @@ async function makeInvoicePdf({
   const white = rgb(1, 1, 1);
 
   let logoImage;
-  const logoBytes = getLogoBytes();
+  const logoBytes = await fetchLogoBytes();
   if (logoBytes) {
     try {
       logoImage = await pdfDoc.embedPng(logoBytes);
