@@ -19,6 +19,7 @@ const paymentRoutes = require('./routes/payments');
 const storageRoutes = require('./routes/storage');
 const { requestLogger, getLogs, clearLogs } = require('./middleware/requestLogger');
 const monitoringRoutes = require('./routes/monitoring');
+const { startInvoiceReminderWorker } = require('./jobs/invoiceReminders');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -494,6 +495,7 @@ app.use('*', (req, res) => {
 });
 
 try {
+  startInvoiceReminderWorker();
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Kartarkiv server running on port ${PORT}`);
     console.log(`📁 Environment: ${process.env.NODE_ENV || 'development'}`);

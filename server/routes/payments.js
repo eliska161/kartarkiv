@@ -3,6 +3,7 @@ const pool = require('../database/connection');
 const { authenticateUser, requireSuperAdmin } = require('../middleware/auth-clerk-fixed');
 const { sendReceiptEmail } = require('../invoices/invoice.email');
 const { createAndSendInvoice } = require('../invoices/invoice.service');
+const { sendInvoiceReminderSms, resolvePaymentUrl } = require('../notifications/sms.service');
 
 const router = express.Router();
 
@@ -16,6 +17,20 @@ const STRIPE_LOCALE = 'nb';
 const STRIPE_FEE_PERCENT_NUMERATOR = 24; // 2.4%
 const STRIPE_FEE_PERCENT_DENOMINATOR = 1000;
 const STRIPE_FEE_FIXED_CENTS = 200; // NOK 2,00
+
+const resolveAccountNumber = provided =>
+  process.env.INVOICE_ACCOUNT_NUMBER || provided || process.env.SB1_ACCOUNT_NUMBER || '00000000000';
+
+const extractPhoneValue = value => {
+  if (!value) {
+    return '';
+  }
+  const trimmed = String(value).trim();
+  if (!trimmed || trimmed.toLowerCase() === 'mangler telefon') {
+    return '';
+  }
+  return trimmed;
+};
 
 const callStripe = async (method, path, params = null) => {
   if (!stripeSecretKey) {
@@ -338,6 +353,8 @@ const ensureTables = async () => {
       pdf_url TEXT,
       paid BOOLEAN DEFAULT FALSE,
       paid_at TIMESTAMP,
+      sms_reminder_sent_at TIMESTAMP,
+      sms_reminder_last_manual_at TIMESTAMP,
       invoice_request_address TEXT,
       created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
       updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW()
@@ -366,6 +383,8 @@ const ensureTables = async () => {
   await pool.query('ALTER TABLE club_invoices ADD COLUMN IF NOT EXISTS pdf_url TEXT');
   await pool.query('ALTER TABLE club_invoices ADD COLUMN IF NOT EXISTS paid BOOLEAN DEFAULT FALSE');
   await pool.query('ALTER TABLE club_invoices ADD COLUMN IF NOT EXISTS paid_at TIMESTAMP');
+  await pool.query('ALTER TABLE club_invoices ADD COLUMN IF NOT EXISTS sms_reminder_sent_at TIMESTAMP');
+  await pool.query('ALTER TABLE club_invoices ADD COLUMN IF NOT EXISTS sms_reminder_last_manual_at TIMESTAMP');
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS club_invoice_recipients (
@@ -453,8 +472,7 @@ router.post('/invoices/:invoiceId/request-invoice', authenticateUser, async (req
 
   const normalizedEmail = String(contactEmail || req.user.email || '').trim();
   const normalizedName = String(contactName || '').trim();
-  const normalizedPhoneRaw = contactPhone == null ? '' : String(contactPhone).trim();
-  const normalizedPhone = normalizedPhoneRaw;
+  const normalizedPhone = extractPhoneValue(contactPhone == null ? '' : String(contactPhone));
   const normalizedAddressRaw = contactAddress == null ? '' : String(contactAddress).trim();
   const normalizedAddress = normalizedAddressRaw;
   if (!normalizedEmail) {
@@ -479,11 +497,7 @@ router.post('/invoices/:invoiceId/request-invoice', authenticateUser, async (req
       return res.status(400).json({ error: 'Fakturaen er allerede betalt' });
     }
 
-    const accountNumber =
-      process.env.INVOICE_ACCOUNT_NUMBER ||
-      invoice.account_number ||
-      process.env.SB1_ACCOUNT_NUMBER ||
-      '00000000000';
+    const accountNumber = resolveAccountNumber(invoice.account_number);
     await createAndSendInvoice({
       invoiceId: invoice.id,
       email: normalizedEmail,
@@ -557,6 +571,8 @@ const getInvoices = async (invoiceId = null) => {
         i.invoice_request_name,
         i.invoice_request_phone,
         i.invoice_request_address,
+        i.sms_reminder_sent_at,
+        i.sms_reminder_last_manual_at,
         i.created_at,
         i.updated_at,
         COALESCE(
@@ -776,6 +792,67 @@ router.post('/invoices/:invoiceId/mark-paid', authenticateUser, requireSuperAdmi
     return res.status(500).json({ error: 'Kunne ikke oppdatere faktura' });
   }
 });
+
+router.post(
+  '/invoices/:invoiceId/send-sms-reminder',
+  authenticateUser,
+  requireSuperAdmin,
+  async (req, res) => {
+    const invoiceId = Number(req.params.invoiceId);
+    if (!Number.isInteger(invoiceId)) {
+      return res.status(400).json({ error: 'Ugyldig faktura-ID' });
+    }
+
+    const overridePhone = extractPhoneValue(req.body?.phone || req.body?.phoneOverride);
+
+    try {
+      const [invoice] = await getInvoices(invoiceId);
+      if (!invoice) {
+        return res.status(404).json({ error: 'Fant ikke faktura' });
+      }
+
+      if (invoice.status === 'paid' || invoice.paid) {
+        return res.status(400).json({ error: 'Fakturaen er allerede betalt' });
+      }
+
+      const phone = extractPhoneValue(overridePhone || invoice.invoice_request_phone);
+      if (!phone) {
+        return res
+          .status(400)
+          .json({ error: 'Fakturaen mangler et gyldig telefonnummer. Oppdater mottakeren først.' });
+      }
+
+      await sendInvoiceReminderSms({
+        invoiceId,
+        phoneNumber: phone,
+        amountNok: invoice.total_amount,
+        dueDate: invoice.due_date,
+        paymentUrl: resolvePaymentUrl(invoiceId),
+        kid: invoice.kid,
+        accountNumber: resolveAccountNumber(invoice.account_number),
+        recipientName: invoice.invoice_request_name
+      });
+
+      await pool.query(
+        `
+          UPDATE club_invoices
+          SET sms_reminder_last_manual_at = NOW(), updated_at = NOW()
+          WHERE id = $1
+        `,
+        [invoiceId]
+      );
+
+      const [updatedInvoice] = await getInvoices(invoiceId);
+      return res.json({
+        invoice: updatedInvoice || invoice,
+        status: 'sent'
+      });
+    } catch (error) {
+      console.error('Failed to send manual SMS reminder:', error);
+      return res.status(500).json({ error: 'Kunne ikke sende SMS-påminnelse' });
+    }
+  }
+);
 
 router.post('/invoices/:invoiceId/checkout', authenticateUser, async (req, res) => {
   if (!stripeSecretKey) {

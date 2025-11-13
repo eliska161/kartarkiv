@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { AxiosResponse } from 'axios';
 import { apiGet, apiPost } from '../utils/apiClient';
-import { CheckCircle, CreditCard, FileText, Loader2, PlusCircle, Send, Wallet, X } from 'lucide-react';
+import { CheckCircle, CreditCard, FileText, Loader2, MessageSquare, PlusCircle, Send, Wallet, X } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 import AddressAutocompleteInput from './payments/AddressAutocompleteInput';
 
@@ -39,6 +39,8 @@ interface Invoice {
   invoice_request_name: string | null;
   invoice_request_phone: string | null;
   invoice_request_address: string | null;
+  sms_reminder_sent_at?: string | null;
+  sms_reminder_last_manual_at?: string | null;
   kid?: string | null;
   account_number?: string | null;
   paid?: boolean;
@@ -103,6 +105,23 @@ const formatDate = (value: string | null) => {
   }).format(new Date(value));
 };
 
+const formatDateTime = (value: string | null | undefined) => {
+  if (!value) {
+    return '';
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return '';
+  }
+  return new Intl.DateTimeFormat('nb-NO', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  }).format(parsed);
+};
+
 const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) => {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
@@ -119,6 +138,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
   const [recipients, setRecipients] = useState<InvoiceRecipient[]>([]);
   const [recipientsLoading, setRecipientsLoading] = useState(false);
   const [recipientSaving, setRecipientSaving] = useState(false);
+  const [smsSendingId, setSmsSendingId] = useState<number | null>(null);
   const hasHandledCheckoutRef = useRef(false);
   const { showSuccess, showError, showWarning } = useToast();
   const collator = useMemo(() => new Intl.Collator('nb', { sensitivity: 'base' }), []);
@@ -492,6 +512,32 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
     setInvoiceModalSelectedRecipient('custom');
   };
 
+  const handleSendSmsReminder = useCallback(
+    async (invoice: Invoice) => {
+      const phone = sanitizePresetValue(invoice.invoice_request_phone);
+      if (!phone) {
+        showWarning('Telefonnummer mangler', 'Legg til et gyldig telefonnummer før du sender SMS.');
+        return;
+      }
+
+      setSmsSendingId(invoice.id);
+      try {
+        const { data } = (await apiPost(
+          `/api/payments/invoices/${invoice.id}/send-sms-reminder`
+        )) as AxiosResponse<{ invoice: Invoice }>;
+
+        setInvoices(prev => prev.map(item => (item.id === invoice.id ? data.invoice : item)));
+        showSuccess('SMS sendt', `Påminnelse sendt til ${phone}.`);
+      } catch (error: any) {
+        console.error('Kunne ikke sende SMS', error);
+        showError('Kunne ikke sende SMS', error?.response?.data?.error || error?.message || 'Ukjent feil');
+      } finally {
+        setSmsSendingId(current => (current === invoice.id ? null : current));
+      }
+    },
+    [showError, showSuccess, showWarning, setInvoices]
+  );
+
   const handleRecipientSelectionChange = (value: string) => {
     setInvoiceModalSelectedRecipient(value);
 
@@ -846,6 +892,8 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
           <div className="space-y-4">
             {invoices.map(invoice => {
               const status = statusConfig[invoice.status];
+              const phoneDisplay = sanitizePresetValue(invoice.invoice_request_phone);
+              const hasPhone = Boolean(phoneDisplay);
 
               return (
                 <div key={invoice.id} className="border border-gray-200 rounded-lg p-6">
@@ -873,6 +921,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
                           <div>Adresse: {invoice.invoice_request_address}</div>
 
                         )}
+                        {phoneDisplay && <div>Telefon: {phoneDisplay}</div>}
                         {invoice.kid && (
                           <div>KID: {invoice.kid}</div>
                         )}
@@ -892,6 +941,19 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
                           </div>
                         )}
 
+                        {invoice.sms_reminder_sent_at && (
+                          <div className="text-xs text-emerald-600">
+                            Automatisk SMS sendt {formatDateTime(invoice.sms_reminder_sent_at)}
+                          </div>
+                        )}
+
+                        {invoice.sms_reminder_last_manual_at && (
+                          <div className="text-xs text-gray-500">
+                            Manuell SMS sendt {formatDateTime(invoice.sms_reminder_last_manual_at)}
+                          </div>
+                        )}
+
+
                         <div className="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-end gap-3">
                           <button
                             type="button"
@@ -902,7 +964,31 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
                             Send faktura på e-post
                           </button>
 
-                          {isSuperAdmin && (
+                        {isSuperAdmin && (
+                          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                            <button
+                              type="button"
+                              onClick={() => handleSendSmsReminder(invoice)}
+                              disabled={!hasPhone || smsSendingId === invoice.id}
+                              className={`flex items-center justify-center px-4 py-2 rounded-lg text-sm font-medium border transition ${
+                                hasPhone
+                                  ? 'border-emerald-500 text-emerald-700 hover:bg-emerald-50'
+                                  : 'border-gray-200 text-gray-400 cursor-not-allowed'
+                              }`}
+                            >
+                              {smsSendingId === invoice.id ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                  Sender SMS...
+                                </>
+                              ) : (
+                                <>
+                                  <MessageSquare className="h-4 w-4 mr-2" />
+                                  {'Send SMS-p\u00E5minnelse'}
+                                </>
+                              )}
+                            </button>
+
                             <button
                               type="button"
                               onClick={async () => {
@@ -929,7 +1015,8 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ isSuperAdmin }) =
                             >
                               Marker som betalt
                             </button>
-                          )}
+                          </div>
+                        )}
                         </div>
                       </div>
                     </div>
