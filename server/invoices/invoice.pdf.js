@@ -134,7 +134,7 @@ async function makeInvoicePdf({
     ['KID', kid]
   ];
 
-  let metaCursor = height - margin - 14;
+  let metaCursor = height - margin - 2;
   metaEntries.forEach(([label, value]) => {
     page.drawText(label, { x: metaColumnX, y: metaCursor + 10, size: 9, font: regular, color: lightDivider });
     page.drawText(String(value || ''), { x: metaColumnX, y: metaCursor - 4, size: 12, font: bold, color: white });
@@ -162,10 +162,27 @@ async function makeInvoicePdf({
 
   const issuerX = margin + contentWidth / 2 + 8;
   page.drawText('Utsteder', { x: issuerX, y: buyerBlockTop, size: 13, font: bold, color: brandDark });
-  const issuerLine = sellerOrg ? `${sellerName} – ${sellerOrg}` : sellerName;
-  page.drawText(String(issuerLine || sellerName), { x: issuerX, y: buyerBlockTop - buyerLineHeight, size: 12, font: regular, color: textDark });
+  const issuerLines = [
+    { text: 'Kartarkiv CO', size: 12, color: textDark },
+    { text: 'hei@kartarkiv.co', size: 11, color: slate }
+  ];
+  issuerLines.forEach((line, index) => {
+    page.drawText(line.text, {
+      x: issuerX,
+      y: buyerBlockTop - buyerLineHeight * (index + 1),
+      size: line.size,
+      font: regular,
+      color: line.color
+    });
+  });
   if (baseUrl) {
-    page.drawText(String(baseUrl).replace(/\/$/, ''), { x: issuerX, y: buyerBlockTop - buyerLineHeight * 2, size: 11, font: regular, color: slate });
+    page.drawText(String(baseUrl).replace(/\/$/, ''), {
+      x: issuerX,
+      y: buyerBlockTop - buyerLineHeight * (issuerLines.length + 1),
+      size: 11,
+      font: regular,
+      color: slate
+    });
   }
 
   y = Math.min(buyerDetailsY, buyerBlockTop - buyerLineHeight * 3) - 24;
@@ -255,7 +272,13 @@ async function makeInvoicePdf({
     thickness: 0.75,
     color: tableBorder
   });
-  drawRightAligned('Totalt å betale', columnX[2], columnWidths[2] + columnWidths[3] - 24, totalTop - 22, bold, 12, textDark);
+  page.drawText('Totalt å betale', {
+    x: columnX[2] + 12,
+    y: totalTop - 22,
+    size: 12,
+    font: bold,
+    color: textDark
+  });
   drawRightAligned(nok(amountNok), columnX[3], columnWidths[3] - 12, totalTop - 22, bold, 14, brandDark);
 
   y = tableBottom - 40;
