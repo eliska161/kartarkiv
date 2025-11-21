@@ -1,8 +1,22 @@
 const LOG_PREFIX = '[SmsService]';
 
-const DEFAULT_PROVIDER = 'textbelt';
+const DEFAULT_PROVIDER = 'smsmobileapi';
+
+// SMSMobileAPI config (FREE - uses your phone)
+const SMSMOBILEAPI_ENDPOINT = 'https://smsmobileapi.com/api/v1/send';
+const SMSMOBILEAPI_API_KEY = process.env.SMSMOBILEAPI_API_KEY;
+const SMSMOBILEAPI_DEVICE_ID = process.env.SMSMOBILEAPI_DEVICE_ID; // Optional, for multi-device
+
+// Textbelt config (backup)
 const TEXTBELT_ENDPOINT = process.env.SMS_TEXTBELT_ENDPOINT || 'https://textbelt.com/text';
 const TEXTBELT_API_KEY = process.env.SMS_TEXTBELT_API_KEY || 'textbelt';
+
+// Twilio config (backup)
+const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
+const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
+const TWILIO_PHONE_NUMBER = process.env.TWILIO_PHONE_NUMBER;
+const TWILIO_MESSAGING_SERVICE_SID = process.env.TWILIO_MESSAGING_SERVICE_SID;
+const TWILIO_ALPHANUMERIC_SENDER = process.env.TWILIO_ALPHANUMERIC_SENDER;
 
 const DISABLE_SMS =
   String(process.env.DISABLE_SMS_SENDING || process.env.DISABLE_SMS_REMINDERS || '').toLowerCase() === 'true';
@@ -76,6 +90,51 @@ const normalizePhoneNumber = raw => {
   return `+${withoutLeadingZero}`;
 };
 
+const sendViaSMSMobileAPI = async ({ to, message }) => {
+  if (!SMSMOBILEAPI_API_KEY) {
+    throw new Error('SMSMobileAPI not configured (SMSMOBILEAPI_API_KEY required)');
+  }
+
+  const payload = {
+    phoneNumbers: [to],
+    message: message
+  };
+
+  // Optional: specify which device to use if you have multiple phones
+  if (SMSMOBILEAPI_DEVICE_ID) {
+    payload.deviceId = SMSMOBILEAPI_DEVICE_ID;
+  }
+
+  const response = await fetch(SMSMOBILEAPI_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${SMSMOBILEAPI_API_KEY}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(payload)
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`SMSMobileAPI request failed (${response.status}): ${text}`);
+  }
+
+  const result = await response.json();
+  
+  // Check if the API returned an error
+  if (result.error || !result.success) {
+    const errorMsg = result.message || result.error || 'Unknown error';
+    throw new Error(`SMSMobileAPI error: ${errorMsg}`);
+  }
+
+  return {
+    success: true,
+    messageId: result.data?.id || result.id,
+    status: result.data?.status || result.status,
+    provider: 'smsmobileapi'
+  };
+};
+
 const sendViaTextbelt = async ({ to, message }) => {
   const response = await fetch(TEXTBELT_ENDPOINT, {
     method: 'POST',
@@ -104,6 +163,56 @@ const sendViaTextbelt = async ({ to, message }) => {
   return payload;
 };
 
+const sendViaTwilio = async ({ to, message }) => {
+  if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN) {
+    throw new Error('Twilio credentials not configured (TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN required)');
+  }
+
+  let fromValue;
+  if (TWILIO_MESSAGING_SERVICE_SID) {
+    fromValue = TWILIO_MESSAGING_SERVICE_SID;
+  } else if (TWILIO_ALPHANUMERIC_SENDER) {
+    fromValue = TWILIO_ALPHANUMERIC_SENDER;
+  } else if (TWILIO_PHONE_NUMBER) {
+    fromValue = TWILIO_PHONE_NUMBER;
+  } else {
+    throw new Error('Twilio sender not configured');
+  }
+
+  const url = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`;
+  const auth = Buffer.from(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`).toString('base64');
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Basic ${auth}`,
+      'Content-Type': 'application/x-www-form-urlencoded'
+    },
+    body: new URLSearchParams({
+      To: to,
+      From: fromValue,
+      Body: message
+    })
+  });
+
+  const payload = await response.json();
+
+  if (!response.ok) {
+    const errorMsg = payload?.message || payload?.error?.message || 'Unknown Twilio error';
+    const err = new Error(`Twilio API error (${response.status}): ${errorMsg}`);
+    err.details = payload;
+    throw err;
+  }
+
+  return {
+    sid: payload.sid,
+    status: payload.status,
+    from: payload.from,
+    to: payload.to,
+    dateCreated: payload.date_created
+  };
+};
+
 const sendSms = async ({ to, message }) => {
   if (!to) {
     throw new Error('SMS recipient missing');
@@ -121,9 +230,17 @@ const sendSms = async ({ to, message }) => {
     return { mocked: true };
   }
 
-  switch ((process.env.SMS_PROVIDER || DEFAULT_PROVIDER).toLowerCase()) {
-    default:
+  const provider = (process.env.SMS_PROVIDER || DEFAULT_PROVIDER).toLowerCase();
+
+  switch (provider) {
+    case 'smsmobileapi':
+      return sendViaSMSMobileAPI({ to, message });
+    case 'twilio':
+      return sendViaTwilio({ to, message });
+    case 'textbelt':
       return sendViaTextbelt({ to, message });
+    default:
+      throw new Error(`Unknown SMS provider: ${provider}`);
   }
 };
 
