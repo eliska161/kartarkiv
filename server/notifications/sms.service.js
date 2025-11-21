@@ -8,31 +8,53 @@ const SMSMOBILEAPI_DEVICE_ID = process.env.SMSMOBILEAPI_DEVICE_ID || null; // ma
 const DISABLE_SMS =
   String(process.env.DISABLE_SMS_SENDING || process.env.DISABLE_SMS_REMINDERS || '').toLowerCase() === 'true';
 
-const resolveBaseUrl = () =>
-  (process.env.INVOICE_PAYMENT_BASE_URL ||
+const resolveBaseUrl = () => {
+  const envBase =
+    process.env.INVOICE_PAYMENT_BASE_URL ||
     process.env.CLIENT_PAYMENT_BASE_URL ||
     process.env.CLIENT_BASE_URL ||
     process.env.BASE_URL ||
-    'https://kartarkiv.co'
-  ).replace(/\/+$|\s+$/g, '');
+    'https://kartarkiv.co';
 
-const resolvePaymentUrl = invoiceId => {
-  const template = process.env.INVOICE_PAYMENT_URL_TEMPLATE;
-  if (template && template.includes('{invoiceId}')) {
-    return template.replace('{invoiceId}', String(invoiceId));
+  let clean = String(envBase).trim();
+
+  // Hvis protokoll mangler, legg til https://
+  if (!/^https?:\/\//i.test(clean)) {
+    clean = 'https://' + clean.replace(/^\/+/, '');
   }
-  const base = resolveBaseUrl();
-  return `${base}/admin/betaling?invoiceId=${invoiceId}`;
+
+  // Fjern trailing skråstrek
+  clean = clean.replace(/\/+$/, '');
+
+  try {
+    // Normaliser via URL-konstructor
+    const u = new URL(clean);
+    return `${u.protocol}//${u.hostname}${u.port ? ':'+u.port : ''}${u.pathname.replace(/\/+$/,'')}`;
+  } catch (e) {
+    // fallback: return hva vi har
+    return clean;
+  }
 };
 
-const formatCurrency = amount =>
-  new Intl.NumberFormat('nb-NO', { style: 'currency', currency: 'NOK' }).format(Number(amount || 0));
+const resolvePaymentUrl = invoiceId => {
+  // bruk URL og searchParams for å bygge korrekt querystring
+  const base = resolveBaseUrl();
+  // Lag et URL-objekt; hvis path mangler, legg den til
+  let url;
+  try {
+    url = new URL(base);
+  } catch (e) {
+    // fallback hvis base er noe uventet
+    url = new URL('https://kartarkiv.co');
+  }
 
-const formatDate = value => {
-  if (!value) return 'ukjent dato';
-  const dt = new Date(value);
-  if (Number.isNaN(dt.getTime())) return 'ukjent dato';
-  return new Intl.DateTimeFormat('nb-NO', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(dt);
+  // Sørg for at pathen /admin/betaling er til stedet (erstatt eventuell trailing)
+  url.pathname = (url.pathname.replace(/\/+$/,'') + '/admin/betaling').replace(/\/+/g,'/');
+
+  // Sett invoiceId korrekt via searchParams
+  url.searchParams.set('invoiceId', String(invoiceId));
+
+  return url.toString();
 };
 
 const normalizePhoneNumber = raw => {
