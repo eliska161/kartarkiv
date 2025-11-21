@@ -1,9 +1,10 @@
-// sms-sender-smsmobileapi.js
+// sms-sender-smsmobileapi.js (updated)
 const LOG_PREFIX = '[SmsService-SMSMobileAPI]';
 
-const SMSMOBILEAPI_ENDPOINT = process.env.SMSMOBILEAPI_ENDPOINT || 'https://smsmobileapi.com/api/v1/send';
+// Use the documented API endpoint by default
+const SMSMOBILEAPI_ENDPOINT = process.env.SMSMOBILEAPI_ENDPOINT || 'https://api.smsmobileapi.com/sendsms/';
 const SMSMOBILEAPI_API_KEY = process.env.SMSMOBILEAPI_API_KEY;
-const SMSMOBILEAPI_DEVICE_ID = process.env.SMSMOBILEAPI_DEVICE_ID || null;
+const SMSMOBILEAPI_DEVICE_ID = process.env.SMSMOBILEAPI_DEVICE_ID || null; // maps to sIdentifiant
 const DISABLE_SMS =
   String(process.env.DISABLE_SMS_SENDING || process.env.DISABLE_SMS_REMINDERS || '').toLowerCase() === 'true';
 
@@ -12,8 +13,8 @@ const resolveBaseUrl = () =>
     process.env.CLIENT_PAYMENT_BASE_URL ||
     process.env.CLIENT_BASE_URL ||
     process.env.BASE_URL ||
-    'https://kartarkiv.no'
-  ).replace(/\/+$/, '');
+    'https://kartarkiv.co'
+  ).replace(/\/+$|\s+$/g, '');
 
 const resolvePaymentUrl = invoiceId => {
   const template = process.env.INVOICE_PAYMENT_URL_TEMPLATE;
@@ -60,59 +61,75 @@ const buildReminderMessage = ({ invoiceId, amountNok, dueDate, paymentUrl, kid, 
   ].map(p => p.trim()).filter(Boolean).join(' ');
 };
 
-// Core: send via SMSMobileAPI only
+// Use GET (simpler for this API) but fall back to POST if environment requires it
 const sendViaSMSMobileAPI = async ({ to, message }) => {
   if (!SMSMOBILEAPI_API_KEY) {
     throw new Error('SMSMobileAPI not configured (SMSMOBILEAPI_API_KEY required)');
   }
 
-  // Make sure fetch exists (node >=18 has it). If not, user should polyfill.
   if (typeof fetch !== 'function') {
     throw new Error(
       'Fetch API not available. In Node <18 install a polyfill (e.g. npm i node-fetch@2) and set global.fetch = require("node-fetch").'
     );
   }
 
-  const payload = {
-    phoneNumbers: [to],
-    message
-  };
-  if (SMSMOBILEAPI_DEVICE_ID) payload.deviceId = SMSMOBILEAPI_DEVICE_ID;
-
-  console.debug(`${LOG_PREFIX} POST ${SMSMOBILEAPI_ENDPOINT} payload:`, payload);
-
-  const res = await fetch(SMSMOBILEAPI_ENDPOINT, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${SMSMOBILEAPI_API_KEY}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(payload)
+  // Build params according to documented API
+  const params = new URLSearchParams({
+    apikey: SMSMOBILEAPI_API_KEY,
+    recipients: to,
+    message,
+    sendsms: '1'
   });
 
-  const text = await res.text().catch(() => null);
-  let json = null;
-  try { json = text ? JSON.parse(text) : null; } catch (e) {
-    // non-JSON response
-    throw new Error(`SMSMobileAPI returned non-JSON response (HTTP ${res.status}): ${text}`);
+  if (SMSMOBILEAPI_DEVICE_ID) {
+    params.set('sIdentifiant', SMSMOBILEAPI_DEVICE_ID);
   }
 
-  // Accept a few common shapes: { success: true, data: {...} } OR { id:..., status:... } etc.
-  const okish = !!(json && (json.success === true || json.data || json.id));
-  if (!res.ok || !okish) {
-    const msg = json?.message || json?.error || json?.status || text || `HTTP ${res.status}`;
-    const err = new Error(`SMSMobileAPI request failed (${res.status}): ${msg}`);
-    err.raw = json;
+  const url = `${SMSMOBILEAPI_ENDPOINT}?${params.toString()}`;
+
+  // Minimal logging to avoid hitting log-rate limits on hosts like Railway
+  console.info(`${LOG_PREFIX} Sending SMS to ${to} via SMSMobileAPI (GET)`);
+
+  // Attempt GET first
+  let res;
+  try {
+    res = await fetch(url, { method: 'GET' });
+  } catch (err) {
+    // network/TLS/proxy error — give helpful message
+    console.error(`${LOG_PREFIX} network error when calling SMSMobileAPI:`, err && err.message);
     throw err;
   }
 
-  return {
-    success: true,
-    messageId: json?.data?.id || json?.id || null,
-    status: json?.data?.status || json?.status || 'unknown',
-    raw: json,
-    provider: 'smsmobileapi'
-  };
+  const contentType = (res.headers.get('content-type') || '').toLowerCase();
+  const status = res.status;
+  const text = await res.text().catch(() => '');
+
+  // If the server returns HTML (WordPress page / error), provide concise diagnostic
+  if (!contentType.includes('application/json') && !contentType.includes('text/plain')) {
+    const snippet = text ? text.slice(0, 1000) : '';
+    const err = new Error(
+      `SMSMobileAPI returned unexpected content-type (HTTP ${status}, content-type=${contentType}). Snippet: ${snippet.slice(0,300)}`
+    );
+    err.status = status;
+    err.contentType = contentType;
+    err.raw = snippet;
+    console.error(`${LOG_PREFIX} Non-API response from SMSMobileAPI:`, { status, contentType, snippet: snippet.slice(0,200) });
+    throw err;
+  }
+
+  // The API may return plain text like "SMS SENT" or a JSON. Accept both.
+  // Try to parse JSON if content-type indicates it
+  let parsed = null;
+  if (contentType.includes('application/json')) {
+    try { parsed = JSON.parse(text); } catch (e) { parsed = null; }
+  }
+
+  // If not JSON, but text present, return it as raw
+  if (!res.ok) {
+    throw new Error(`SMSMobileAPI HTTP ${status}: ${text}`);
+  }
+
+  return { success: true, raw: parsed || text, provider: 'smsmobileapi' };
 };
 
 const sendSms = async ({ to, message }) => {
@@ -122,10 +139,11 @@ const sendSms = async ({ to, message }) => {
     console.info(`${LOG_PREFIX} SMS disabled; skipping send to ${to}. Message="${message}"`);
     return { mocked: true };
   }
+
   try {
     return await sendViaSMSMobileAPI({ to, message });
   } catch (err) {
-    console.error(`${LOG_PREFIX} sendSms error:`, err && err.message, err && err.raw ? err.raw : '');
+    console.error(`${LOG_PREFIX} sendSms error:`, err && err.message);
     throw err;
   }
 };
@@ -159,11 +177,8 @@ const sendInvoiceReminderSms = async ({
   return { providerResponse, phone: normalizedPhone, message, paymentUrl: url };
 };
 
-// Utility: quick credential check (useful for CI / health checks)
 const ping = async () => {
   if (!SMSMOBILEAPI_API_KEY) throw new Error('Missing SMSMOBILEAPI_API_KEY');
-  // A light-weight test: call send with a noop message and invalid phone might return error but confirms auth works.
-  // If SMSMobileAPI has a dedicated 'test' endpoint, replace with that according to their docs.
   return { ok: true, endpoint: SMSMOBILEAPI_ENDPOINT };
 };
 
