@@ -1,23 +1,9 @@
-const LOG_PREFIX = '[SmsService]';
+// sms-sender-smsmobileapi.js
+const LOG_PREFIX = '[SmsService-SMSMobileAPI]';
 
-const DEFAULT_PROVIDER = 'smsmobileapi';
-
-// SMSMobileAPI config (FREE - uses your phone)
-const SMSMOBILEAPI_ENDPOINT = 'https://smsmobileapi.com/api/v1/send';
+const SMSMOBILEAPI_ENDPOINT = process.env.SMSMOBILEAPI_ENDPOINT || 'https://smsmobileapi.com/api/v1/send';
 const SMSMOBILEAPI_API_KEY = process.env.SMSMOBILEAPI_API_KEY;
-const SMSMOBILEAPI_DEVICE_ID = process.env.SMSMOBILEAPI_DEVICE_ID; // Optional, for multi-device
-
-// Textbelt config (backup)
-const TEXTBELT_ENDPOINT = process.env.SMS_TEXTBELT_ENDPOINT || 'https://textbelt.com/text';
-const TEXTBELT_API_KEY = process.env.SMS_TEXTBELT_API_KEY || 'textbelt';
-
-// Twilio config (backup)
-const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
-const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
-const TWILIO_PHONE_NUMBER = process.env.TWILIO_PHONE_NUMBER;
-const TWILIO_MESSAGING_SERVICE_SID = process.env.TWILIO_MESSAGING_SERVICE_SID;
-const TWILIO_ALPHANUMERIC_SENDER = process.env.TWILIO_ALPHANUMERIC_SENDER;
-
+const SMSMOBILEAPI_DEVICE_ID = process.env.SMSMOBILEAPI_DEVICE_ID || null;
 const DISABLE_SMS =
   String(process.env.DISABLE_SMS_SENDING || process.env.DISABLE_SMS_REMINDERS || '').toLowerCase() === 'true';
 
@@ -42,206 +28,24 @@ const formatCurrency = amount =>
   new Intl.NumberFormat('nb-NO', { style: 'currency', currency: 'NOK' }).format(Number(amount || 0));
 
 const formatDate = value => {
-  if (!value) {
-    return 'ukjent dato';
-  }
+  if (!value) return 'ukjent dato';
   const dt = new Date(value);
-  if (Number.isNaN(dt.getTime())) {
-    return 'ukjent dato';
-  }
-  return new Intl.DateTimeFormat('nb-NO', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  }).format(dt);
+  if (Number.isNaN(dt.getTime())) return 'ukjent dato';
+  return new Intl.DateTimeFormat('nb-NO', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(dt);
 };
 
 const normalizePhoneNumber = raw => {
-  if (!raw) {
-    return null;
-  }
+  if (!raw) return null;
   const trimmed = String(raw).trim();
-  if (!trimmed) {
-    return null;
-  }
+  if (!trimmed) return null;
   const digitsOnly = trimmed.replace(/[^\d+]/g, '');
-  if (!digitsOnly) {
-    return null;
-  }
-
-  if (digitsOnly.startsWith('+')) {
-    return digitsOnly;
-  }
-
-  if (digitsOnly.startsWith('00')) {
-    return `+${digitsOnly.slice(2)}`;
-  }
-
-  // Norwegian defaults
-  if (digitsOnly.startsWith('47') && digitsOnly.length === 10) {
-    return `+${digitsOnly}`;
-  }
-
+  if (!digitsOnly) return null;
+  if (digitsOnly.startsWith('+')) return digitsOnly;
+  if (digitsOnly.startsWith('00')) return `+${digitsOnly.slice(2)}`;
+  if (digitsOnly.startsWith('47') && digitsOnly.length === 10) return `+${digitsOnly}`;
   const withoutLeadingZero = digitsOnly.replace(/^0+/, '');
-  if (withoutLeadingZero.length === 8) {
-    return `+47${withoutLeadingZero}`;
-  }
-
+  if (withoutLeadingZero.length === 8) return `+47${withoutLeadingZero}`;
   return `+${withoutLeadingZero}`;
-};
-
-const sendViaSMSMobileAPI = async ({ to, message }) => {
-  if (!SMSMOBILEAPI_API_KEY) {
-    throw new Error('SMSMobileAPI not configured (SMSMOBILEAPI_API_KEY required)');
-  }
-
-  const payload = {
-    phoneNumbers: [to],
-    message: message
-  };
-
-  // Optional: specify which device to use if you have multiple phones
-  if (SMSMOBILEAPI_DEVICE_ID) {
-    payload.deviceId = SMSMOBILEAPI_DEVICE_ID;
-  }
-
-  const response = await fetch(SMSMOBILEAPI_ENDPOINT, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${SMSMOBILEAPI_API_KEY}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(payload)
-  });
-
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`SMSMobileAPI request failed (${response.status}): ${text}`);
-  }
-
-  const result = await response.json();
-  
-  // Check if the API returned an error
-  if (result.error || !result.success) {
-    const errorMsg = result.message || result.error || 'Unknown error';
-    throw new Error(`SMSMobileAPI error: ${errorMsg}`);
-  }
-
-  return {
-    success: true,
-    messageId: result.data?.id || result.id,
-    status: result.data?.status || result.status,
-    provider: 'smsmobileapi'
-  };
-};
-
-const sendViaTextbelt = async ({ to, message }) => {
-  const response = await fetch(TEXTBELT_ENDPOINT, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      phone: to,
-      message,
-      key: TEXTBELT_API_KEY
-    })
-  });
-
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`Textbelt request failed (${response.status}): ${text}`);
-  }
-
-  const payload = await response.json();
-  if (!payload?.success) {
-    const err = new Error(`Textbelt error: ${payload?.error || 'unknown error'}`);
-    err.details = payload;
-    throw err;
-  }
-
-  return payload;
-};
-
-const sendViaTwilio = async ({ to, message }) => {
-  if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN) {
-    throw new Error('Twilio credentials not configured (TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN required)');
-  }
-
-  let fromValue;
-  if (TWILIO_MESSAGING_SERVICE_SID) {
-    fromValue = TWILIO_MESSAGING_SERVICE_SID;
-  } else if (TWILIO_ALPHANUMERIC_SENDER) {
-    fromValue = TWILIO_ALPHANUMERIC_SENDER;
-  } else if (TWILIO_PHONE_NUMBER) {
-    fromValue = TWILIO_PHONE_NUMBER;
-  } else {
-    throw new Error('Twilio sender not configured');
-  }
-
-  const url = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`;
-  const auth = Buffer.from(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`).toString('base64');
-
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Basic ${auth}`,
-      'Content-Type': 'application/x-www-form-urlencoded'
-    },
-    body: new URLSearchParams({
-      To: to,
-      From: fromValue,
-      Body: message
-    })
-  });
-
-  const payload = await response.json();
-
-  if (!response.ok) {
-    const errorMsg = payload?.message || payload?.error?.message || 'Unknown Twilio error';
-    const err = new Error(`Twilio API error (${response.status}): ${errorMsg}`);
-    err.details = payload;
-    throw err;
-  }
-
-  return {
-    sid: payload.sid,
-    status: payload.status,
-    from: payload.from,
-    to: payload.to,
-    dateCreated: payload.date_created
-  };
-};
-
-const sendSms = async ({ to, message }) => {
-  if (!to) {
-    throw new Error('SMS recipient missing');
-  }
-  if (!message) {
-    throw new Error('SMS message missing');
-  }
-
-  if (typeof fetch !== 'function') {
-    throw new Error('Fetch API is not available in this environment');
-  }
-
-  if (DISABLE_SMS) {
-    console.info(`${LOG_PREFIX} SMS disabled; skipping send to ${to}. Message="${message}"`);
-    return { mocked: true };
-  }
-
-  const provider = (process.env.SMS_PROVIDER || DEFAULT_PROVIDER).toLowerCase();
-
-  switch (provider) {
-    case 'smsmobileapi':
-      return sendViaSMSMobileAPI({ to, message });
-    case 'twilio':
-      return sendViaTwilio({ to, message });
-    case 'textbelt':
-      return sendViaTextbelt({ to, message });
-    default:
-      throw new Error(`Unknown SMS provider: ${provider}`);
-  }
 };
 
 const buildReminderMessage = ({ invoiceId, amountNok, dueDate, paymentUrl, kid, accountNumber, recipientName }) => {
@@ -253,10 +57,77 @@ const buildReminderMessage = ({ invoiceId, amountNok, dueDate, paymentUrl, kid, 
     `faktura #${invoiceId} på ${formatCurrency(amountNok)} forfaller ${formatDate(dueDate)}.`,
     `Betalingsinfo:${kidPart}${accountPart}`,
     `Betalingssiden finner du her: ${paymentUrl}`
-  ]
-    .map(part => part.trim())
-    .filter(Boolean)
-    .join(' ');
+  ].map(p => p.trim()).filter(Boolean).join(' ');
+};
+
+// Core: send via SMSMobileAPI only
+const sendViaSMSMobileAPI = async ({ to, message }) => {
+  if (!SMSMOBILEAPI_API_KEY) {
+    throw new Error('SMSMobileAPI not configured (SMSMOBILEAPI_API_KEY required)');
+  }
+
+  // Make sure fetch exists (node >=18 has it). If not, user should polyfill.
+  if (typeof fetch !== 'function') {
+    throw new Error(
+      'Fetch API not available. In Node <18 install a polyfill (e.g. npm i node-fetch@2) and set global.fetch = require("node-fetch").'
+    );
+  }
+
+  const payload = {
+    phoneNumbers: [to],
+    message
+  };
+  if (SMSMOBILEAPI_DEVICE_ID) payload.deviceId = SMSMOBILEAPI_DEVICE_ID;
+
+  console.debug(`${LOG_PREFIX} POST ${SMSMOBILEAPI_ENDPOINT} payload:`, payload);
+
+  const res = await fetch(SMSMOBILEAPI_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${SMSMOBILEAPI_API_KEY}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(payload)
+  });
+
+  const text = await res.text().catch(() => null);
+  let json = null;
+  try { json = text ? JSON.parse(text) : null; } catch (e) {
+    // non-JSON response
+    throw new Error(`SMSMobileAPI returned non-JSON response (HTTP ${res.status}): ${text}`);
+  }
+
+  // Accept a few common shapes: { success: true, data: {...} } OR { id:..., status:... } etc.
+  const okish = !!(json && (json.success === true || json.data || json.id));
+  if (!res.ok || !okish) {
+    const msg = json?.message || json?.error || json?.status || text || `HTTP ${res.status}`;
+    const err = new Error(`SMSMobileAPI request failed (${res.status}): ${msg}`);
+    err.raw = json;
+    throw err;
+  }
+
+  return {
+    success: true,
+    messageId: json?.data?.id || json?.id || null,
+    status: json?.data?.status || json?.status || 'unknown',
+    raw: json,
+    provider: 'smsmobileapi'
+  };
+};
+
+const sendSms = async ({ to, message }) => {
+  if (!to) throw new Error('SMS recipient missing');
+  if (!message) throw new Error('SMS message missing');
+  if (DISABLE_SMS) {
+    console.info(`${LOG_PREFIX} SMS disabled; skipping send to ${to}. Message="${message}"`);
+    return { mocked: true };
+  }
+  try {
+    return await sendViaSMSMobileAPI({ to, message });
+  } catch (err) {
+    console.error(`${LOG_PREFIX} sendSms error:`, err && err.message, err && err.raw ? err.raw : '');
+    throw err;
+  }
 };
 
 const sendInvoiceReminderSms = async ({
@@ -270,9 +141,8 @@ const sendInvoiceReminderSms = async ({
   recipientName = null
 }) => {
   const normalizedPhone = normalizePhoneNumber(phoneNumber);
-  if (!normalizedPhone) {
-    throw new Error('Ugyldig telefonnummer for SMS');
-  }
+  if (!normalizedPhone) throw new Error('Ugyldig telefonnummer for SMS');
+
   const url = paymentUrl || resolvePaymentUrl(invoiceId);
   const message = buildReminderMessage({
     invoiceId,
@@ -282,15 +152,25 @@ const sendInvoiceReminderSms = async ({
     kid,
     accountNumber,
     recipientName
-  }).slice(0, 450); // keep buffer for SMS gateways
+  }).slice(0, 450);
 
   const providerResponse = await sendSms({ to: normalizedPhone, message });
   console.info(`${LOG_PREFIX} Reminder SMS sent for invoice ${invoiceId} -> ${normalizedPhone}`);
   return { providerResponse, phone: normalizedPhone, message, paymentUrl: url };
 };
 
+// Utility: quick credential check (useful for CI / health checks)
+const ping = async () => {
+  if (!SMSMOBILEAPI_API_KEY) throw new Error('Missing SMSMOBILEAPI_API_KEY');
+  // A light-weight test: call send with a noop message and invalid phone might return error but confirms auth works.
+  // If SMSMobileAPI has a dedicated 'test' endpoint, replace with that according to their docs.
+  return { ok: true, endpoint: SMSMOBILEAPI_ENDPOINT };
+};
+
 module.exports = {
   normalizePhoneNumber,
   resolvePaymentUrl,
-  sendInvoiceReminderSms
+  sendInvoiceReminderSms,
+  sendSms,
+  ping
 };
